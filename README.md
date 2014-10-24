@@ -22,15 +22,11 @@ Core-Auth consisists of various components:
 
 ## Basic Flow
 
-user logs in via ouath
-↓
-user is redirected to app with token
-↓
-app uses common lib to extract identity from token
-↓
-app uses common lib to fetch auth-z policies (if not cached, or ttl expired)
-↓
-app responds with denial/full-results/filter-results based on auth-z policies
+1. user logs in via ouath
+1. user is redirected to app with token
+1. app uses common lib to extract identity from token
+1. app uses common lib to fetch auth-z policies (if not cached, or ttl expired)
+1. app responds with denial/full-results/filter-results based on auth-z policies
 
 ## Policy Structure (WIP)
 

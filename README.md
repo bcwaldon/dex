@@ -29,7 +29,15 @@ Core-Auth consisists of various components:
    output: yes/no, or filtered list of CRNs
 1. app responds with: denial, full-results, or filter-results
 
+
 # Permissions Specification
+
+1. user logs in via ouath
+1. user is redirected to app with token
+1. app uses common lib to extract identity from token
+1. app uses common lib to fetch auth-z policies (if not cached, or ttl expired)
+1. app responds with denial/full-results/filter-results based on auth-z policies
+
 
 ## Core Resource Namespaces (CRN)
 

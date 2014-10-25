@@ -94,7 +94,7 @@ coreos.com:coreupdate:modifyVersion
 
 ## Policies
 
-```
+```json
 {
   "apiVersion": "v1",
   "id": "7CFCE45E-610A-407C-84DB-86A24658B217",
@@ -126,7 +126,7 @@ Statement:
 
 CoreUpdate Example:
 
-```
+```json
 {
   "apiVersion": "v1",
   "id": "rando-uuid",

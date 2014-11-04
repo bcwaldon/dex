@@ -161,19 +161,14 @@ func (self *Client) RefreshKeys() error {
 
 // verify if a JWT is valid or not
 func (self *Client) Verify(jwt JWT) error {
-	valid := false
 	for _, signer := range self.Signers {
 		err := signer.Verify(jwt.Signature, jwt.RawData())
 		if err == nil {
-			valid = true
-			break
+			return nil
 		}
 	}
 
-	if valid {
-		return nil
-	}
-	return errors.New("invalid token")
+	return errors.New("could not verify JWT")
 }
 
 // Redirect user to providers auth page

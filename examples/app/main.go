@@ -1,18 +1,52 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
+	"net/url"
 
 	"github.com/coreos-inc/auth/oidc"
 )
 
-var client *oidc.Client
+var (
+	callbackURL = "http://localhost:5555/callback"
+
+	client   *oidc.Client
+	bindPort string
+)
+
+func init() {
+	u, err := url.Parse(callbackURL)
+	if err != nil {
+		log.Fatalf("callbackURL %q invalid: %v", callbackURL, err)
+	}
+
+	_, p, err := net.SplitHostPort(u.Host)
+	if err != nil {
+		log.Fatalf("Unable to determine port in callbackURL %q: %v", callbackURL, err)
+	}
+
+	bindPort = fmt.Sprintf(":%s", p)
+}
 
 func main() {
+	var clientID = flag.String("client-id", "", "")
+	var clientSecret = flag.String("client-secret", "", "")
+	flag.Parse()
+
+	if *clientID == "" {
+		log.Fatal("--client-id must be set")
+	}
+
+	if *clientSecret == "" {
+		log.Fatal("--client-secret must be set")
+	}
+
 	// Configure new client
-	client = oidc.NewClient("google", "https://accounts.google.com", "--client id--", "-- client secret --", "http://localhost:5555/callback")
+	client = oidc.NewClient("google", "https://accounts.google.com", *clientID, *clientSecret, callbackURL)
 	fmt.Println(client.Name)
 
 	// discover provider configuration
@@ -29,8 +63,8 @@ func main() {
 	http.HandleFunc("/callback", handleCallback)
 	http.HandleFunc("/protected-resource", handleProtected)
 
-	log.Printf("listening on %s...", ":5555")
-	log.Fatal(http.ListenAndServe(":5555", nil))
+	log.Printf("listening on %s...", bindPort)
+	log.Fatal(http.ListenAndServe(bindPort, nil))
 }
 
 // Step 1: ask user to login

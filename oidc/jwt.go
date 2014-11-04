@@ -44,7 +44,7 @@ func ParseJWT(rawToken string) (JWT, error) {
 }
 
 func (self JWT) RawData() string {
-	return strings.Split(self.RawToken, ".")[2]
+	return strings.Join(strings.Split(self.RawToken, ".")[0:2], ".")
 }
 
 func DecodeHeader(header string) (map[string]string, error) {

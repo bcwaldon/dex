@@ -3,7 +3,6 @@ package oidc
 import (
 	"crypto"
 	"crypto/rsa"
-	"crypto/sha256"
 	"errors"
 	"strings"
 )
@@ -59,11 +58,9 @@ func (self *SignerRSA) Alg() string {
 }
 
 func (self *SignerRSA) Verify(signature []byte, data string) error {
-	h := sha256.New()
+	h := self.Hash.New()
 	h.Write([]byte(data))
-	digest := h.Sum(nil)
-
-	return rsa.VerifyPKCS1v15(&self.RSAKey, crypto.SHA256, digest, signature)
+	return rsa.VerifyPKCS1v15(&self.RSAKey, self.Hash, h.Sum(nil), signature)
 }
 
 // Make an RSA public key using exponent and modulus

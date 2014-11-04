@@ -35,6 +35,7 @@ func init() {
 func main() {
 	var clientID = flag.String("client-id", "", "")
 	var clientSecret = flag.String("client-secret", "", "")
+	var issuerURL = flag.String("issuer-url", "https://accounts.google.com", "")
 	flag.Parse()
 
 	if *clientID == "" {
@@ -46,7 +47,7 @@ func main() {
 	}
 
 	// Configure new client
-	client = oidc.NewClient("google", "https://accounts.google.com", *clientID, *clientSecret, callbackURL)
+	client = oidc.NewClient("google", *issuerURL, *clientID, *clientSecret, callbackURL)
 	fmt.Println(client.Name)
 
 	// discover provider configuration

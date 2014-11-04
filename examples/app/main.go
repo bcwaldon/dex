@@ -47,8 +47,7 @@ func main() {
 	}
 
 	// Configure new client
-	client = oidc.NewClient("google", *issuerURL, *clientID, *clientSecret, callbackURL)
-	fmt.Println(client.Name)
+	client = oidc.NewClient(*issuerURL, *clientID, *clientSecret, callbackURL)
 
 	// discover provider configuration
 	client.FetchProviderConfig()

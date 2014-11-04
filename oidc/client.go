@@ -21,7 +21,6 @@ type Result struct {
 }
 
 type Client struct {
-	Name           string          // Name of OIDC issuer
 	IssuerURL      string          // Base URL of the issuer
 	ClientID       string          // OAuth Client ID
 	ClientSecret   string          // OAuth Client Secret
@@ -32,10 +31,9 @@ type Client struct {
 	Signers map[string]Signer // Cached store of signers.
 }
 
-func NewClient(name, issuerURL, clientID, clientSecret, redirectURL string) *Client {
+func NewClient(issuerURL, clientID, clientSecret, redirectURL string) *Client {
 	// TODO: error if missing required config
 	return &Client{
-		Name:         name,
 		IssuerURL:    issuerURL,
 		ClientID:     clientID,
 		ClientSecret: clientSecret,

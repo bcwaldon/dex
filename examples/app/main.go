@@ -82,13 +82,13 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 
 // Step 3: provider redirects to oauth callback
 func handleCallback(w http.ResponseWriter, r *http.Request) {
-	result, err := client.HandleCallback(r)
+	//TODO(bcwaldon): Actually handle the result from this
+	_, err := client.HandleCallback(r)
 	if err != nil {
+		log.Printf("Unable to handle OAuth2 callback: %v", err)
 		w.Write([]byte(err.Error()))
-		panic(err)
+		return
 	}
-
-	log.Println(result.JWT)
 
 	http.Redirect(w, r, "/protected-resource", http.StatusFound)
 }

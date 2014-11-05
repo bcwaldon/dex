@@ -4,9 +4,10 @@ import (
 	"time"
 
 	"github.com/coreos-inc/auth/jose"
+	josesig "github.com/coreos-inc/auth/jose/sig"
 )
 
-func NewSignedJWT(claims map[string]interface{}, s Signer) (*jose.JWT, error) {
+func NewSignedJWT(claims map[string]interface{}, s josesig.Signer) (*jose.JWT, error) {
 	jwt := jose.JWT{
 		Header: map[string]string{
 			"alg": s.Alg(),
@@ -34,7 +35,7 @@ type Session struct {
 	RefreshToken string
 }
 
-func (ses *Session) IDToken(issuerURL string, signer Signer) (*jose.JWT, error) {
+func (ses *Session) IDToken(issuerURL string, signer josesig.Signer) (*jose.JWT, error) {
 	claims := map[string]interface{}{
 		// required
 		"iss": issuerURL,

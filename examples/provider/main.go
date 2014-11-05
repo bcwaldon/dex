@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/coreos-inc/auth/jose"
+	josesig "github.com/coreos-inc/auth/jose/sig"
 	"github.com/coreos-inc/auth/oidc"
 	oidchttp "github.com/coreos-inc/auth/oidc/http"
 )
@@ -76,7 +77,7 @@ func main() {
 		log.Fatalf("Unable to generate RSA private key: %v", err)
 	}
 
-	signer := oidc.NewSignerRSA(staticKeyID, *privKey)
+	signer := josesig.NewSignerRSA(staticKeyID, *privKey)
 
 	srv := Server{
 		issuerName:     *issuerName,
@@ -97,7 +98,7 @@ func main() {
 type Server struct {
 	issuerName     string
 	issuerURL      string
-	signer         oidc.Signer
+	signer         josesig.Signer
 	sessionManager *SessionManager
 }
 
@@ -132,7 +133,7 @@ func (s *Server) Config() oidc.ProviderConfig {
 	return cfg
 }
 
-func (s *Server) Signer() oidc.Signer {
+func (s *Server) Signer() josesig.Signer {
 	return s.signer
 }
 

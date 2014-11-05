@@ -12,6 +12,7 @@ import (
 	"code.google.com/p/goauth2/oauth"
 
 	"github.com/coreos-inc/auth/jose"
+	josesig "github.com/coreos-inc/auth/jose/sig"
 )
 
 type Result struct {
@@ -28,7 +29,7 @@ type Client struct {
 	ProviderConfig *ProviderConfig // OIDC Provider config
 	OAuthConfig    *oauth.Config   // OAuth specific config
 	// TODO: move this to separate interface/type
-	Verifiers map[string]Verifier // Cached store of verifiers.
+	Verifiers map[string]josesig.Verifier // Cached store of verifiers.
 }
 
 func NewClient(issuerURL, clientID, clientSecret, redirectURL string) *Client {
@@ -38,7 +39,7 @@ func NewClient(issuerURL, clientID, clientSecret, redirectURL string) *Client {
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
 		RedirectURL:  redirectURL,
-		Verifiers:    make(map[string]Verifier),
+		Verifiers:    make(map[string]josesig.Verifier),
 	}
 }
 
@@ -54,20 +55,20 @@ func Get(url string) ([]byte, error) {
 	return ioutil.ReadAll(resp.Body)
 }
 
-func (self *Client) FetchProviderConfig() (*ProviderConfig, error) {
+func (self *Client) FetchProviderConfig() error {
 	configEndpoint := fmt.Sprintf("%s/%s", self.IssuerURL, discoveryConfigPath)
 	fmt.Println(configEndpoint)
 
 	configBody, err := Get(configEndpoint)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// TODO: store cache headers
 
 	err = json.NewDecoder(bytes.NewReader(configBody)).Decode(&self.ProviderConfig)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// TODO: error if issuer is not the same as the original issuer url
@@ -78,7 +79,7 @@ func (self *Client) FetchProviderConfig() (*ProviderConfig, error) {
 
 	self.configureOAuth()
 
-	return self.ProviderConfig, nil
+	return nil
 }
 
 func (self *Client) configureOAuth() {
@@ -99,20 +100,20 @@ func (self *Client) PurgeExpiredVerifiers() error {
 }
 
 // TODO: move
-func (self *Client) AddVerifier(s Verifier) error {
+func (self *Client) AddVerifier(s josesig.Verifier) error {
 	// replace in list if exists
 	self.Verifiers[s.ID()] = s
 	return nil
 }
 
 // Fetch keys from JWKs endpoint.
-func (self *Client) FetchKeys() ([]jose.JWK, error) {
+func (self *Client) FetchKeys() ([]*jose.JWK, error) {
 	keyBytes, err := Get(self.ProviderConfig.JWKSURI)
 	if err != nil {
 		return nil, err
 	}
 
-	var jsonData map[string][]jose.JWK
+	var jsonData map[string][]*jose.JWK
 	err = json.NewDecoder(bytes.NewReader(keyBytes)).Decode(&jsonData)
 	if err != nil {
 		return nil, err
@@ -139,14 +140,13 @@ func (self *Client) RefreshKeys() error {
 
 	// TODO: filter by use:"sig" first
 
-	for _, k := range jwks {
-		s, err := NewVerifier(k)
+	for _, jwk := range jwks {
+		v, err := josesig.NewVerifier(*jwk)
 		if err != nil {
 			return err
 		}
 
-		err = self.AddVerifier(s)
-		if err != nil {
+		if err = self.AddVerifier(v); err != nil {
 			return err
 		}
 	}

@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/coreos-inc/auth/oidc"
 	"github.com/coreos-inc/auth/jose"
+	"github.com/coreos-inc/auth/oidc"
 )
 
 var (

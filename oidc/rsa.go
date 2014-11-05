@@ -2,28 +2,39 @@ package oidc
 
 import (
 	"crypto"
+	"crypto/rand"
 	"crypto/rsa"
 	"errors"
 	"strings"
 )
 
-type SignerRSA struct {
-	RSAKey  rsa.PublicKey
-	Hash    crypto.Hash
-	AlgName string
-	KeyID   string
+type VerifierRSA struct {
+	KeyID     string
+	Hash      crypto.Hash
+	PublicKey rsa.PublicKey
 }
 
-func NewSignerRSA(alg, n, e, kid string) (*SignerRSA, error) {
-	rsaKey, err := MakeRSAPubKey(n, e)
+type SignerRSA struct {
+	PrivateKey rsa.PrivateKey
+	VerifierRSA
+}
+
+func NewVerifierRSA(alg, n, e, kid string) (*VerifierRSA, error) {
+	E, err := DecodeExponent(e)
 	if err != nil {
 		return nil, err
 	}
 
-	s := &SignerRSA{
-		RSAKey:  rsaKey,
-		KeyID:   kid,
-		AlgName: alg,
+	N, err := DecodeModulus(n)
+	if err != nil {
+		return nil, err
+	}
+
+	rsaKey := rsa.PublicKey{N: N, E: E}
+
+	s := &VerifierRSA{
+		PublicKey: rsaKey,
+		KeyID:     kid,
 	}
 
 	switch strings.ToUpper(alg) {
@@ -36,44 +47,48 @@ func NewSignerRSA(alg, n, e, kid string) (*SignerRSA, error) {
 	return s, nil
 }
 
-func (self *SignerRSA) ID() string {
-	return self.KeyID
-}
-
-func (self *SignerRSA) MakeKey(n, e string) error {
-	key, err := MakeRSAPubKey(n, e)
-	if err != nil {
-		return err
+func NewSignerRSA(kid string, key rsa.PrivateKey) *SignerRSA {
+	return &SignerRSA{
+		PrivateKey: key,
+		VerifierRSA: VerifierRSA{
+			PublicKey: key.PublicKey,
+			KeyID:     kid,
+			Hash:      crypto.SHA256,
+		},
 	}
-	self.RSAKey = key
-	return nil
 }
 
-func (self *SignerRSA) Key() crypto.PublicKey {
-	return self.RSAKey
+func (v *VerifierRSA) ID() string {
+	return v.KeyID
 }
 
-func (self *SignerRSA) Alg() string {
-	return self.AlgName
+func (v *VerifierRSA) PubKey() crypto.PublicKey {
+	return v.PublicKey
 }
 
-func (self *SignerRSA) Verify(signature []byte, data string) error {
-	h := self.Hash.New()
-	h.Write([]byte(data))
-	return rsa.VerifyPKCS1v15(&self.RSAKey, self.Hash, h.Sum(nil), signature)
+func (v *VerifierRSA) Alg() string {
+	return "RS256"
 }
 
-// Make an RSA public key using exponent and modulus
-func MakeRSAPubKey(n, e string) (rsa.PublicKey, error) {
-	E, err := DecodeExponent(e)
-	if err != nil {
-		return rsa.PublicKey{}, err
+func (v *VerifierRSA) Verify(sig []byte, data []byte) error {
+	h := v.Hash.New()
+	h.Write(data)
+	return rsa.VerifyPKCS1v15(&v.PublicKey, v.Hash, h.Sum(nil), sig)
+}
+
+func (s *SignerRSA) Sign(data []byte) ([]byte, error) {
+	h := s.Hash.New()
+	h.Write(data)
+	return rsa.SignPKCS1v15(rand.Reader, &s.PrivateKey, s.Hash, h.Sum(nil))
+}
+
+func (s *SignerRSA) JWK() JWK {
+	return JWK{
+		Type:     "RSA",
+		Alg:      "RS256",
+		Use:      "sig",
+		ID:       s.KeyID,
+		Exponent: EncodeExponent(s.VerifierRSA.PublicKey.E),
+		Modulus:  EncodeModulus(s.VerifierRSA.PublicKey.N),
 	}
-
-	N, err := DecodeModulus(n)
-	if err != nil {
-		return rsa.PublicKey{}, err
-	}
-
-	return rsa.PublicKey{N: N, E: E}, nil
 }

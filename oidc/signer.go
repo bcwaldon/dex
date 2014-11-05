@@ -10,20 +10,23 @@ import (
 	"strings"
 )
 
-// Singers contain public keys and verify signed data.
-type Signer interface {
-	MakeKey(e, n string) error
+type Verifier interface {
 	ID() string
-	Key() crypto.PublicKey
+	PubKey() crypto.PublicKey
 	Alg() string
-	Verify(signature []byte, data string) error
-	//Expired() bool
+	Verify(signature []byte, data []byte) error
 }
 
-func MakeSigner(jwk JWK) (Signer, error) {
+type Signer interface {
+	Verifier
+	Sign(data []byte) (sig []byte, err error)
+	JWK() JWK
+}
+
+func NewVerifier(jwk JWK) (Verifier, error) {
 	switch strings.ToUpper(jwk.Type) {
 	case "RSA":
-		return NewSignerRSA(jwk.Alg, jwk.Modulus, jwk.Exponent, jwk.ID)
+		return NewVerifierRSA(jwk.Alg, jwk.Modulus, jwk.Exponent, jwk.ID)
 	default:
 		return nil, errors.New("unsupported key type")
 	}
@@ -51,6 +54,13 @@ func DecodeExponent(e string) (int, error) {
 	return int(E), nil
 }
 
+func EncodeExponent(e int) string {
+	//TODO(bcwaldon): don't really need a full uint64 here
+	b := make([]byte, 8)
+	binary.BigEndian.PutUint64(b, uint64(e))
+	return base64.URLEncoding.EncodeToString(b)
+}
+
 // Turns a URL encoded modulus of a key into a big int.
 func DecodeModulus(n string) (*big.Int, error) {
 	decN, err := base64.URLEncoding.DecodeString(n)
@@ -60,4 +70,8 @@ func DecodeModulus(n string) (*big.Int, error) {
 	N := big.NewInt(0)
 	N.SetBytes(decN)
 	return N, nil
+}
+
+func EncodeModulus(n *big.Int) string {
+	return base64.URLEncoding.EncodeToString(n.Bytes())
 }

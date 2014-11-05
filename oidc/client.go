@@ -6,8 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	// TODO: remove
-	"log"
 	"net/http"
 
 	//"github.com/golang/auth2"
@@ -21,7 +19,6 @@ type Result struct {
 }
 
 type Client struct {
-	Name           string          // Name of OIDC issuer
 	IssuerURL      string          // Base URL of the issuer
 	ClientID       string          // OAuth Client ID
 	ClientSecret   string          // OAuth Client Secret
@@ -29,18 +26,17 @@ type Client struct {
 	ProviderConfig *ProviderConfig // OIDC Provider config
 	OAuthConfig    *oauth.Config   // OAuth specific config
 	// TODO: move this to separate interface/type
-	Signers map[string]Signer // Cached store of signers.
+	Verifiers map[string]Verifier // Cached store of verifiers.
 }
 
-func NewClient(name, issuerURL, clientID, clientSecret, redirectURL string) *Client {
+func NewClient(issuerURL, clientID, clientSecret, redirectURL string) *Client {
 	// TODO: error if missing required config
 	return &Client{
-		Name:         name,
 		IssuerURL:    issuerURL,
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
 		RedirectURL:  redirectURL,
-		Signers:      make(map[string]Signer),
+		Verifiers:    make(map[string]Verifier),
 	}
 }
 
@@ -95,15 +91,15 @@ func (self *Client) configureOAuth() {
 }
 
 // TODO: move
-func (self *Client) PurgeExpiredSigners() error {
+func (self *Client) PurgeExpiredVerifiers() error {
 	// TODO: implement
 	return nil
 }
 
 // TODO: move
-func (self *Client) AddSigner(s Signer) error {
+func (self *Client) AddVerifier(s Verifier) error {
 	// replace in list if exists
-	self.Signers[s.ID()] = s
+	self.Verifiers[s.ID()] = s
 	return nil
 }
 
@@ -125,32 +121,29 @@ func (self *Client) FetchKeys() ([]JWK, error) {
 		return nil, errors.New("invalid response from jwks endpoint")
 	}
 
-	// TODO: set 'expires' field
-
-	log.Printf("%+v", keys)
 	return keys, nil
 }
 
-// Fetch keys, generate appropriate signer based on signing algorithm, and update the client's cache.
+// Fetch keys, generate appropriate verifier based on signing algorithm, and update the client's cache.
 func (self *Client) RefreshKeys() error {
 	jwks, err := self.FetchKeys()
 	if err != nil {
 		return err
 	}
 
-	if err := self.PurgeExpiredSigners(); err != nil {
+	if err := self.PurgeExpiredVerifiers(); err != nil {
 		return err
 	}
 
 	// TODO: filter by use:"sig" first
 
 	for _, k := range jwks {
-		s, err := MakeSigner(k)
+		s, err := NewVerifier(k)
 		if err != nil {
 			return err
 		}
 
-		err = self.AddSigner(s)
+		err = self.AddVerifier(s)
 		if err != nil {
 			return err
 		}
@@ -161,14 +154,14 @@ func (self *Client) RefreshKeys() error {
 
 // verify if a JWT is valid or not
 func (self *Client) Verify(jwt JWT) error {
-	for _, signer := range self.Signers {
-		err := signer.Verify(jwt.Signature, jwt.RawData())
+	for _, v := range self.Verifiers {
+		err := v.Verify(jwt.Signature, []byte(jwt.Data()))
 		if err == nil {
 			return nil
 		}
 	}
 
-	return errors.New("could not verify JWT")
+	return errors.New("could not verify JWT signature")
 }
 
 // Redirect user to providers auth page

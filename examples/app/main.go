@@ -35,6 +35,7 @@ func init() {
 func main() {
 	var clientID = flag.String("client-id", "", "")
 	var clientSecret = flag.String("client-secret", "", "")
+	var issuerURL = flag.String("issuer-url", "https://accounts.google.com", "")
 	flag.Parse()
 
 	if *clientID == "" {
@@ -46,8 +47,7 @@ func main() {
 	}
 
 	// Configure new client
-	client = oidc.NewClient("google", "https://accounts.google.com", *clientID, *clientSecret, callbackURL)
-	fmt.Println(client.Name)
+	client = oidc.NewClient(*issuerURL, *clientID, *clientSecret, callbackURL)
 
 	// discover provider configuration
 	client.FetchProviderConfig()
@@ -82,13 +82,13 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 
 // Step 3: provider redirects to oauth callback
 func handleCallback(w http.ResponseWriter, r *http.Request) {
-	result, err := client.HandleCallback(r)
+	//TODO(bcwaldon): Actually handle the result from this
+	_, err := client.HandleCallback(r)
 	if err != nil {
+		log.Printf("Unable to handle OAuth2 callback: %v", err)
 		w.Write([]byte(err.Error()))
-		panic(err)
+		return
 	}
-
-	log.Println(result.JWT)
 
 	http.Redirect(w, r, "/protected-resource", http.StatusFound)
 }

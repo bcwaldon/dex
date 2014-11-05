@@ -21,18 +21,13 @@ type JWT struct {
 	Signature []byte
 }
 
-func NewSignedJWT(claims map[string]string, s Signer) (*JWT, error) {
-	c := Claims(make(map[string]interface{}))
-	for k, v := range claims {
-		c[k] = v
-	}
-
+func NewSignedJWT(claims map[string]interface{}, s Signer) (*JWT, error) {
 	jwt := JWT{
 		Header: map[string]string{
 			"alg": s.Alg(),
 			"kid": s.ID(),
 		},
-		Claims: c,
+		Claims: Claims(claims),
 	}
 
 	sig, err := s.Sign([]byte(jwt.Data()))

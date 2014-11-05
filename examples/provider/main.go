@@ -1,29 +1,25 @@
 package main
 
 import (
-	"crypto/rand"
+	crand "crypto/rand"
 	"crypto/rsa"
+	"encoding/base64"
+	"encoding/binary"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
+	mrand "math/rand"
 	"net"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/coreos-inc/auth/oidc"
 )
 
 var (
-	staticAuthCode     = "pants"
-	staticAccessToken  = "RsT5OjbzRn430zqMLgV3Ia"
-	staticRefreshToken = "StU5OjbzRn430zqMLgV3Ib"
-
-	staticKeyID  = "2b3390f656ff335d6fdb8dfe117748c9f2709c02"
-	staticClaims = map[string]string{
-		"name":  "Elroy",
-		"email": "elroy@example.com",
-	}
+	staticKeyID = "2b3390f656ff335d6fdb8dfe117748c9f2709c02"
 
 	pathDiscovery = "/.well-known/openid-configuration"
 	pathAuth      = "/auth"
@@ -32,6 +28,67 @@ var (
 	pathUserInfo  = "/user"
 	pathKeys      = "/keys" // a.k.a. JWKS
 )
+
+type Session struct {
+	AuthCode     string
+	SubjectID    string
+	ClientID     string
+	IssuedAt     time.Time
+	ExpiresAt    time.Time
+	AccessToken  string
+	RefreshToken string
+}
+
+func (ses *Session) IDToken(issuerURL string, signer oidc.Signer) (*oidc.JWT, error) {
+	claims := map[string]interface{}{
+		// required
+		"iss": issuerURL,
+		"sub": ses.SubjectID,
+		"aud": ses.ClientID,
+		// explicitly cast to float64 for consistent JSON (de)serialization
+		"exp": float64(ses.ExpiresAt.Unix()),
+		"iat": float64(ses.IssuedAt.Unix()),
+
+		// conventional
+		"name":  "Elroy",
+		"email": "elroy@example.com",
+	}
+
+	return oidc.NewSignedJWT(claims, signer)
+}
+
+func NewSessionManager() *SessionManager {
+	return &SessionManager{make(map[string]*Session)}
+}
+
+type SessionManager struct {
+	sessions map[string]*Session
+}
+
+func (m *SessionManager) NewSession(clientID string) string {
+	now := time.Now().UTC()
+	s := Session{
+		AuthCode:     genToken(),
+		SubjectID:    genToken(),
+		ClientID:     clientID,
+		IssuedAt:     now,
+		ExpiresAt:    now.Add(30 * time.Second),
+		AccessToken:  genToken(),
+		RefreshToken: genToken(),
+	}
+	m.sessions[s.AuthCode] = &s
+	return s.AuthCode
+}
+
+func (m *SessionManager) LookupByAuthCode(code string) *Session {
+	return m.sessions[code]
+}
+
+func genToken() string {
+	b := make([]byte, 8)
+	binary.BigEndian.PutUint64(b, uint64(mrand.Int63()))
+	return base64.URLEncoding.EncodeToString(b)
+}
 
 func main() {
 	issuerName := flag.String("issuer-name", "example", "")
@@ -55,16 +112,11 @@ func main() {
 
 	signer := oidc.NewSignerRSA(staticKeyID, *privKey)
 
-	staticJWT, err := oidc.NewSignedJWT(staticClaims, signer)
-	if err != nil {
-		log.Fatalf("Failed signing static JWT: %v", err)
-	}
-
 	srv := Server{
-		IssuerName: *issuerName,
-		ServiceURL: *listen,
-		Signer:     signer,
-		JWT:        *staticJWT,
+		IssuerName:     *issuerName,
+		IssuerURL:      *listen,
+		Signer:         signer,
+		SessionManager: NewSessionManager(),
 	}
 
 	http.HandleFunc(pathDiscovery, srv.handleDiscovery)
@@ -78,21 +130,21 @@ func main() {
 }
 
 type Server struct {
-	IssuerName string
-	ServiceURL string
-	Signer     oidc.Signer
-	JWT        oidc.JWT
+	IssuerName     string
+	IssuerURL      string
+	Signer         oidc.Signer
+	SessionManager *SessionManager
 }
 
 func (s *Server) ProviderConfig() oidc.ProviderConfig {
 	cfg := oidc.ProviderConfig{
 		Issuer: s.IssuerName,
 
-		AuthEndpoint:       s.ServiceURL + pathAuth,
-		TokenEndpoint:      s.ServiceURL + pathToken,
-		UserInfoEndpoint:   s.ServiceURL + pathUserInfo,
-		RevocationEndpoint: s.ServiceURL + pathRevoke,
-		JWKSURI:            s.ServiceURL + pathKeys,
+		AuthEndpoint:       s.IssuerURL + pathAuth,
+		TokenEndpoint:      s.IssuerURL + pathToken,
+		UserInfoEndpoint:   s.IssuerURL + pathUserInfo,
+		RevocationEndpoint: s.IssuerURL + pathRevoke,
+		JWKSURI:            s.IssuerURL + pathKeys,
 
 		// google supports these:
 		//ResponseTypesSupported:            []string{"code", "token", "id_token", "code token", "code id_token", "token id_token", "code token id_token", "none"},
@@ -147,8 +199,16 @@ func (s *Server) handleAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	clientID := r.URL.Query().Get("client_id")
+	if clientID == "" {
+		writeError(w, http.StatusBadRequest, "missing client_id query param")
+		return
+	}
+
+	code := s.SessionManager.NewSession(clientID)
+
 	q := ru.Query()
-	q.Set("code", staticAuthCode)
+	q.Set("code", code)
 	ru.RawQuery = q.Encode()
 	w.Header().Set("Location", ru.String())
 	w.WriteHeader(http.StatusTemporaryRedirect)
@@ -162,10 +222,22 @@ func (s *Server) handleToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	authCode := r.Form.Get("code")
-	if authCode != staticAuthCode {
-		//TODO(bcwaldon): determine what status code to use here
-		writeError(w, http.StatusForbidden, "auth code unrecognized")
+	code := r.Form.Get("code")
+	if len(code) == 0 {
+		writeError(w, http.StatusBadRequest, "auth code must be provided")
+		return
+	}
+
+	ses := s.SessionManager.LookupByAuthCode(code)
+	if ses == nil {
+		writeError(w, http.StatusForbidden, "unknown auth code")
+		return
+	}
+
+	id, err := ses.IDToken(s.IssuerURL, s.Signer)
+	if err != nil {
+		log.Printf("Failed marshaling ID token to JSON: %v", err)
+		writeError(w, http.StatusInternalServerError, "unable to marshal id token")
 		return
 	}
 
@@ -175,9 +247,9 @@ func (s *Server) handleToken(w http.ResponseWriter, r *http.Request) {
 		Expiry       int    `json:"expiry"`
 		IDToken      string `json:"id_token"`
 	}{
-		AccessToken:  staticAccessToken,
-		RefreshToken: staticRefreshToken,
-		IDToken:      s.JWT.SignedData(),
+		AccessToken:  ses.AccessToken,
+		RefreshToken: ses.RefreshToken,
+		IDToken:      id.SignedData(),
 	}
 	b, _ := json.Marshal(t)
 	if err != nil {
@@ -189,7 +261,7 @@ func (s *Server) handleToken(w http.ResponseWriter, r *http.Request) {
 }
 
 func generateRSAPrivateKey() (*rsa.PrivateKey, error) {
-	return rsa.GenerateKey(rand.Reader, 1024)
+	return rsa.GenerateKey(crand.Reader, 1024)
 }
 
 func writeError(w http.ResponseWriter, code int, msg string) {

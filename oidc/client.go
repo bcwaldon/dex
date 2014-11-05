@@ -157,7 +157,7 @@ func (self *Client) Verify(jwt JWT) error {
 	for _, v := range self.Verifiers {
 		err := v.Verify(jwt.Signature, []byte(jwt.Data()))
 		if err == nil {
-			return nil
+			return jwt.VerifyClaims(self.IssuerURL, self.ClientID)
 		}
 	}
 

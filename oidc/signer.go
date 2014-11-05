@@ -2,7 +2,6 @@ package oidc
 
 import (
 	"bytes"
-	"crypto"
 	"encoding/base64"
 	"encoding/binary"
 	"errors"
@@ -12,7 +11,6 @@ import (
 
 type Verifier interface {
 	ID() string
-	PubKey() crypto.PublicKey
 	Alg() string
 	Verify(signature []byte, data []byte) error
 }

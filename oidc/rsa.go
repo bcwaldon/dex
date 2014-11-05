@@ -62,10 +62,6 @@ func (v *VerifierRSA) ID() string {
 	return v.KeyID
 }
 
-func (v *VerifierRSA) PubKey() crypto.PublicKey {
-	return v.PublicKey
-}
-
 func (v *VerifierRSA) Alg() string {
 	return "RS256"
 }

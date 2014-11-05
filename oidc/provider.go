@@ -4,8 +4,17 @@ const (
 	discoveryConfigPath = "/.well-known/openid-configuration"
 )
 
+type Provider interface {
+	Config() ProviderConfig
+	Signer() Signer
+	PublicKeys() []JWK
+	LookupSession(code string) *Session
+	NewSession(clientID string) string
+}
+
 type ProviderConfig struct {
 	Issuer                            string   `json:"issuer"`
+	IssuerURL                         string   `json:"-"`
 	AuthEndpoint                      string   `json:"authorization_endpoint"`
 	TokenEndpoint                     string   `json:"token_endpoint"`
 	UserInfoEndpoint                  string   `json:"userinfo_endpoint"`

@@ -1,5 +1,9 @@
 package oidc
 
+import (
+	"github.com/coreos-inc/auth/jose"
+)
+
 const (
 	discoveryConfigPath = "/.well-known/openid-configuration"
 )
@@ -7,7 +11,7 @@ const (
 type Provider interface {
 	Config() ProviderConfig
 	Signer() Signer
-	PublicKeys() []JWK
+	PublicKeys() []jose.JWK
 	LookupSession(code string) *Session
 	NewSession(clientID string) string
 }

@@ -7,6 +7,7 @@ import (
 	"net/url"
 
 	"github.com/coreos-inc/auth/oidc"
+	"github.com/coreos-inc/auth/jose"
 )
 
 var (
@@ -43,7 +44,7 @@ func handleDiscoveryFunc(p oidc.Provider) http.HandlerFunc {
 func handleKeysFunc(p oidc.Provider) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		keys := struct {
-			Keys []oidc.JWK `json:"keys"`
+			Keys []jose.JWK `json:"keys"`
 		}{
 			Keys: p.PublicKeys(),
 		}

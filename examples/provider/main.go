@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/coreos-inc/auth/jose"
 	"github.com/coreos-inc/auth/oidc"
 	oidchttp "github.com/coreos-inc/auth/oidc/http"
 )
@@ -135,8 +136,8 @@ func (s *Server) Signer() oidc.Signer {
 	return s.signer
 }
 
-func (s *Server) PublicKeys() []oidc.JWK {
-	return []oidc.JWK{s.signer.JWK()}
+func (s *Server) PublicKeys() []jose.JWK {
+	return []jose.JWK{s.signer.JWK()}
 }
 
 func generateRSAPrivateKey() (*rsa.PrivateKey, error) {

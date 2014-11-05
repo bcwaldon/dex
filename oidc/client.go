@@ -10,12 +10,14 @@ import (
 
 	//"github.com/golang/auth2"
 	"code.google.com/p/goauth2/oauth"
+
+	"github.com/coreos-inc/auth/jose"
 )
 
 type Result struct {
 	State  string
 	Claims map[string]string
-	JWT    JWT
+	JWT    jose.JWT
 }
 
 type Client struct {
@@ -104,13 +106,13 @@ func (self *Client) AddVerifier(s Verifier) error {
 }
 
 // Fetch keys from JWKs endpoint.
-func (self *Client) FetchKeys() ([]JWK, error) {
+func (self *Client) FetchKeys() ([]jose.JWK, error) {
 	keyBytes, err := Get(self.ProviderConfig.JWKSURI)
 	if err != nil {
 		return nil, err
 	}
 
-	var jsonData map[string][]JWK
+	var jsonData map[string][]jose.JWK
 	err = json.NewDecoder(bytes.NewReader(keyBytes)).Decode(&jsonData)
 	if err != nil {
 		return nil, err
@@ -153,7 +155,7 @@ func (self *Client) RefreshKeys() error {
 }
 
 // verify if a JWT is valid or not
-func (self *Client) Verify(jwt JWT) error {
+func (self *Client) Verify(jwt jose.JWT) error {
 	for _, v := range self.Verifiers {
 		err := v.Verify(jwt.Signature, []byte(jwt.Data()))
 		if err == nil {
@@ -184,7 +186,7 @@ func (self *Client) HandleCallback(r *http.Request) (Result, error) {
 		return Result{}, err
 	}
 
-	jwt, err := ParseJWT(token.Extra["id_token"])
+	jwt, err := jose.ParseJWT(token.Extra["id_token"])
 	if err != nil {
 		return Result{}, err
 	}

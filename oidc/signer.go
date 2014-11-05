@@ -7,6 +7,8 @@ import (
 	"errors"
 	"math/big"
 	"strings"
+
+	"github.com/coreos-inc/auth/jose"
 )
 
 type Verifier interface {
@@ -18,10 +20,10 @@ type Verifier interface {
 type Signer interface {
 	Verifier
 	Sign(data []byte) (sig []byte, err error)
-	JWK() JWK
+	JWK() jose.JWK
 }
 
-func NewVerifier(jwk JWK) (Verifier, error) {
+func NewVerifier(jwk jose.JWK) (Verifier, error) {
 	switch strings.ToUpper(jwk.Type) {
 	case "RSA":
 		return NewVerifierRSA(jwk.Alg, jwk.Modulus, jwk.Exponent, jwk.ID)

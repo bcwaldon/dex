@@ -6,6 +6,8 @@ import (
 	"crypto/rsa"
 	"errors"
 	"strings"
+
+	"github.com/coreos-inc/auth/jose"
 )
 
 type VerifierRSA struct {
@@ -78,8 +80,8 @@ func (s *SignerRSA) Sign(data []byte) ([]byte, error) {
 	return rsa.SignPKCS1v15(rand.Reader, &s.PrivateKey, s.Hash, h.Sum(nil))
 }
 
-func (s *SignerRSA) JWK() JWK {
-	return JWK{
+func (s *SignerRSA) JWK() jose.JWK {
+	return jose.JWK{
 		Type:     "RSA",
 		Alg:      "RS256",
 		Use:      "sig",

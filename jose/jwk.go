@@ -1,4 +1,4 @@
-package oidc
+package jose
 
 // JSON Web Key
 // https://tools.ietf.org/html/draft-ietf-jose-json-web-key-36#page-5

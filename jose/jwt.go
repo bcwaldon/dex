@@ -1,4 +1,4 @@
-package oidc
+package jose
 
 import (
 	"encoding/base64"
@@ -19,24 +19,6 @@ type JWT struct {
 	Header    map[string]string
 	Claims    Claims
 	Signature []byte
-}
-
-func NewSignedJWT(claims map[string]interface{}, s Signer) (*JWT, error) {
-	jwt := JWT{
-		Header: map[string]string{
-			"alg": s.Alg(),
-			"kid": s.ID(),
-		},
-		Claims: Claims(claims),
-	}
-
-	sig, err := s.Sign([]byte(jwt.Data()))
-	if err != nil {
-		return nil, err
-	}
-
-	jwt.Signature = sig
-	return &jwt, nil
 }
 
 func (j *JWT) Data() string {

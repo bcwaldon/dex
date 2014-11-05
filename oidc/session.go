@@ -2,7 +2,27 @@ package oidc
 
 import (
 	"time"
+
+	"github.com/coreos-inc/auth/jose"
 )
+
+func NewSignedJWT(claims map[string]interface{}, s Signer) (*jose.JWT, error) {
+	jwt := jose.JWT{
+		Header: map[string]string{
+			"alg": s.Alg(),
+			"kid": s.ID(),
+		},
+		Claims: jose.Claims(claims),
+	}
+
+	sig, err := s.Sign([]byte(jwt.Data()))
+	if err != nil {
+		return nil, err
+	}
+
+	jwt.Signature = sig
+	return &jwt, nil
+}
 
 type Session struct {
 	AuthCode     string
@@ -14,7 +34,7 @@ type Session struct {
 	RefreshToken string
 }
 
-func (ses *Session) IDToken(issuerURL string, signer Signer) (*JWT, error) {
+func (ses *Session) IDToken(issuerURL string, signer Signer) (*jose.JWT, error) {
 	claims := map[string]interface{}{
 		// required
 		"iss": issuerURL,

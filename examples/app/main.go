@@ -7,35 +7,21 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"path"
 
 	"github.com/coreos-inc/auth/oidc"
+	oidchttp "github.com/coreos-inc/auth/oidc/http"
 )
 
 var (
-	callbackURL = "http://localhost:5555/callback"
-
-	client   *oidc.Client
-	bindPort string
+	pathCallback = "/callback"
 )
 
-func init() {
-	u, err := url.Parse(callbackURL)
-	if err != nil {
-		log.Fatalf("callbackURL %q invalid: %v", callbackURL, err)
-	}
-
-	_, p, err := net.SplitHostPort(u.Host)
-	if err != nil {
-		log.Fatalf("Unable to determine port in callbackURL %q: %v", callbackURL, err)
-	}
-
-	bindPort = fmt.Sprintf(":%s", p)
-}
-
 func main() {
-	var clientID = flag.String("client-id", "", "")
-	var clientSecret = flag.String("client-secret", "", "")
-	var issuerURL = flag.String("issuer-url", "https://accounts.google.com", "")
+	listen := flag.String("listen", "http://localhost:5555", "")
+	clientID := flag.String("client-id", "", "")
+	clientSecret := flag.String("client-secret", "", "")
+	issuerURL := flag.String("issuer-url", "https://accounts.google.com", "")
 	flag.Parse()
 
 	if *clientID == "" {
@@ -46,57 +32,53 @@ func main() {
 		log.Fatal("--client-secret must be set")
 	}
 
-	// Configure new client
-	client = oidc.NewClient(*issuerURL, *clientID, *clientSecret, callbackURL)
-
-	// discover provider configuration
-	err := client.FetchProviderConfig()
+	l, err := url.Parse(*listen)
 	if err != nil {
+		log.Fatalf("Unable to use --listen flag: %v", err)
+	}
+
+	_, p, err := net.SplitHostPort(l.Host)
+	if err != nil {
+		log.Fatalf("Unable to parse host from --listen flag: %v", err)
+	}
+
+	redirectURL := l
+	redirectURL.Path = path.Join(redirectURL.Path, pathCallback)
+
+	client := oidc.NewClient(*issuerURL, *clientID, *clientSecret, redirectURL.String())
+
+	if err = client.FetchProviderConfig(); err != nil {
 		log.Fatalf("Failed fetching provider config: %v", err)
 	}
 
-	// fetch key material
-	err = client.RefreshKeys()
-	if err != nil {
-		panic(err)
+	if err = client.RefreshKeys(); err != nil {
+		log.Fatalf("Failed refreshing keys: %v", err)
 	}
 
-	http.HandleFunc("/", handleIndex)
-	http.HandleFunc("/login", handleLogin)
-	http.HandleFunc("/callback", handleCallback)
-	http.HandleFunc("/protected-resource", handleProtected)
+	hdlr := NewClientHandler(client)
+	httpsrv := &http.Server{
+		Addr:    fmt.Sprintf(":%s", p),
+		Handler: hdlr,
+	}
 
-	log.Printf("listening on %s...", bindPort)
-	log.Fatal(http.ListenAndServe(bindPort, nil))
+	log.Printf("binding to %s...", httpsrv.Addr)
+	log.Fatal(httpsrv.ListenAndServe())
 }
 
-// Step 1: ask user to login
+func NewClientHandler(c *oidc.Client) http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", handleIndex)
+	mux.HandleFunc("/login", handleLoginFunc(c))
+	mux.HandleFunc(pathCallback, oidchttp.NewClientCallbackHandlerFunc(c))
+	return mux
+}
+
 func handleIndex(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("<a href='/login'>login</a>"))
 }
 
-// Step 2: useer is redirected to provider auth page.
-func handleLogin(w http.ResponseWriter, r *http.Request) {
-	err := client.SendToAuthPage(w, r, "")
-	if err != nil {
-		panic(err)
+func handleLoginFunc(c *oidc.Client) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, c.OAuthConfig.AuthCodeURL(""), http.StatusFound)
 	}
-}
-
-// Step 3: provider redirects to oauth callback
-func handleCallback(w http.ResponseWriter, r *http.Request) {
-	//TODO(bcwaldon): Actually handle the result from this
-	_, err := client.HandleCallback(r)
-	if err != nil {
-		log.Printf("Unable to handle OAuth2 callback: %v", err)
-		w.Write([]byte(err.Error()))
-		return
-	}
-
-	http.Redirect(w, r, "/protected-resource", http.StatusFound)
-}
-
-// Step 4: user is free to access protected resource
-func handleProtected(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("protected resource here"))
 }

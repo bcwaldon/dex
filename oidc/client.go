@@ -44,7 +44,7 @@ func NewClient(issuerURL, clientID, clientSecret, redirectURL string) *Client {
 }
 
 // helper
-func Get(url string) ([]byte, error) {
+func httpGet(url string) ([]byte, error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
@@ -59,7 +59,7 @@ func (self *Client) FetchProviderConfig() error {
 	configEndpoint := fmt.Sprintf("%s/%s", self.IssuerURL, discoveryConfigPath)
 	fmt.Println(configEndpoint)
 
-	configBody, err := Get(configEndpoint)
+	configBody, err := httpGet(configEndpoint)
 	if err != nil {
 		return err
 	}
@@ -108,7 +108,7 @@ func (self *Client) AddVerifier(s josesig.Verifier) error {
 
 // Fetch keys from JWKs endpoint.
 func (self *Client) FetchKeys() ([]*jose.JWK, error) {
-	keyBytes, err := Get(self.ProviderConfig.JWKSURI)
+	keyBytes, err := httpGet(self.ProviderConfig.JWKSURI)
 	if err != nil {
 		return nil, err
 	}
@@ -166,39 +166,17 @@ func (self *Client) Verify(jwt jose.JWT) error {
 	return errors.New("could not verify JWT signature")
 }
 
-// Redirect user to providers auth page
-func (self *Client) SendToAuthPage(w http.ResponseWriter, r *http.Request, state string) error {
-	url := self.OAuthConfig.AuthCodeURL(state)
-	http.Redirect(w, r, url, http.StatusFound)
-	return nil
-}
-
-// handle oauth callback
-func (self *Client) HandleCallback(r *http.Request) (Result, error) {
-	code := r.URL.Query().Get("code")
-	if code == "" {
-		return Result{}, errors.New("missing oauth code")
-	}
-
+func (self *Client) ExchangeAuthCode(code string) (jose.JWT, error) {
 	transport := &oauth.Transport{Config: self.OAuthConfig}
-	token, err := transport.Exchange(code)
+	ot, err := transport.Exchange(code)
 	if err != nil {
-		return Result{}, err
+		return jose.JWT{}, err
 	}
 
-	jwt, err := jose.ParseJWT(token.Extra["id_token"])
+	jwt, err := jose.ParseJWT(ot.Extra["id_token"])
 	if err != nil {
-		return Result{}, err
+		return jose.JWT{}, err
 	}
 
-	if err = self.Verify(jwt); err != nil {
-		return Result{}, err
-	}
-
-	result := Result{
-		State: r.URL.Query().Get("state"),
-		JWT:   jwt,
-	}
-
-	return result, nil
+	return jwt, self.Verify(jwt)
 }

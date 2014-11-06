@@ -1,0 +1,6 @@
+#!/bin/sh -e
+
+source build
+
+go test -i github.com/coreos-inc/auth/jose
+go test -v github.com/coreos-inc/auth/jose

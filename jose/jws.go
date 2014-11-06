@@ -8,15 +8,15 @@ import (
 
 type JWS struct {
 	RawHeader  string
-	Header     map[string]string
+	Header     JOSEHeader
 	RawPayload string
 	Payload    []byte
 	Signature  []byte
 }
 
-// Given a raw JWS token parses it and verifies the structure.
-func ParseJWS(token string) (JWS, error) {
-	parts := strings.Split(token, ".")
+// Given a raw encoded JWS token parses it and verifies the structure.
+func ParseJWS(raw string) (JWS, error) {
+	parts := strings.Split(raw, ".")
 	if len(parts) != 3 {
 		return JWS{}, fmt.Errorf("malformed JWS, only %d segments", len(parts))
 	}
@@ -27,35 +27,26 @@ func ParseJWS(token string) (JWS, error) {
 		RawPayload: parts[1],
 	}
 
-	header, err := DecodeHeader(jws.RawHeader)
+	header, err := decodeHeader(jws.RawHeader)
 	if err != nil {
 		return JWS{}, errors.New("malformed JWS, unable to decode header")
 	}
-	if err = ValidateHeader(header); err != nil {
+	if err = header.Validate(); err != nil {
 		return JWS{}, fmt.Errorf("malformed JWS, %s", err)
 	}
 	jws.Header = header
 
-	payload, err := DecodeSegment(jws.RawPayload)
+	payload, err := decodeSegment(jws.RawPayload)
 	if err != nil {
 		return JWS{}, fmt.Errorf("malformed JWS, unable to decode payload: %s", err)
 	}
 	jws.Payload = payload
 
-	sig, err := DecodeSegment(rawSig)
+	sig, err := decodeSegment(rawSig)
 	if err != nil {
 		return JWS{}, fmt.Errorf("malformed JWS, unable to decode signature: %s", err)
 	}
 	jws.Signature = sig
 
 	return jws, nil
-}
-
-// Validate that a decoded header has all required params.
-func ValidateHeader(header map[string]string) error {
-	if _, exists := header["alg"]; !exists {
-		return errors.New("header missing 'alg' parameter")
-	}
-
-	return nil
 }

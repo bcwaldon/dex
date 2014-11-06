@@ -25,6 +25,12 @@ func NewClientCallbackHandlerFunc(c *oidc.Client) http.HandlerFunc {
 			return
 		}
 
-		w.Write([]byte(fmt.Sprintf("OK: %v", tok.Claims)))
+		claims, err := tok.Claims()
+		if err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("unable to construct claims: %v", err))
+			return
+		}
+
+		w.Write([]byte(fmt.Sprintf("OK: %v", claims)))
 	}
 }

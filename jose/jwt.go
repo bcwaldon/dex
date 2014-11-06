@@ -8,13 +8,7 @@ import (
 
 type Claims map[string]interface{}
 
-type JWT struct {
-	RawHeader  string
-	Header     map[string]string
-	RawPayload string
-	Signature  []byte
-	Claims     Claims
-}
+type JWT JWS
 
 func ParseJWT(token string) (jwt JWT, err error) {
 	jws, err := ParseJWS(token)
@@ -22,19 +16,37 @@ func ParseJWT(token string) (jwt JWT, err error) {
 		return
 	}
 
-	// Convert parsed JWS to JWT
-	jwt.RawHeader = jws.RawHeader
-	jwt.Header = jws.Header
-	jwt.RawPayload = jws.RawPayload
-	jwt.Signature = jws.Signature
+	jwt = JWT(jws)
+	return
+}
 
-	// Extend with Claims
-	jwt.Claims, err = DecodeClaims(jws.Payload)
+func NewJWT(header JOSEHeader, claims Claims) (jwt JWT, err error) {
+	jwt = JWT{}
+	jwt.Header = header
+
+	claimBytes, err := marshalClaims(claims)
 	if err != nil {
 		return
 	}
+	jwt.Payload = claimBytes
+
+	eh, err := encodeHeader(header)
+	if err != nil {
+		return
+	}
+	jwt.RawHeader = eh
+
+	ec, err := encodeClaims(claims)
+	if err != nil {
+		return
+	}
+	jwt.RawPayload = ec
 
 	return
+}
+
+func (j *JWT) Claims() (Claims, error) {
+	return decodeClaims(j.Payload)
 }
 
 // Encoded data part of the token which may be signed.
@@ -43,13 +55,13 @@ func (j *JWT) Data() string {
 }
 
 // Full encoded JWT token string in format: header.claims.signature
-func (j *JWT) Token() string {
+func (j *JWT) Encode() string {
 	d := j.Data()
-	s := EncodeSegment(j.Signature)
+	s := encodeSegment(j.Signature)
 	return strings.Join([]string{d, s}, ".")
 }
 
-func DecodeClaims(payload []byte) (Claims, error) {
+func decodeClaims(payload []byte) (Claims, error) {
 	var c Claims
 	if err := json.Unmarshal(payload, &c); err != nil {
 		return nil, fmt.Errorf("malformed JWT claims, unable to decode: %v", err)
@@ -57,11 +69,19 @@ func DecodeClaims(payload []byte) (Claims, error) {
 	return c, nil
 }
 
-func EncodeClaims(c Claims) (string, error) {
+func marshalClaims(c Claims) ([]byte, error) {
 	b, err := json.Marshal(c)
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+func encodeClaims(c Claims) (string, error) {
+	b, err := marshalClaims(c)
 	if err != nil {
 		return "", err
 	}
 
-	return EncodeSegment(b), nil
+	return encodeSegment(b), nil
 }

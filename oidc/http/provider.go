@@ -126,7 +126,7 @@ func handleTokenFunc(p oidc.Provider) http.HandlerFunc {
 		}{
 			AccessToken:  ses.AccessToken,
 			RefreshToken: ses.RefreshToken,
-			IDToken:      id.Token(),
+			IDToken:      id.Encode(),
 		}
 		b, _ := json.Marshal(t)
 		if err != nil {

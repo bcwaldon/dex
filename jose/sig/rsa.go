@@ -1,10 +1,10 @@
-package oidc
+package sig
 
 import (
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
-	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/coreos-inc/auth/jose"
@@ -21,40 +21,29 @@ type SignerRSA struct {
 	VerifierRSA
 }
 
-func NewVerifierRSA(alg, n, e, kid string) (*VerifierRSA, error) {
-	E, err := DecodeExponent(e)
-	if err != nil {
-		return nil, err
+func NewVerifierRSA(jwk jose.JWK) (*VerifierRSA, error) {
+	if strings.ToUpper(jwk.Alg) != "RS256" {
+		return nil, fmt.Errorf("unsupported key algorithm %q", jwk.Alg)
 	}
 
-	N, err := DecodeModulus(n)
-	if err != nil {
-		return nil, err
+	v := VerifierRSA{
+		KeyID: jwk.ID,
+		PublicKey: rsa.PublicKey{
+			N: jwk.Modulus,
+			E: jwk.Exponent,
+		},
+		Hash: crypto.SHA256,
 	}
 
-	rsaKey := rsa.PublicKey{N: N, E: E}
-
-	s := &VerifierRSA{
-		PublicKey: rsaKey,
-		KeyID:     kid,
-	}
-
-	switch strings.ToUpper(alg) {
-	case "RS256":
-		s.Hash = crypto.SHA256
-	default:
-		return nil, errors.New("unsupported algorithm")
-	}
-
-	return s, nil
+	return &v, nil
 }
 
 func NewSignerRSA(kid string, key rsa.PrivateKey) *SignerRSA {
 	return &SignerRSA{
 		PrivateKey: key,
 		VerifierRSA: VerifierRSA{
-			PublicKey: key.PublicKey,
 			KeyID:     kid,
+			PublicKey: key.PublicKey,
 			Hash:      crypto.SHA256,
 		},
 	}
@@ -82,11 +71,11 @@ func (s *SignerRSA) Sign(data []byte) ([]byte, error) {
 
 func (s *SignerRSA) JWK() jose.JWK {
 	return jose.JWK{
+		ID:       s.ID(),
 		Type:     "RSA",
-		Alg:      "RS256",
+		Alg:      s.Alg(),
 		Use:      "sig",
-		ID:       s.KeyID,
-		Exponent: EncodeExponent(s.VerifierRSA.PublicKey.E),
-		Modulus:  EncodeModulus(s.VerifierRSA.PublicKey.N),
+		Exponent: s.VerifierRSA.PublicKey.E,
+		Modulus:  s.VerifierRSA.PublicKey.N,
 	}
 }

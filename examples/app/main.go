@@ -50,10 +50,13 @@ func main() {
 	client = oidc.NewClient(*issuerURL, *clientID, *clientSecret, callbackURL)
 
 	// discover provider configuration
-	client.FetchProviderConfig()
+	err := client.FetchProviderConfig()
+	if err != nil {
+		log.Fatalf("Failed fetching provider config: %v", err)
+	}
 
 	// fetch key material
-	err := client.RefreshKeys()
+	err = client.RefreshKeys()
 	if err != nil {
 		panic(err)
 	}

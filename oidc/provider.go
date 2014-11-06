@@ -2,6 +2,7 @@ package oidc
 
 import (
 	"github.com/coreos-inc/auth/jose"
+	josesig "github.com/coreos-inc/auth/jose/sig"
 )
 
 const (
@@ -10,7 +11,7 @@ const (
 
 type Provider interface {
 	Config() ProviderConfig
-	Signer() Signer
+	Signer() josesig.Signer
 	PublicKeys() []jose.JWK
 	LookupSession(code string) *Session
 	NewSession(clientID string) string

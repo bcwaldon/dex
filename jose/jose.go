@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/url"
 	"strings"
 )
 
@@ -68,17 +67,4 @@ func EncodeClaims(c Claims) string {
 	}
 
 	return EncodeSegment(b)
-}
-
-func URLEqual(url1, url2 string) bool {
-	u1, err := url.Parse(url1)
-	if err != nil {
-		return false
-	}
-	u2, err := url.Parse(url2)
-	if err != nil {
-		return false
-	}
-
-	return (u1.Host + u1.Path) == (u2.Host + u2.Path)
 }

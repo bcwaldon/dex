@@ -17,6 +17,7 @@ type JWK struct {
 	Use      string
 	Exponent int
 	Modulus  *big.Int
+	Secret   []byte
 }
 
 type jwkJSON struct {

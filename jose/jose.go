@@ -18,13 +18,12 @@ func (j JOSEHeader) Validate() error {
 }
 
 func decodeHeader(seg string) (JOSEHeader, error) {
-	var h JOSEHeader
-
 	b, err := decodeSegment(seg)
 	if err != nil {
 		return nil, err
 	}
 
+	var h JOSEHeader
 	err = json.Unmarshal(b, &h)
 	if err != nil {
 		return nil, err

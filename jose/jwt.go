@@ -16,6 +16,8 @@ func ParseJWT(token string) (jwt JWT, err error) {
 		return
 	}
 
+	// TODO: validate "typ" header param is "JWT"
+
 	jwt = JWT(jws)
 	return
 }
@@ -23,6 +25,8 @@ func ParseJWT(token string) (jwt JWT, err error) {
 func NewJWT(header JOSEHeader, claims Claims) (jwt JWT, err error) {
 	jwt = JWT{}
 	jwt.Header = header
+
+	// TODO: validate "typ" header param is "JWT"
 
 	claimBytes, err := marshalClaims(claims)
 	if err != nil {

@@ -3,9 +3,6 @@ package jose
 import (
 	"encoding/base64"
 	"encoding/json"
-	"errors"
-	"fmt"
-	"log"
 	"strings"
 )
 
@@ -45,26 +42,4 @@ func DecodeSegment(seg string) ([]byte, error) {
 // Encode JWT specific base64url encoding with padding stripped
 func EncodeSegment(seg []byte) string {
 	return strings.TrimRight(base64.URLEncoding.EncodeToString(seg), "=")
-}
-
-func DecodeClaims(seg string) (Claims, error) {
-	b, err := DecodeSegment(seg)
-	if err != nil {
-		return nil, errors.New("unable to parse JWT claims")
-	}
-	var c Claims
-	if err := json.Unmarshal(b, &c); err != nil {
-		return nil, fmt.Errorf("failed unmarshaling claims: %v", err)
-	}
-
-	return c, nil
-}
-
-func EncodeClaims(c Claims) string {
-	b, err := json.Marshal(c)
-	if err != nil {
-		log.Fatalf("Failed encoding claims: %v", err)
-	}
-
-	return EncodeSegment(b)
 }

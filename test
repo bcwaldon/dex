@@ -2,5 +2,5 @@
 
 source build
 
-go test -i github.com/coreos-inc/auth/jose
-go test -v github.com/coreos-inc/auth/jose
+go test -i github.com/coreos-inc/auth/jose github.com/coreos-inc/auth/jose/sig
+go test -v github.com/coreos-inc/auth/jose github.com/coreos-inc/auth/jose/sig

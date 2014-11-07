@@ -1,21 +1,8 @@
 package oidc
 
-import (
-	"github.com/coreos-inc/auth/jose"
-	josesig "github.com/coreos-inc/auth/jose/sig"
-)
-
 const (
 	discoveryConfigPath = "/.well-known/openid-configuration"
 )
-
-type Provider interface {
-	Config() ProviderConfig
-	Signer() josesig.Signer
-	PublicKeys() []jose.JWK
-	LookupSession(code string) *Session
-	NewSession(clientID string) string
-}
 
 type ProviderConfig struct {
 	Issuer                            string   `json:"issuer"`

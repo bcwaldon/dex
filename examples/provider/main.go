@@ -3,63 +3,29 @@ package main
 import (
 	crand "crypto/rand"
 	"crypto/rsa"
-	"encoding/base64"
-	"encoding/binary"
 	"flag"
 	"fmt"
 	"log"
-	mrand "math/rand"
 	"net"
 	"net/http"
 	"net/url"
-	"time"
+	"os"
 
 	"github.com/coreos-inc/auth/jose"
 	josesig "github.com/coreos-inc/auth/jose/sig"
 	"github.com/coreos-inc/auth/oidc"
-	oidchttp "github.com/coreos-inc/auth/oidc/http"
+	"github.com/coreos-inc/auth/provider"
 )
 
 var (
 	staticKeyID = "2b3390f656ff335d6fdb8dfe117748c9f2709c02"
 )
 
-func NewSessionManager() *SessionManager {
-	return &SessionManager{make(map[string]*oidc.Session)}
-}
-
-type SessionManager struct {
-	sessions map[string]*oidc.Session
-}
-
-func (m *SessionManager) NewSession(clientID string) string {
-	now := time.Now().UTC()
-	s := oidc.Session{
-		AuthCode:     genToken(),
-		SubjectID:    genToken(),
-		ClientID:     clientID,
-		IssuedAt:     now,
-		ExpiresAt:    now.Add(30 * time.Second),
-		AccessToken:  genToken(),
-		RefreshToken: genToken(),
-	}
-	m.sessions[s.AuthCode] = &s
-	return s.AuthCode
-}
-
-func (m *SessionManager) LookupByAuthCode(code string) *oidc.Session {
-	return m.sessions[code]
-}
-
-func genToken() string {
-	b := make([]byte, 8)
-	binary.BigEndian.PutUint64(b, uint64(mrand.Int63()))
-	return base64.URLEncoding.EncodeToString(b)
-}
-
 func main() {
 	issuerName := flag.String("issuer-name", "example", "")
 	listen := flag.String("listen", "http://localhost:5556", "")
+	uFile := flag.String("users", "./examples/provider/users.json", "json file containing set of users")
+	cFile := flag.String("clients", "./examples/provider/clients.json", "json file containing set of clients")
 	flag.Parse()
 
 	l, err := url.Parse(*listen)
@@ -79,13 +45,35 @@ func main() {
 
 	signer := josesig.NewSignerRSA(staticKeyID, *privKey)
 
+	uf, err := os.Open(*uFile)
+	if err != nil {
+		log.Fatalf("Unable to read users from file %q: %v", *uFile, err)
+	}
+	defer uf.Close()
+	idp, err := provider.NewIdentityProviderFromReader(uf)
+	if err != nil {
+		log.Fatalf("Unable to build local identity provider from file %q: %v", *uFile, err)
+	}
+
+	cf, err := os.Open(*cFile)
+	if err != nil {
+		log.Fatalf("Unable to read clients from file %s: %v", *cFile, err)
+	}
+	defer cf.Close()
+	cRepo, err := provider.NewClientRepoFromReader(cf)
+	if err != nil {
+		log.Fatalf("Unable to read clients from file %s: %v", *cFile, err)
+	}
+
 	srv := Server{
 		issuerName:     *issuerName,
 		issuerURL:      *listen,
 		signer:         signer,
-		sessionManager: NewSessionManager(),
+		sessionManager: provider.NewSessionManager(),
+		idProvider:     idp,
+		clientRepo:     cRepo,
 	}
-	hdlr := oidchttp.NewProviderHandler(&srv)
+	hdlr := provider.NewHTTPHandler(&srv)
 	httpsrv := &http.Server{
 		Addr:    fmt.Sprintf(":%s", p),
 		Handler: hdlr,
@@ -99,15 +87,25 @@ type Server struct {
 	issuerName     string
 	issuerURL      string
 	signer         josesig.Signer
-	sessionManager *SessionManager
+	sessionManager *provider.SessionManager
+	idProvider     provider.IdentityProvider
+	clientRepo     provider.ClientRepo
 }
 
-func (s *Server) NewSession(clientID string) string {
-	return s.sessionManager.NewSession(clientID)
+func (s *Server) NewSession(c provider.Client, u provider.User) string {
+	return s.sessionManager.NewSession(c, u)
 }
 
-func (s *Server) LookupSession(code string) *oidc.Session {
+func (s *Server) Session(code string) *provider.Session {
 	return s.sessionManager.LookupByAuthCode(code)
+}
+
+func (s *Server) User(userID string) *provider.User {
+	return s.idProvider.User(userID)
+}
+
+func (s *Server) Client(clientID string) *provider.Client {
+	return s.clientRepo.Client(clientID)
 }
 
 func (s *Server) Config() oidc.ProviderConfig {
@@ -115,11 +113,11 @@ func (s *Server) Config() oidc.ProviderConfig {
 		Issuer:    s.issuerName,
 		IssuerURL: s.issuerURL,
 
-		AuthEndpoint:       s.issuerURL + oidchttp.PathAuth,
-		TokenEndpoint:      s.issuerURL + oidchttp.PathToken,
-		UserInfoEndpoint:   s.issuerURL + oidchttp.PathUserInfo,
-		RevocationEndpoint: s.issuerURL + oidchttp.PathRevoke,
-		JWKSURI:            s.issuerURL + oidchttp.PathKeys,
+		AuthEndpoint:       s.issuerURL + provider.HTTPPathAuth,
+		TokenEndpoint:      s.issuerURL + provider.HTTPPathToken,
+		UserInfoEndpoint:   s.issuerURL + provider.HTTPPathUserInfo,
+		RevocationEndpoint: s.issuerURL + provider.HTTPPathRevoke,
+		JWKSURI:            s.issuerURL + provider.HTTPPathKeys,
 
 		// google supports these:
 		//ResponseTypesSupported:            []string{"code", "token", "id_token", "code token", "code id_token", "token id_token", "code token id_token", "none"},

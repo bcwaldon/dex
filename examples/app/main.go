@@ -79,7 +79,7 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 
 func handleLoginFunc(c *oidc.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		acu := c.OAuthConfig.AuthCodeURL("")
+		acu := c.OAuth.AuthCodeURL("", "", "")
 		u, _ := url.Parse(acu)
 		q := u.Query()
 		q.Set("uid", r.URL.Query().Get("uid"))

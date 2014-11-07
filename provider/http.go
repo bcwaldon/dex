@@ -1,34 +1,36 @@
-package http
+package provider
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/coreos-inc/auth/jose"
-	"github.com/coreos-inc/auth/oidc"
+	phttp "github.com/coreos-inc/auth/pkg/http"
 )
 
 var (
-	PathDiscovery = "/.well-known/openid-configuration"
-	PathAuth      = "/auth"
-	PathToken     = "/token"
-	PathRevoke    = "/revoke"
-	PathUserInfo  = "/user"
-	PathKeys      = "/keys" // a.k.a. JWKS
+	HTTPPathDiscovery = "/.well-known/openid-configuration"
+	HTTPPathAuth      = "/auth"
+	HTTPPathToken     = "/token"
+	HTTPPathRevoke    = "/revoke"
+	HTTPPathUserInfo  = "/user"
+	HTTPPathKeys      = "/keys" // a.k.a. JWKS
 )
 
-func NewProviderHandler(p oidc.Provider) http.Handler {
+func NewHTTPHandler(p Provider) http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc(PathDiscovery, handleDiscoveryFunc(p))
-	mux.HandleFunc(PathAuth, handleAuthFunc(p))
-	mux.HandleFunc(PathToken, handleTokenFunc(p))
-	mux.HandleFunc(PathKeys, handleKeysFunc(p))
+	mux.HandleFunc(HTTPPathDiscovery, handleDiscoveryFunc(p))
+	mux.HandleFunc(HTTPPathAuth, handleAuthFunc(p))
+	mux.HandleFunc(HTTPPathToken, handleTokenFunc(p))
+	mux.HandleFunc(HTTPPathKeys, handleKeysFunc(p))
 	return mux
 }
 
-func handleDiscoveryFunc(p oidc.Provider) http.HandlerFunc {
+func handleDiscoveryFunc(p Provider) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cfg := p.Config()
 		b, err := json.Marshal(cfg)
@@ -41,7 +43,7 @@ func handleDiscoveryFunc(p oidc.Provider) http.HandlerFunc {
 	}
 }
 
-func handleKeysFunc(p oidc.Provider) http.HandlerFunc {
+func handleKeysFunc(p Provider) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		keys := struct {
 			Keys []jose.JWK `json:"keys"`
@@ -60,27 +62,57 @@ func handleKeysFunc(p oidc.Provider) http.HandlerFunc {
 	}
 }
 
-func handleAuthFunc(p oidc.Provider) http.HandlerFunc {
+func handleAuthFunc(p Provider) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if rt := r.URL.Query().Get("response_type"); rt != "code" {
+			msg := fmt.Sprintf("response_type %q unsupported", rt)
+			phttp.WriteError(w, http.StatusBadRequest, msg)
+			return
+		}
+
 		redirectURI := r.URL.Query().Get("redirect_uri")
 		if redirectURI == "" {
-			writeError(w, http.StatusBadRequest, "missing redirect_uri query param")
+			phttp.WriteError(w, http.StatusBadRequest, "missing redirect_uri query param")
 			return
 		}
 
 		ru, err := url.Parse(redirectURI)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "redirect_uri query param invalid")
+			phttp.WriteError(w, http.StatusBadRequest, "redirect_uri query param invalid")
+			return
+		}
+
+		scope := strings.Split(r.URL.Query().Get("scope"), " ")
+		if len(scope) == 0 {
+			phttp.WriteError(w, http.StatusBadRequest, "requested empty scope")
 			return
 		}
 
 		clientID := r.URL.Query().Get("client_id")
 		if clientID == "" {
-			writeError(w, http.StatusBadRequest, "missing client_id query param")
+			phttp.WriteError(w, http.StatusBadRequest, "missing client_id query param")
 			return
 		}
 
-		code := p.NewSession(clientID)
+		userID := r.URL.Query().Get("uid")
+		if userID == "" {
+			phttp.WriteError(w, http.StatusBadRequest, "missing uid query param")
+			return
+		}
+
+		u := p.User(userID)
+		if u == nil {
+			phttp.WriteError(w, http.StatusBadRequest, "unrecognized user ID")
+			return
+		}
+
+		c := p.Client(clientID)
+		if c == nil {
+			phttp.WriteError(w, http.StatusBadRequest, "unrecognized client ID")
+			return
+		}
+
+		code := p.NewSession(*c, *u)
 
 		q := ru.Query()
 		q.Set("code", code)
@@ -91,7 +123,7 @@ func handleAuthFunc(p oidc.Provider) http.HandlerFunc {
 	}
 }
 
-func handleTokenFunc(p oidc.Provider) http.HandlerFunc {
+func handleTokenFunc(p Provider) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := r.ParseForm()
 		if err != nil {
@@ -101,20 +133,20 @@ func handleTokenFunc(p oidc.Provider) http.HandlerFunc {
 
 		code := r.Form.Get("code")
 		if len(code) == 0 {
-			writeError(w, http.StatusBadRequest, "auth code must be provided")
+			phttp.WriteError(w, http.StatusBadRequest, "auth code must be provided")
 			return
 		}
 
-		ses := p.LookupSession(code)
+		ses := p.Session(code)
 		if ses == nil {
-			writeError(w, http.StatusForbidden, "unknown auth code")
+			phttp.WriteError(w, http.StatusForbidden, "unknown auth code")
 			return
 		}
 
 		id, err := ses.IDToken(p.Config().IssuerURL, p.Signer())
 		if err != nil {
 			log.Printf("Failed marshaling ID token to JSON: %v", err)
-			writeError(w, http.StatusInternalServerError, "unable to marshal id token")
+			phttp.WriteError(w, http.StatusInternalServerError, "unable to marshal id token")
 			return
 		}
 
@@ -136,19 +168,4 @@ func handleTokenFunc(p oidc.Provider) http.HandlerFunc {
 		w.WriteHeader(http.StatusOK)
 		w.Write(b)
 	}
-}
-
-func writeError(w http.ResponseWriter, code int, msg string) {
-	e := struct {
-		Error string `json:"error"`
-	}{
-		Error: msg,
-	}
-	b, err := json.Marshal(e)
-	if err != nil {
-		log.Printf("Failed marshaling %#v to JSON: %v", err)
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	w.Write(b)
 }

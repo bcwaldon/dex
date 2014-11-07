@@ -125,21 +125,47 @@ func handleAuthFunc(p Provider) http.HandlerFunc {
 
 func handleTokenFunc(p Provider) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			msg := fmt.Sprintf("POST only supported method")
+			phttp.WriteError(w, http.StatusMethodNotAllowed, msg)
+			return
+		}
+
 		err := r.ParseForm()
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
+			msg := fmt.Sprintf("unable to parse form from body: %v", err)
+			phttp.WriteError(w, http.StatusBadRequest, msg)
+			return
+		}
+
+		grantType := r.Form.Get("grant_type")
+		if grantType != "authorization_code" {
+			phttp.WriteError(w, http.StatusBadRequest, "grant_type must be 'authorization_code'")
 			return
 		}
 
 		code := r.Form.Get("code")
-		if len(code) == 0 {
-			phttp.WriteError(w, http.StatusBadRequest, "auth code must be provided")
+		if code == "" {
+			phttp.WriteError(w, http.StatusBadRequest, "missing code field")
+			return
+		}
+
+		clientID, clientSecret, ok := phttp.BasicAuth(r)
+		if !ok {
+			w.Header().Set("WWW-Authenticate", "Basic")
+			phttp.WriteError(w, http.StatusUnauthorized, "client authentication required")
+		}
+
+		c := p.Client(clientID)
+		if c == nil || c.Secret != clientSecret {
+			w.Header().Set("WWW-Authenticate", "Basic")
+			phttp.WriteError(w, http.StatusUnauthorized, "unrecognized client")
 			return
 		}
 
 		ses := p.Session(code)
 		if ses == nil {
-			phttp.WriteError(w, http.StatusForbidden, "unknown auth code")
+			phttp.WriteError(w, http.StatusBadRequest, "unrecognized auth code")
 			return
 		}
 

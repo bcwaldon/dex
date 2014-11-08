@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"time"
 
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
@@ -51,10 +52,19 @@ func main() {
 		Secret: *clientSecret,
 	}
 
-	cfg, err := oidc.FetchProviderConfig(*issuerURL)
-	if err != nil {
-		log.Fatalf("Failed fetching provider config: %v", err)
+	var cfg *oidc.ProviderConfig
+	for {
+		cfg, err = oidc.FetchProviderConfig(*issuerURL)
+		if err == nil {
+			break
+		}
+
+		sleep := 3 * time.Second
+		log.Printf("Failed fetching provider config, trying again in %v: %v", sleep, err)
+		time.Sleep(sleep)
 	}
+
+	log.Printf("Fetched provider config from %s: %#v", *issuerURL, *cfg)
 
 	client, err := oidc.NewClient(*cfg, ci, redirectURL.String())
 	if err != nil {

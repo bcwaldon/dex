@@ -11,12 +11,12 @@ type Client interface {
 }
 
 type HandlerClient struct {
-	hdlr http.Handler
+	Handler http.Handler
 }
 
 func (hc *HandlerClient) Do(r *http.Request) (*http.Response, error) {
 	w := httptest.NewRecorder()
-	hc.hdlr.ServeHTTP(w, r)
+	hc.Handler.ServeHTTP(w, r)
 
 	resp := http.Response{
 		StatusCode: w.Code,

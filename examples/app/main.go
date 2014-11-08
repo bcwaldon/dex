@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"path"
 
+	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 	oidchttp "github.com/coreos-inc/auth/oidc/http"
 )
@@ -45,10 +46,19 @@ func main() {
 	redirectURL := l
 	redirectURL.Path = path.Join(redirectURL.Path, pathCallback)
 
-	client := oidc.NewClient(*issuerURL, *clientID, *clientSecret, redirectURL.String())
+	ci := oauth2.ClientIdentity{
+		ID:     *clientID,
+		Secret: *clientSecret,
+	}
 
-	if err = client.FetchProviderConfig(); err != nil {
+	cfg, err := oidc.FetchProviderConfig(*issuerURL)
+	if err != nil {
 		log.Fatalf("Failed fetching provider config: %v", err)
+	}
+
+	client, err := oidc.NewClient(*cfg, ci, redirectURL.String())
+	if err != nil {
+		log.Fatalf("Failed creating new OIDC Client: %v", err)
 	}
 
 	if err = client.RefreshKeys(); err != nil {
@@ -79,7 +89,7 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 
 func handleLoginFunc(c *oidc.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		acu := c.OAuth.AuthCodeURL("", "", "")
+		acu := c.OAuthClient.AuthCodeURL("", "", "")
 		u, _ := url.Parse(acu)
 		q := u.Query()
 		q.Set("uid", r.URL.Query().Get("uid"))

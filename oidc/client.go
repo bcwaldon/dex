@@ -15,36 +15,63 @@ import (
 	"github.com/coreos-inc/auth/oauth2"
 )
 
+const (
+	discoveryConfigPath = "/.well-known/openid-configuration"
+)
+
 var TimeFunc = time.Now
 
-type Result struct {
-	State  string
-	Claims map[string]string
-	JWT    jose.JWT
+func FetchProviderConfig(issuerURL string) (*ProviderConfig, error) {
+	configEndpoint := fmt.Sprintf("%s%s", issuerURL, discoveryConfigPath)
+
+	configBody, err := httpGet(configEndpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: store cache headers
+
+	var cfg ProviderConfig
+	if err := json.Unmarshal(configBody, &cfg); err != nil {
+		return nil, err
+	}
+
+	// TODO: error if issuer is not the same as the original issuer url
+	// http://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfigurationValidation
+
+	return &cfg, nil
 }
 
 type Client struct {
-	IssuerURL      string          // Base URL of the issuer
-	ClientID       string          // OAuth Client ID
-	ClientSecret   string          // OAuth Client Secret
-	RedirectURL    string          // OAuth Redirect URL
-	ProviderConfig *ProviderConfig // OIDC Provider config
-	OAuth          *oauth2.Client
-	// TODO: move this to separate interface/type
-	Verifiers map[string]josesig.Verifier // Cached store of verifiers.
+	ProviderConfig ProviderConfig
+	ClientIdentity oauth2.ClientIdentity
+	OAuthClient    oauth2.Client
+	Verifiers      map[string]josesig.Verifier // Cached store of verifiers.
 }
 
-func NewClient(issuerURL, clientID, clientSecret, redirectURL string) *Client {
+func NewClient(cfg ProviderConfig, ci oauth2.ClientIdentity, redirectURL string) (*Client, error) {
 	// TODO: error if missing required config
-	c := &Client{
-		IssuerURL:    issuerURL,
-		ClientID:     clientID,
-		ClientSecret: clientSecret,
+	oac, err := oauth2.NewClient(oauth2.Config{
 		RedirectURL:  redirectURL,
-		Verifiers:    make(map[string]josesig.Verifier),
+		ClientID:     ci.ID,
+		ClientSecret: ci.Secret,
+		AuthURL:      cfg.AuthEndpoint,
+		TokenURL:     cfg.TokenEndpoint,
+		// TODO(sym3tri): need concpet of default scope, and allow user to extend
+		Scope: []string{"openid", "email", "profile"},
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	return c
+	c := &Client{
+		ProviderConfig: cfg,
+		ClientIdentity: ci,
+		OAuthClient:    *oac,
+		Verifiers:      make(map[string]josesig.Verifier),
+	}
+
+	return c, nil
 }
 
 // helper
@@ -57,51 +84,6 @@ func httpGet(url string) ([]byte, error) {
 	defer resp.Body.Close()
 
 	return ioutil.ReadAll(resp.Body)
-}
-
-func (c *Client) FetchProviderConfig() error {
-	configEndpoint := fmt.Sprintf("%s/%s", c.IssuerURL, discoveryConfigPath)
-	fmt.Println(configEndpoint)
-
-	configBody, err := httpGet(configEndpoint)
-	if err != nil {
-		return err
-	}
-
-	// TODO: store cache headers
-
-	err = json.NewDecoder(bytes.NewReader(configBody)).Decode(&c.ProviderConfig)
-	if err != nil {
-		return err
-	}
-
-	// TODO: error if issuer is not the same as the original issuer url
-	// http://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfigurationValidation
-
-	fmt.Printf("issuer: %s\n", c.ProviderConfig.Issuer)
-	fmt.Printf("user info: %s\n", c.ProviderConfig.UserInfoEndpoint)
-
-	// Set discovered OAuth settings.
-	return c.initOAuthClient()
-}
-
-func (c *Client) initOAuthClient() error {
-	oc, err := oauth2.NewClient(oauth2.Config{
-		ClientID:     c.ClientID,
-		ClientSecret: c.ClientSecret,
-		RedirectURL:  c.RedirectURL,
-		AuthURL:      c.ProviderConfig.AuthEndpoint,
-		TokenURL:     c.ProviderConfig.TokenEndpoint,
-		// TODO(sym3tri): need concpet of default scope, and allow user to extend
-		Scope: []string{"openid", "email", "profile"},
-	})
-	if err != nil {
-		return err
-	}
-
-	c.OAuth = oc
-
-	return nil
 }
 
 // TODO: move
@@ -170,7 +152,7 @@ func (c *Client) Verify(jwt jose.JWT) error {
 	for _, v := range c.Verifiers {
 		err := v.Verify(jwt.Signature, []byte(jwt.Data()))
 		if err == nil {
-			return VerifyClaims(jwt, c.IssuerURL, c.ClientID)
+			return VerifyClaims(jwt, c.ProviderConfig.Issuer, c.ClientIdentity.ID)
 		}
 	}
 
@@ -179,7 +161,7 @@ func (c *Client) Verify(jwt jose.JWT) error {
 
 // Exchange an OAauth2 auth code for an OIDC JWT
 func (c *Client) ExchangeAuthCode(code string) (jose.JWT, error) {
-	t, err := c.OAuth.Exchange(code)
+	t, err := c.OAuthClient.Exchange(code)
 	if err != nil {
 		return jose.JWT{}, err
 	}

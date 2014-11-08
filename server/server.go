@@ -10,7 +10,6 @@ import (
 )
 
 type Server struct {
-	IssuerName         string
 	IssuerURL          string
 	Signer             josesig.Signer
 	SessionManager     *SessionManager
@@ -20,7 +19,7 @@ type Server struct {
 
 func (s *Server) ProviderConfig() oidc.ProviderConfig {
 	cfg := oidc.ProviderConfig{
-		Issuer: s.IssuerName,
+		Issuer: s.IssuerURL,
 
 		AuthEndpoint:       s.IssuerURL + httpPathAuth,
 		TokenEndpoint:      s.IssuerURL + httpPathToken,

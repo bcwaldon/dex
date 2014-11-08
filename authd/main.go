@@ -21,7 +21,6 @@ var (
 )
 
 func main() {
-	issuerName := flag.String("issuer-name", "example", "")
 	listen := flag.String("listen", "http://localhost:5556", "")
 	uFile := flag.String("users", "./authd/fixtures/users.json", "json file containing set of users")
 	cFile := flag.String("clients", "./authd/fixtures/clients.json", "json file containing set of clients")
@@ -68,7 +67,6 @@ func main() {
 	sm := server.NewSessionManager(*listen, signer)
 
 	srv := server.Server{
-		IssuerName:         *issuerName,
 		IssuerURL:          *listen,
 		Signer:             signer,
 		SessionManager:     sm,

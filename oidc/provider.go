@@ -1,9 +1,5 @@
 package oidc
 
-const (
-	discoveryConfigPath = "/.well-known/openid-configuration"
-)
-
 type ProviderConfig struct {
 	Issuer                            string   `json:"issuer"`
 	AuthEndpoint                      string   `json:"authorization_endpoint"`

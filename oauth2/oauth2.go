@@ -10,6 +10,8 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	phttp "github.com/coreos-inc/auth/pkg/http"
 )
 
 type Config struct {
@@ -22,7 +24,7 @@ type Config struct {
 }
 
 type Client struct {
-	hc          *http.Client
+	hc          phttp.Client
 	identity    ClientIdentity
 	scope       []string
 	redirectURL *url.URL
@@ -35,7 +37,7 @@ type ClientIdentity struct {
 	Secret string
 }
 
-func NewClient(cfg Config) (c *Client, err error) {
+func NewClient(hc phttp.Client, cfg Config) (c *Client, err error) {
 	if cfg.ClientID == "" {
 		err = errors.New("missing client id")
 		return
@@ -70,7 +72,7 @@ func NewClient(cfg Config) (c *Client, err error) {
 		authURL:     au,
 		tokenURL:    tu,
 		redirectURL: ru,
-		hc:          http.DefaultClient,
+		hc:          hc,
 	}
 
 	return

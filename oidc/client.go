@@ -1,11 +1,9 @@
 package oidc
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"time"
@@ -13,6 +11,7 @@ import (
 	"github.com/coreos-inc/auth/jose"
 	josesig "github.com/coreos-inc/auth/jose/sig"
 	"github.com/coreos-inc/auth/oauth2"
+	phttp "github.com/coreos-inc/auth/pkg/http"
 )
 
 const (
@@ -21,18 +20,22 @@ const (
 
 var TimeFunc = time.Now
 
-func FetchProviderConfig(issuerURL string) (*ProviderConfig, error) {
-	configEndpoint := fmt.Sprintf("%s%s", issuerURL, discoveryConfigPath)
-
-	configBody, err := httpGet(configEndpoint)
+func FetchProviderConfig(hc phttp.Client, issuerURL string) (*ProviderConfig, error) {
+	req, err := http.NewRequest("GET", issuerURL+discoveryConfigPath, nil)
 	if err != nil {
 		return nil, err
 	}
 
+	resp, err := hc.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
 	// TODO: store cache headers
 
 	var cfg ProviderConfig
-	if err := json.Unmarshal(configBody, &cfg); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&cfg); err != nil {
 		return nil, err
 	}
 
@@ -43,15 +46,17 @@ func FetchProviderConfig(issuerURL string) (*ProviderConfig, error) {
 }
 
 type Client struct {
+	HTTPClient     phttp.Client
 	ProviderConfig ProviderConfig
 	ClientIdentity oauth2.ClientIdentity
 	OAuthClient    oauth2.Client
 	Verifiers      map[string]josesig.Verifier // Cached store of verifiers.
 }
 
-func NewClient(cfg ProviderConfig, ci oauth2.ClientIdentity, redirectURL string) (*Client, error) {
+func NewClient(hc phttp.Client, cfg ProviderConfig, ci oauth2.ClientIdentity, redirectURL string) (*Client, error) {
 	// TODO: error if missing required config
-	oac, err := oauth2.NewClient(oauth2.Config{
+
+	ocfg := oauth2.Config{
 		RedirectURL:  redirectURL,
 		ClientID:     ci.ID,
 		ClientSecret: ci.Secret,
@@ -59,12 +64,15 @@ func NewClient(cfg ProviderConfig, ci oauth2.ClientIdentity, redirectURL string)
 		TokenURL:     cfg.TokenEndpoint,
 		// TODO(sym3tri): need concpet of default scope, and allow user to extend
 		Scope: []string{"openid", "email", "profile"},
-	})
+	}
+
+	oac, err := oauth2.NewClient(hc, ocfg)
 	if err != nil {
 		return nil, err
 	}
 
 	c := &Client{
+		HTTPClient:     hc,
 		ProviderConfig: cfg,
 		ClientIdentity: ci,
 		OAuthClient:    *oac,
@@ -72,18 +80,6 @@ func NewClient(cfg ProviderConfig, ci oauth2.ClientIdentity, redirectURL string)
 	}
 
 	return c, nil
-}
-
-// helper
-func httpGet(url string) ([]byte, error) {
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, err
-	}
-
-	defer resp.Body.Close()
-
-	return ioutil.ReadAll(resp.Body)
 }
 
 // TODO: move
@@ -101,19 +97,24 @@ func (c *Client) AddVerifier(s josesig.Verifier) error {
 
 // Fetch keys from JWKs endpoint.
 func (c *Client) FetchKeys() ([]*jose.JWK, error) {
-	keyBytes, err := httpGet(c.ProviderConfig.JWKSURI)
+	req, err := http.NewRequest("GET", c.ProviderConfig.JWKSURI, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var jsonData map[string][]*jose.JWK
-	err = json.NewDecoder(bytes.NewReader(keyBytes)).Decode(&jsonData)
+	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
-	keys, exists := jsonData["keys"]
-	if !exists {
+	var decoded map[string][]*jose.JWK
+	if err := json.NewDecoder(resp.Body).Decode(&decoded); err != nil {
+		return nil, err
+	}
+
+	keys, ok := decoded["keys"]
+	if !ok {
 		return nil, errors.New("invalid response from jwks endpoint")
 	}
 

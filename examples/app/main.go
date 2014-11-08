@@ -54,7 +54,7 @@ func main() {
 
 	var cfg *oidc.ProviderConfig
 	for {
-		cfg, err = oidc.FetchProviderConfig(*issuerURL)
+		cfg, err = oidc.FetchProviderConfig(http.DefaultClient, *issuerURL)
 		if err == nil {
 			break
 		}
@@ -66,7 +66,7 @@ func main() {
 
 	log.Printf("Fetched provider config from %s: %#v", *issuerURL, *cfg)
 
-	client, err := oidc.NewClient(*cfg, ci, redirectURL.String())
+	client, err := oidc.NewClient(http.DefaultClient, *cfg, ci, redirectURL.String())
 	if err != nil {
 		log.Fatalf("Failed creating new OIDC Client: %v", err)
 	}

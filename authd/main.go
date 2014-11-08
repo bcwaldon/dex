@@ -11,12 +11,9 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/connector/local"
-	"github.com/coreos-inc/auth/jose"
 	josesig "github.com/coreos-inc/auth/jose/sig"
-	"github.com/coreos-inc/auth/oidc"
-	"github.com/coreos-inc/auth/provider"
+	"github.com/coreos-inc/auth/server"
 )
 
 var (
@@ -52,30 +49,33 @@ func main() {
 		log.Fatalf("Unable to read users from file %q: %v", *uFile, err)
 	}
 	defer uf.Close()
-	idpc, err := local.NewLocalIDPConnector(uf)
+	idp, err := local.NewLocalIdentityProviderFromReader(uf)
 	if err != nil {
-		log.Fatalf("Unable to build local IdP connector from file %q: %v", *uFile, err)
+		log.Fatalf("Unable to build local identity provider from file %q: %v", *uFile, err)
 	}
+	idpc := &local.LocalIDPConnector{idp}
 
 	cf, err := os.Open(*cFile)
 	if err != nil {
 		log.Fatalf("Unable to read clients from file %s: %v", *cFile, err)
 	}
 	defer cf.Close()
-	cRepo, err := provider.NewClientRepoFromReader(cf)
+	ciRepo, err := server.NewClientIdentityRepoFromReader(cf)
 	if err != nil {
-		log.Fatalf("Unable to read clients from file %s: %v", *cFile, err)
+		log.Fatalf("Unable to read client identities from file %s: %v", *cFile, err)
 	}
 
-	srv := Server{
-		issuerName:     *issuerName,
-		issuerURL:      *listen,
-		signer:         signer,
-		sessionManager: provider.NewSessionManager(),
-		idpConnector:   idpc,
-		clientRepo:     cRepo,
+	sm := server.NewSessionManager(*listen, signer)
+
+	srv := server.Server{
+		IssuerName:         *issuerName,
+		IssuerURL:          *listen,
+		Signer:             signer,
+		SessionManager:     sm,
+		IDPConnector:       idpc,
+		ClientIdentityRepo: ciRepo,
 	}
-	hdlr := provider.NewHTTPHandler(&srv)
+	hdlr := srv.HTTPHandler()
 	httpsrv := &http.Server{
 		Addr:    fmt.Sprintf(":%s", p),
 		Handler: hdlr,
@@ -83,62 +83,6 @@ func main() {
 
 	log.Printf("binding to %s...", httpsrv.Addr)
 	log.Fatal(httpsrv.ListenAndServe())
-}
-
-type Server struct {
-	issuerName     string
-	issuerURL      string
-	signer         josesig.Signer
-	sessionManager *provider.SessionManager
-	clientRepo     provider.ClientRepo
-	idpConnector   connector.IDPConnector
-}
-
-func (s *Server) NewSession(c provider.Client, i oidc.Identity) string {
-	return s.sessionManager.NewSession(c, i)
-}
-
-func (s *Server) Session(code string) *provider.Session {
-	return s.sessionManager.LookupByAuthCode(code)
-}
-
-func (s *Server) Client(clientID string) *provider.Client {
-	return s.clientRepo.Client(clientID)
-}
-
-func (s *Server) IDPConnector() connector.IDPConnector {
-	return s.idpConnector
-}
-
-func (s *Server) Config() oidc.ProviderConfig {
-	cfg := oidc.ProviderConfig{
-		Issuer:    s.issuerName,
-		IssuerURL: s.issuerURL,
-
-		AuthEndpoint:       s.issuerURL + provider.HTTPPathAuth,
-		TokenEndpoint:      s.issuerURL + provider.HTTPPathToken,
-		UserInfoEndpoint:   s.issuerURL + provider.HTTPPathUserInfo,
-		RevocationEndpoint: s.issuerURL + provider.HTTPPathRevoke,
-		JWKSURI:            s.issuerURL + provider.HTTPPathKeys,
-
-		// google supports these:
-		//ResponseTypesSupported:            []string{"code", "token", "id_token", "code token", "code id_token", "token id_token", "code token id_token", "none"},
-
-		ResponseTypesSupported:            []string{"id_token"},
-		SubjectTypesSupported:             []string{"public"},
-		IDTokenAlgValuesSupported:         []string{"RS256"},
-		TokenEndpointAuthMethodsSupported: []string{"client_secret_post"},
-	}
-
-	return cfg
-}
-
-func (s *Server) Signer() josesig.Signer {
-	return s.signer
-}
-
-func (s *Server) PublicKeys() []jose.JWK {
-	return []jose.JWK{s.signer.JWK()}
 }
 
 func generateRSAPrivateKey() (*rsa.PrivateKey, error) {

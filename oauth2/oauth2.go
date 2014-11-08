@@ -22,13 +22,17 @@ type Config struct {
 }
 
 type Client struct {
-	hc           *http.Client
-	clientID     string
-	clientSecret string
-	scope        []string
-	redirectURL  *url.URL
-	authURL      *url.URL
-	tokenURL     *url.URL
+	hc          *http.Client
+	identity    ClientIdentity
+	scope       []string
+	redirectURL *url.URL
+	authURL     *url.URL
+	tokenURL    *url.URL
+}
+
+type ClientIdentity struct {
+	ID     string
+	Secret string
 }
 
 func NewClient(cfg Config) (c *Client, err error) {
@@ -58,13 +62,15 @@ func NewClient(cfg Config) (c *Client, err error) {
 	}
 
 	c = &Client{
-		clientID:     cfg.ClientID,
-		clientSecret: cfg.ClientSecret,
-		scope:        cfg.Scope,
-		authURL:      au,
-		tokenURL:     tu,
-		redirectURL:  ru,
-		hc:           http.DefaultClient,
+		identity: ClientIdentity{
+			ID:     cfg.ClientID,
+			Secret: cfg.ClientSecret,
+		},
+		scope:       cfg.Scope,
+		authURL:     au,
+		tokenURL:    tu,
+		redirectURL: ru,
+		hc:          http.DefaultClient,
 	}
 
 	return
@@ -92,7 +98,7 @@ func (c *Client) commonURLValues() url.Values {
 	return url.Values{
 		"redirect_uri": {c.redirectURL.String()},
 		"scope":        {strings.Join(c.scope, " ")},
-		"client_id":    {c.clientID},
+		"client_id":    {c.identity.ID},
 	}
 }
 
@@ -103,7 +109,7 @@ func (c *Client) Exchange(code string) (result TokenResponse, err error) {
 	v.Set("code", code)
 
 	// TODO(sym3tri): only pass this in url if provider doesnt use basic auth
-	v.Set("client_secret", c.clientSecret)
+	v.Set("client_secret", c.identity.Secret)
 
 	req, err := http.NewRequest("POST", c.tokenURL.String(), strings.NewReader(v.Encode()))
 	if err != nil {
@@ -111,7 +117,7 @@ func (c *Client) Exchange(code string) (result TokenResponse, err error) {
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	req.SetBasicAuth(c.clientID, c.clientSecret)
+	req.SetBasicAuth(c.identity.ID, c.identity.Secret)
 	resp, err := c.hc.Do(req)
 	if err != nil {
 		return

@@ -1,11 +1,10 @@
-package oidc
+package sig
 
 import (
 	"github.com/coreos-inc/auth/jose"
-	josesig "github.com/coreos-inc/auth/jose/sig"
 )
 
-func NewSignedJWT(claims map[string]interface{}, s josesig.Signer) (*jose.JWT, error) {
+func NewSignedJWT(claims map[string]interface{}, s Signer) (*jose.JWT, error) {
 	header := jose.JOSEHeader{
 		"alg": s.Alg(),
 		"kid": s.ID(),

@@ -2,44 +2,29 @@ package local
 
 import (
 	"errors"
-	"io"
 	"net/http"
 
 	"github.com/coreos-inc/auth/oidc"
 )
 
-func NewLocalIDPConnector(r io.Reader) (*localIDPConnector, error) {
-	p, err := newLocalIdentityProvider(r)
-	if err != nil {
-		return nil, err
-	}
-	return &localIDPConnector{p}, nil
+type LocalIDPConnector struct {
+	*LocalIdentityProvider
 }
 
-type localIDPConnector struct {
-	*localIdentityProvider
-}
-
-func (c *localIDPConnector) DisplayType() string {
+func (c *LocalIDPConnector) DisplayType() string {
 	return "Local"
 }
 
-func (c *localIDPConnector) Identify(r *http.Request) (*oidc.Identity, error) {
-	userID := r.URL.Query().Get("uid")
-	if userID == "" {
+func (c *LocalIDPConnector) Identify(r *http.Request) (*oidc.Identity, error) {
+	id := r.URL.Query().Get("uid")
+	if id == "" {
 		return nil, errors.New("missing uid query param")
 	}
 
-	u := c.User(userID)
-	if u == nil {
-		return nil, errors.New("unrecognized user ID")
+	ident := c.Identity(id)
+	if ident == nil {
+		return nil, errors.New("unrecognized uid")
 	}
 
-	ident := oidc.Identity{
-		ID:    u.ID,
-		Name:  u.Name,
-		Email: u.Email,
-	}
-
-	return &ident, nil
+	return ident, nil
 }

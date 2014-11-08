@@ -15,7 +15,7 @@ COVER=${COVER:-"-cover"}
 source ./build
 
 TESTABLE="jose jose/sig"
-FORMATTABLE="$TESTABLE examples/app oauth2 oidc pkg/http provider"
+FORMATTABLE="$TESTABLE examples/app oauth2 oidc pkg/http server"
 
 # user has not provided PKG override
 if [ -z "$PKG" ]; then

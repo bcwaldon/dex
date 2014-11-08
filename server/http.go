@@ -1,4 +1,4 @@
-package provider
+package server
 
 import (
 	"encoding/json"
@@ -8,31 +8,23 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/jose"
+	"github.com/coreos-inc/auth/oidc"
 	phttp "github.com/coreos-inc/auth/pkg/http"
 )
 
 var (
-	HTTPPathDiscovery = "/.well-known/openid-configuration"
-	HTTPPathAuth      = "/auth"
-	HTTPPathToken     = "/token"
-	HTTPPathRevoke    = "/revoke"
-	HTTPPathUserInfo  = "/user"
-	HTTPPathKeys      = "/keys" // a.k.a. JWKS
+	httpPathDiscovery = "/.well-known/openid-configuration"
+	httpPathAuth      = "/auth"
+	httpPathToken     = "/token"
+	httpPathRevoke    = "/revoke"
+	httpPathUserInfo  = "/user"
+	httpPathKeys      = "/keys" // a.k.a. JWKS
 )
 
-func NewHTTPHandler(p Provider) http.Handler {
-	mux := http.NewServeMux()
-	mux.HandleFunc(HTTPPathDiscovery, handleDiscoveryFunc(p))
-	mux.HandleFunc(HTTPPathAuth, handleAuthFunc(p))
-	mux.HandleFunc(HTTPPathToken, handleTokenFunc(p))
-	mux.HandleFunc(HTTPPathKeys, handleKeysFunc(p))
-	return mux
-}
-
-func handleDiscoveryFunc(p Provider) http.HandlerFunc {
+func handleDiscoveryFunc(cfg oidc.ProviderConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		cfg := p.Config()
 		b, err := json.Marshal(cfg)
 		if err != nil {
 			log.Printf("Unable to marshal %#v to JSON: %v", cfg, err)
@@ -43,12 +35,12 @@ func handleDiscoveryFunc(p Provider) http.HandlerFunc {
 	}
 }
 
-func handleKeysFunc(p Provider) http.HandlerFunc {
+func handleKeysFunc(keys []jose.JWK) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		keys := struct {
 			Keys []jose.JWK `json:"keys"`
 		}{
-			Keys: p.PublicKeys(),
+			Keys: keys,
 		}
 
 		b, err := json.Marshal(keys)
@@ -62,7 +54,7 @@ func handleKeysFunc(p Provider) http.HandlerFunc {
 	}
 }
 
-func handleAuthFunc(p Provider) http.HandlerFunc {
+func handleAuthFunc(sm *SessionManager, ciRepo ClientIdentityRepo, idpc connector.IDPConnector) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if rt := r.URL.Query().Get("response_type"); rt != "code" {
 			msg := fmt.Sprintf("response_type %q unsupported", rt)
@@ -94,19 +86,24 @@ func handleAuthFunc(p Provider) http.HandlerFunc {
 			return
 		}
 
-		c := p.Client(clientID)
-		if c == nil {
+		ci := ciRepo.ClientIdentity(clientID)
+		if ci == nil {
 			phttp.WriteError(w, http.StatusBadRequest, "unrecognized client ID")
 			return
 		}
 
-		ident, err := p.IDPConnector().Identify(r)
+		ident, err := idpc.Identify(r)
 		if err != nil {
 			phttp.WriteError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 
-		code := p.NewSession(*c, *ident)
+		code, err := sm.NewSession(*ci, *ident)
+		if err != nil {
+			log.Printf("Failed creating session: %v", err)
+			phttp.WriteError(w, http.StatusInternalServerError, "")
+			return
+		}
 
 		q := ru.Query()
 		q.Set("code", code)
@@ -117,7 +114,7 @@ func handleAuthFunc(p Provider) http.HandlerFunc {
 	}
 }
 
-func handleTokenFunc(p Provider) http.HandlerFunc {
+func handleTokenFunc(sm *SessionManager, ciRepo ClientIdentityRepo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			msg := fmt.Sprintf("POST only supported method")
@@ -150,23 +147,16 @@ func handleTokenFunc(p Provider) http.HandlerFunc {
 			phttp.WriteError(w, http.StatusUnauthorized, "client authentication required")
 		}
 
-		c := p.Client(clientID)
+		c := ciRepo.ClientIdentity(clientID)
 		if c == nil || c.Secret != clientSecret {
 			w.Header().Set("WWW-Authenticate", "Basic")
 			phttp.WriteError(w, http.StatusUnauthorized, "unrecognized client")
 			return
 		}
 
-		ses := p.Session(code)
+		ses := sm.LookupByAuthCode(code)
 		if ses == nil {
 			phttp.WriteError(w, http.StatusBadRequest, "unrecognized auth code")
-			return
-		}
-
-		id, err := ses.IDToken(p.Config().IssuerURL, p.Signer())
-		if err != nil {
-			log.Printf("Failed marshaling ID token to JSON: %v", err)
-			phttp.WriteError(w, http.StatusInternalServerError, "unable to marshal id token")
 			return
 		}
 
@@ -178,9 +168,9 @@ func handleTokenFunc(p Provider) http.HandlerFunc {
 		}{
 			AccessToken:  ses.AccessToken,
 			RefreshToken: ses.RefreshToken,
-			IDToken:      id.Encode(),
+			IDToken:      ses.IDToken.Encode(),
 		}
-		b, _ := json.Marshal(t)
+		b, err := json.Marshal(t)
 		if err != nil {
 			log.Printf("Failed marshaling %#v to JSON: %v", err)
 		}

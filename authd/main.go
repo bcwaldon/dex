@@ -24,8 +24,8 @@ var (
 func main() {
 	issuerName := flag.String("issuer-name", "example", "")
 	listen := flag.String("listen", "http://localhost:5556", "")
-	uFile := flag.String("users", "./fixtures/users.json", "json file containing set of users")
-	cFile := flag.String("clients", "./fixtures/clients.json", "json file containing set of clients")
+	uFile := flag.String("users", "./authd/fixtures/users.json", "json file containing set of users")
+	cFile := flag.String("clients", "./authd/fixtures/clients.json", "json file containing set of clients")
 	flag.Parse()
 
 	l, err := url.Parse(*listen)

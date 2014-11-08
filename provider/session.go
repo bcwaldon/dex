@@ -18,22 +18,22 @@ type Session struct {
 	ExpiresAt    time.Time
 	AccessToken  string
 	RefreshToken string
-	User         User
+	Identity     oidc.Identity
 }
 
 func (ses *Session) IDToken(issuerURL string, signer josesig.Signer) (*jose.JWT, error) {
 	claims := map[string]interface{}{
 		// required
 		"iss": issuerURL,
-		"sub": ses.User.ID,
+		"sub": ses.Identity.ID,
 		"aud": ses.ClientID,
 		// explicitly cast to float64 for consistent JSON (de)serialization
 		"exp": float64(ses.ExpiresAt.Unix()),
 		"iat": float64(ses.IssuedAt.Unix()),
 
 		// conventional
-		"name":  ses.User.Name,
-		"email": ses.User.Email,
+		"name":  ses.Identity.Name,
+		"email": ses.Identity.Email,
 	}
 
 	return oidc.NewSignedJWT(claims, signer)
@@ -47,7 +47,7 @@ type SessionManager struct {
 	sessions map[string]*Session
 }
 
-func (m *SessionManager) NewSession(c Client, u User) string {
+func (m *SessionManager) NewSession(c Client, ident oidc.Identity) string {
 	now := time.Now().UTC()
 	s := Session{
 		AuthCode:     genToken(),
@@ -56,7 +56,7 @@ func (m *SessionManager) NewSession(c Client, u User) string {
 		ExpiresAt:    now.Add(30 * time.Second),
 		AccessToken:  genToken(),
 		RefreshToken: genToken(),
-		User:         u,
+		Identity:     ident,
 	}
 	m.sessions[s.AuthCode] = &s
 	return s.AuthCode

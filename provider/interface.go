@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/jose"
 	"github.com/coreos-inc/auth/jose/sig"
 	"github.com/coreos-inc/auth/oidc"
@@ -11,9 +12,9 @@ type Provider interface {
 	Signer() sig.Signer
 	PublicKeys() []jose.JWK
 
-	NewSession(Client, User) string
+	Client(clientID string) *Client
+	NewSession(Client, oidc.Identity) string
 	Session(code string) *Session
 
-	Client(clientID string) *Client
-	User(userID string) *User
+	IDPConnector() connector.IDPConnector
 }

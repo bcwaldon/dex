@@ -94,25 +94,19 @@ func handleAuthFunc(p Provider) http.HandlerFunc {
 			return
 		}
 
-		userID := r.URL.Query().Get("uid")
-		if userID == "" {
-			phttp.WriteError(w, http.StatusBadRequest, "missing uid query param")
-			return
-		}
-
-		u := p.User(userID)
-		if u == nil {
-			phttp.WriteError(w, http.StatusBadRequest, "unrecognized user ID")
-			return
-		}
-
 		c := p.Client(clientID)
 		if c == nil {
 			phttp.WriteError(w, http.StatusBadRequest, "unrecognized client ID")
 			return
 		}
 
-		code := p.NewSession(*c, *u)
+		ident, err := p.IDPConnector().Identify(r)
+		if err != nil {
+			phttp.WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		code := p.NewSession(*c, *ident)
 
 		q := ru.Query()
 		q.Set("code", code)

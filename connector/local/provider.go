@@ -1,4 +1,4 @@
-package provider
+package local
 
 import (
 	"encoding/json"
@@ -7,20 +7,12 @@ import (
 )
 
 type User struct {
-	ID    string
-	Name  string
-	Email string
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
 }
 
-type IdentityProvider interface {
-	User(id string) *User
-}
-
-type localIdentityProvider struct {
-	users map[string]User
-}
-
-func NewIdentityProviderFromReader(r io.Reader) (IdentityProvider, error) {
+func newLocalIdentityProvider(r io.Reader) (*localIdentityProvider, error) {
 	b, err := ioutil.ReadAll(r)
 	if err != nil {
 		return nil, err
@@ -31,16 +23,20 @@ func NewIdentityProviderFromReader(r io.Reader) (IdentityProvider, error) {
 		return nil, err
 	}
 
-	m := localIdentityProvider{
+	p := localIdentityProvider{
 		users: make(map[string]User, len(us)),
 	}
 
 	for _, u := range us {
 		u := u
-		m.users[u.ID] = u
+		p.users[u.ID] = u
 	}
 
-	return &m, nil
+	return &p, nil
+}
+
+type localIdentityProvider struct {
+	users map[string]User
 }
 
 func (m *localIdentityProvider) User(id string) *User {

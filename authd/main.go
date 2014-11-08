@@ -11,6 +11,8 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/coreos-inc/auth/connector"
+	"github.com/coreos-inc/auth/connector/local"
 	"github.com/coreos-inc/auth/jose"
 	josesig "github.com/coreos-inc/auth/jose/sig"
 	"github.com/coreos-inc/auth/oidc"
@@ -50,9 +52,9 @@ func main() {
 		log.Fatalf("Unable to read users from file %q: %v", *uFile, err)
 	}
 	defer uf.Close()
-	idp, err := provider.NewIdentityProviderFromReader(uf)
+	idpc, err := local.NewLocalIDPConnector(uf)
 	if err != nil {
-		log.Fatalf("Unable to build local identity provider from file %q: %v", *uFile, err)
+		log.Fatalf("Unable to build local IdP connector from file %q: %v", *uFile, err)
 	}
 
 	cf, err := os.Open(*cFile)
@@ -70,7 +72,7 @@ func main() {
 		issuerURL:      *listen,
 		signer:         signer,
 		sessionManager: provider.NewSessionManager(),
-		idProvider:     idp,
+		idpConnector:   idpc,
 		clientRepo:     cRepo,
 	}
 	hdlr := provider.NewHTTPHandler(&srv)
@@ -88,24 +90,24 @@ type Server struct {
 	issuerURL      string
 	signer         josesig.Signer
 	sessionManager *provider.SessionManager
-	idProvider     provider.IdentityProvider
 	clientRepo     provider.ClientRepo
+	idpConnector   connector.IDPConnector
 }
 
-func (s *Server) NewSession(c provider.Client, u provider.User) string {
-	return s.sessionManager.NewSession(c, u)
+func (s *Server) NewSession(c provider.Client, i oidc.Identity) string {
+	return s.sessionManager.NewSession(c, i)
 }
 
 func (s *Server) Session(code string) *provider.Session {
 	return s.sessionManager.LookupByAuthCode(code)
 }
 
-func (s *Server) User(userID string) *provider.User {
-	return s.idProvider.User(userID)
-}
-
 func (s *Server) Client(clientID string) *provider.Client {
 	return s.clientRepo.Client(clientID)
+}
+
+func (s *Server) IDPConnector() connector.IDPConnector {
+	return s.idpConnector
 }
 
 func (s *Server) Config() oidc.ProviderConfig {

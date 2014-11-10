@@ -26,7 +26,7 @@ func main() {
 	fs := flag.NewFlagSet("authd", flag.ExitOnError)
 	fs.String("listen", "http://localhost:5556", "")
 	fs.String("clients", "./authd/fixtures/clients.json", "json file containing set of clients")
-	fs.String("users", "./authd/fixtures/users.json", "json file containing set of users")
+	fs.String("connector-local-users", "./authd/fixtures/users.json", "json file containing set of users")
 
 	err := fs.Parse(os.Args[1:])
 	if err != nil {
@@ -99,7 +99,7 @@ func newServerFromFlags(fs *flag.FlagSet) (*server.Server, error) {
 }
 
 func newIDPConnectorFromFlags(fs *flag.FlagSet, lf oidc.LoginFunc) (connector.IDPConnector, error) {
-	uFile := fs.Lookup("users").Value.String()
+	uFile := fs.Lookup("connector-local-users").Value.String()
 	uf, err := os.Open(uFile)
 	if err != nil {
 		return nil, fmt.Errorf("unable to read users from file %q: %v", uFile, err)

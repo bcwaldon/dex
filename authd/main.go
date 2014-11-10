@@ -52,7 +52,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("Unable to build local identity provider from file %q: %v", *uFile, err)
 	}
-	idpc := &local.LocalIDPConnector{idp}
 
 	cf, err := os.Open(*cFile)
 	if err != nil {
@@ -70,10 +69,10 @@ func main() {
 		IssuerURL:          *listen,
 		Signer:             signer,
 		SessionManager:     sm,
-		IDPConnector:       idpc,
 		ClientIdentityRepo: ciRepo,
 	}
-	hdlr := srv.HTTPHandler()
+	idpc := local.NewLocalIDPConnector(idp, server.HttpPathAuthIDPC, srv.Login)
+	hdlr := srv.HTTPHandler(idpc)
 	httpsrv := &http.Server{
 		Addr:    fmt.Sprintf(":%s", p),
 		Handler: hdlr,

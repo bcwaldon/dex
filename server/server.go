@@ -1,12 +1,15 @@
 package server
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/jose"
 	josesig "github.com/coreos-inc/auth/jose/sig"
+	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
+	phttp "github.com/coreos-inc/auth/pkg/http"
 )
 
 type Server struct {
@@ -14,7 +17,6 @@ type Server struct {
 	Signer             josesig.Signer
 	SessionManager     *SessionManager
 	ClientIdentityRepo ClientIdentityRepo
-	IDPConnector       connector.IDPConnector
 }
 
 func (s *Server) ProviderConfig() oidc.ProviderConfig {
@@ -39,11 +41,33 @@ func (s *Server) ProviderConfig() oidc.ProviderConfig {
 	return cfg
 }
 
-func (s *Server) HTTPHandler() http.Handler {
+func (s *Server) HTTPHandler(idpc connector.IDPConnector) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc(httpPathDiscovery, handleDiscoveryFunc(s.ProviderConfig()))
-	mux.HandleFunc(httpPathAuth, handleAuthFunc(s.SessionManager, s.ClientIdentityRepo, s.IDPConnector))
+	mux.HandleFunc(httpPathAuth, handleAuthFunc(s.SessionManager, s.ClientIdentityRepo, idpc))
 	mux.HandleFunc(httpPathToken, handleTokenFunc(s.SessionManager, s.ClientIdentityRepo))
 	mux.HandleFunc(httpPathKeys, handleKeysFunc([]jose.JWK{s.Signer.JWK()}))
+	idpc.Register(mux)
 	return mux
+}
+
+func (s *Server) Login(w http.ResponseWriter, acr oauth2.AuthCodeRequest, ident oidc.Identity) {
+	ci := s.ClientIdentityRepo.ClientIdentity(acr.ClientID)
+	if ci == nil {
+		phttp.WriteError(w, http.StatusBadRequest, "unrecognized client ID")
+		return
+	}
+
+	code, err := s.SessionManager.NewSession(*ci, ident)
+	if err != nil {
+		log.Printf("Failed creating session: %v", err)
+		phttp.WriteError(w, http.StatusInternalServerError, "")
+		return
+	}
+
+	q := acr.RedirectURL.Query()
+	q.Set("code", code)
+	acr.RedirectURL.RawQuery = q.Encode()
+	w.Header().Set("Location", acr.RedirectURL.String())
+	w.WriteHeader(http.StatusTemporaryRedirect)
 }

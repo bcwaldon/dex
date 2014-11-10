@@ -195,3 +195,43 @@ type TokenResponse struct {
 	RefreshToken string
 	RawBody      []byte // In case callers need some other non-standard info from the token response
 }
+
+type AuthCodeRequest struct {
+	ClientID    string
+	RedirectURL url.URL
+	Scope       []string
+}
+
+func ParseAuthCodeRequest(r *http.Request) (*AuthCodeRequest, error) {
+	if rt := r.URL.Query().Get("response_type"); rt != "code" {
+		return nil, fmt.Errorf("response_type %q unsupported", rt)
+	}
+
+	redirectURL := r.URL.Query().Get("redirect_uri")
+	if redirectURL == "" {
+		return nil, errors.New("missing redirect_uri query param")
+	}
+
+	ru, err := url.Parse(redirectURL)
+	if err != nil {
+		return nil, errors.New("redirect_uri query param invalid")
+	}
+
+	scope := strings.Split(r.URL.Query().Get("scope"), " ")
+	if len(scope) == 0 {
+		return nil, errors.New("requested empty scope")
+	}
+
+	clientID := r.URL.Query().Get("client_id")
+	if clientID == "" {
+		return nil, errors.New("missing client_id query param")
+	}
+
+	acr := &AuthCodeRequest{
+		ClientID:    clientID,
+		RedirectURL: *ru,
+		Scope:       scope,
+	}
+
+	return acr, nil
+}

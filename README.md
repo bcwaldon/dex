@@ -1,9 +1,36 @@
 Core-Auth (WIP)
 ===============
 
-Centralized authentication and authorization.
+Centralized authentication and authorization library.
 
-# Components
+# Authentication (Auth-N)
+
+This library enables easy authentication for clients communicating with Open ID Connect (OIDC) Identity Providers (IdP).
+
+Utilities are provided for creating a OIDC IdP server that could authenticate end-users directly, or optionally federate authentication to any number of remote IdPs.
+
+## Connectors
+
+Remote IdPs could implement any auth-N protocol.
+*connectors* contain protocol-specific logic and are used to communicate with remote IdPs.
+Possible examples of connectors could be: OIDC, LDAP, Local Memory, Basic Auth, etc.
+
+## Relevant Specifications
+
+These specs are referenced and implemented to some degree in the `jose` package of this project.
+
+- [JWK](https://tools.ietf.org/html/draft-ietf-jose-json-web-key-36)
+- [JWT](https://tools.ietf.org/html/draft-ietf-oauth-json-web-token-30)
+- [JWS](https://tools.ietf.org/html/draft-jones-json-web-signature-04)
+
+## Example OIDC Discovery Endpoints
+
+- https://accounts.google.com/.well-known/openid-configuration
+- https://login.salesforce.com/.well-known/openid-configuration
+
+# Authorization (Auth-Z)
+
+## Components
 
 Core-Auth consisists of various components:
 
@@ -12,14 +39,14 @@ Core-Auth consisists of various components:
 3. An API to serve auth-z queries.
 4. A common golang library to: validate auth-n tokens, assert identities from auth-n tokens, and fetch auth-z policies for users.
 
-# Design Strategy
+## Design Strategy
 
 - Users authenticate and are provided a JWT
 - API keys are the same format JWT
 - Apps use the common library to access core-auth API to fetch auth-z policies etc
 - Auth-z policy requests supply an etag, policies are cached with a ttl
 
-# Basic Flow
+## Basic Flow
 
 1. users log in via OAuth and are redirected to app with token (alternatively entities can use pregenerated api tokens)
 1. app uses common lib to assert identity from token
@@ -30,9 +57,9 @@ Core-Auth consisists of various components:
 1. app responds with: denial, full-results, or filter-results
 
 
-# Permissions Specification
+## Permissions Specification
 
-## Core Resource Namespaces (CRN)
+### Core Resource Namespaces (CRN)
 
 Format: `crn:provider:product:instance:resource-type:resource`
 
@@ -59,7 +86,7 @@ Quay Example:
 crn:quay.io:enterprise-registry:my-registry.my-company.com:repo:hello-world
 ```
 
-## Actions
+### Actions
 
 Similar to CRN but defined and registered by individual apps.
 Action describes the type of access that should be allowed or denied (for example, read, write, list, delete, startService, and so on)
@@ -72,7 +99,7 @@ provider:product:name
 - `product`: a product id/name unique to the provider (same as CRN)
 - `name`: the acutal name of the aciton in the product
 
-### Action Examples
+#### Action Examples
 
 CoreUpdate (general):
 
@@ -92,7 +119,7 @@ coreos.com:coreupdate:modifyChannel
 coreos.com:coreupdate:modifyVersion
 ```
 
-## Policies
+### Policies
 
 ```json
 {
@@ -122,7 +149,7 @@ Statement:
 - `resource`: the CRN of the resource
 - `action`: described in action section
 
-### Policiy Examples
+#### Policiy Examples
 
 CoreUpdate Example:
 
@@ -175,11 +202,11 @@ CoreUpdate Example:
 }
 ```
 
-## Policy Associations
+### Policy Associations
 
 Policies can be attached to Organizations, Groups, or Users.
 
-# Core Auth API
+### Core Auth API
 
 Should support the following operations:
 

@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
-	"strings"
 
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/jose"
+	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 	phttp "github.com/coreos-inc/auth/pkg/http"
 )
@@ -21,6 +20,7 @@ var (
 	httpPathRevoke    = "/revoke"
 	httpPathUserInfo  = "/user"
 	httpPathKeys      = "/keys" // a.k.a. JWKS
+	HttpPathAuthIDPC  = "/auth/idpc"
 )
 
 func handleDiscoveryFunc(cfg oidc.ProviderConfig) http.HandlerFunc {
@@ -56,59 +56,20 @@ func handleKeysFunc(keys []jose.JWK) http.HandlerFunc {
 
 func handleAuthFunc(sm *SessionManager, ciRepo ClientIdentityRepo, idpc connector.IDPConnector) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if rt := r.URL.Query().Get("response_type"); rt != "code" {
-			msg := fmt.Sprintf("response_type %q unsupported", rt)
-			phttp.WriteError(w, http.StatusBadRequest, msg)
-			return
-		}
+		// TODO(sym3tri): do validation first
 
-		redirectURI := r.URL.Query().Get("redirect_uri")
-		if redirectURI == "" {
-			phttp.WriteError(w, http.StatusBadRequest, "missing redirect_uri query param")
-			return
-		}
-
-		ru, err := url.Parse(redirectURI)
-		if err != nil {
-			phttp.WriteError(w, http.StatusBadRequest, "redirect_uri query param invalid")
-			return
-		}
-
-		scope := strings.Split(r.URL.Query().Get("scope"), " ")
-		if len(scope) == 0 {
-			phttp.WriteError(w, http.StatusBadRequest, "requested empty scope")
-			return
-		}
-
-		clientID := r.URL.Query().Get("client_id")
-		if clientID == "" {
-			phttp.WriteError(w, http.StatusBadRequest, "missing client_id query param")
-			return
-		}
-
-		ci := ciRepo.ClientIdentity(clientID)
-		if ci == nil {
-			phttp.WriteError(w, http.StatusBadRequest, "unrecognized client ID")
-			return
-		}
-
-		ident, err := idpc.Identify(r)
+		acr, err := oauth2.ParseAuthCodeRequest(r)
 		if err != nil {
 			phttp.WriteError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 
-		code, err := sm.NewSession(*ci, *ident)
-		if err != nil {
-			log.Printf("Failed creating session: %v", err)
-			phttp.WriteError(w, http.StatusInternalServerError, "")
+		if ciRepo.ClientIdentity(acr.ClientID) == nil {
+			phttp.WriteError(w, http.StatusBadRequest, "unrecognized client ID")
 			return
 		}
 
-		q := ru.Query()
-		q.Set("code", code)
-		ru.RawQuery = q.Encode()
-		w.Header().Set("Location", ru.String())
+		w.Header().Set("Location", idpc.LoginURL(r))
 		w.WriteHeader(http.StatusTemporaryRedirect)
 		return
 	}

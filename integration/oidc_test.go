@@ -35,7 +35,6 @@ func TestHTTPExchangeToken(t *testing.T) {
 	signer := josesig.NewSignerRSA("123", *pk)
 
 	idp := localconnector.NewLocalIdentityProvider([]oidc.Identity{ident})
-	idpc := &localconnector.LocalIDPConnector{LocalIdentityProvider: idp}
 
 	cir := server.NewClientIdentityRepo([]oauth2.ClientIdentity{ci})
 
@@ -46,11 +45,12 @@ func TestHTTPExchangeToken(t *testing.T) {
 		IssuerURL:          issuerURL,
 		Signer:             signer,
 		SessionManager:     sm,
-		IDPConnector:       idpc,
 		ClientIdentityRepo: cir,
 	}
 
-	sClient := &phttp.HandlerClient{Handler: srv.HTTPHandler()}
+	idpc := localconnector.NewLocalIDPConnector(idp, server.HttpPathAuthIDPC, srv.Login)
+
+	sClient := &phttp.HandlerClient{Handler: srv.HTTPHandler(idpc)}
 
 	cfg, err := oidc.FetchProviderConfig(sClient, issuerURL)
 	if err != nil {

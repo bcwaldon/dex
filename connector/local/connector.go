@@ -3,8 +3,12 @@ package local
 import (
 	"html/template"
 	"log"
+	"flag"
+	"fmt"
 	"net/http"
+	"os"
 
+	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 	phttp "github.com/coreos-inc/auth/pkg/http"
@@ -13,8 +17,12 @@ import (
 // TODO(sym3tri): get from config once config is available
 const loginPagePath = "./authd/fixtures/local-login.html"
 
+func init() {
+	connector.Register("local", NewLocalIDPConnectorFromFlags)
+}
+
 type LocalIDPConnector struct {
-	*LocalIdentityProvider
+	idp       *LocalIdentityProvider
 	path      string
 	loginFunc oidc.LoginFunc
 }
@@ -34,10 +42,25 @@ func init() {
 	}
 }
 
-func NewLocalIDPConnector(lidp *LocalIdentityProvider, path string, lf oidc.LoginFunc) *LocalIDPConnector {
+func NewLocalIDPConnectorFromFlags(p string, lf oidc.LoginFunc, fs *flag.FlagSet) (connector.IDPConnector, error) {
+	uFile := fs.Lookup("connector-local-users").Value.String()
+	uf, err := os.Open(uFile)
+	if err != nil {
+		return nil, fmt.Errorf("unable to read users from file %q: %v", uFile, err)
+	}
+	defer uf.Close()
+	idp, err := NewLocalIdentityProviderFromReader(uf)
+	if err != nil {
+		return nil, fmt.Errorf("unable to build local identity provider from file %q: %v", uFile, err)
+	}
+
+	return NewLocalIDPConnector(idp, p, lf), nil
+}
+
+func NewLocalIDPConnector(idp *LocalIdentityProvider, p string, lf oidc.LoginFunc) *LocalIDPConnector {
 	return &LocalIDPConnector{
-		LocalIdentityProvider: lidp,
-		path:      path,
+		idp:       idp,
+		path:      p,
 		loginFunc: lf,
 	}
 }
@@ -51,7 +74,7 @@ func (c *LocalIDPConnector) LoginURL(r *http.Request) string {
 }
 
 func (c *LocalIDPConnector) Register(mux *http.ServeMux) {
-	mux.Handle(c.path+"/login", handleLoginFunc(c.loginFunc, c.LocalIdentityProvider))
+	mux.Handle(c.path+"/login", handleLoginFunc(c.loginFunc, c.idp))
 }
 
 func handleLoginFunc(lf oidc.LoginFunc, idp *LocalIdentityProvider) http.HandlerFunc {

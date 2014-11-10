@@ -12,10 +12,11 @@ import (
 	"os"
 
 	"github.com/coreos-inc/auth/connector"
-	"github.com/coreos-inc/auth/connector/local"
 	josesig "github.com/coreos-inc/auth/jose/sig"
-	"github.com/coreos-inc/auth/oidc"
 	"github.com/coreos-inc/auth/server"
+
+	// imported only so the connectors register themselves
+	_ "github.com/coreos-inc/auth/connector/local"
 )
 
 var (
@@ -26,6 +27,7 @@ func main() {
 	fs := flag.NewFlagSet("authd", flag.ExitOnError)
 	fs.String("listen", "http://localhost:5556", "")
 	fs.String("clients", "./authd/fixtures/clients.json", "json file containing set of clients")
+	fs.String("connector-type", "local", "IdP connector type to configure")
 	fs.String("connector-local-users", "./authd/fixtures/users.json", "json file containing set of users")
 
 	err := fs.Parse(os.Args[1:])
@@ -49,7 +51,8 @@ func main() {
 		log.Fatalf("Unable to parse host from --listen flag: %v", err)
 	}
 
-	idpc, err := newIDPConnectorFromFlags(fs, srv.Login)
+	ct := fs.Lookup("connector-type").Value.String()
+	idpc, err := connector.NewIDPConnector(ct, server.HttpPathAuthIDPC, srv.Login, fs)
 	if err != nil {
 		log.Fatalf("Unable to build IDPConnector: %v", err)
 	}
@@ -96,20 +99,4 @@ func newServerFromFlags(fs *flag.FlagSet) (*server.Server, error) {
 		ClientIdentityRepo: ciRepo,
 	}
 	return &srv, nil
-}
-
-func newIDPConnectorFromFlags(fs *flag.FlagSet, lf oidc.LoginFunc) (connector.IDPConnector, error) {
-	uFile := fs.Lookup("connector-local-users").Value.String()
-	uf, err := os.Open(uFile)
-	if err != nil {
-		return nil, fmt.Errorf("unable to read users from file %q: %v", uFile, err)
-	}
-	defer uf.Close()
-	idp, err := local.NewLocalIdentityProviderFromReader(uf)
-	if err != nil {
-		return nil, fmt.Errorf("unable to build local identity provider from file %q: %v", uFile, err)
-	}
-
-	idpc := local.NewLocalIDPConnector(idp, server.HttpPathAuthIDPC, lf)
-	return idpc, nil
 }

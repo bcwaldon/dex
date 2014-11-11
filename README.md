@@ -23,6 +23,11 @@ These specs are referenced and implemented to some degree in the `jose` package 
 - [JWT](https://tools.ietf.org/html/draft-ietf-oauth-json-web-token-30)
 - [JWS](https://tools.ietf.org/html/draft-jones-json-web-signature-04)
 
+OpenID Connect (OIDC) is broken up into several specifications. The following (amongst others) are relevant:
+
+- [OpenID Connect Core 1.0](http://openid.net/specs/openid-connect-core-1_0.html)
+- [OAuth 2.0 RFC](https://tools.ietf.org/html/rfc6749)
+
 ## Example OIDC Discovery Endpoints
 
 - https://accounts.google.com/.well-known/openid-configuration

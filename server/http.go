@@ -137,8 +137,11 @@ func handleTokenFunc(sm *SessionManager, ciRepo ClientIdentityRepo) http.Handler
 		}
 		b, err := json.Marshal(t)
 		if err != nil {
-			log.Printf("Failed marshaling %#v to JSON: %v", err)
+			log.Printf("Failed marshaling %#v to JSON: %v", t, err)
+			phttp.WriteError(w, http.StatusInternalServerError, "")
+			return
 		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write(b)

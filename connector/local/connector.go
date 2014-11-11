@@ -1,6 +1,8 @@
 package local
 
 import (
+	"html/template"
+	"log"
 	"net/http"
 
 	"github.com/coreos-inc/auth/oauth2"
@@ -8,10 +10,28 @@ import (
 	phttp "github.com/coreos-inc/auth/pkg/http"
 )
 
+// TODO(sym3tri): get from config once config is available
+const loginPagePath = "./authd/fixtures/local-login.html"
+
 type LocalIDPConnector struct {
 	*LocalIdentityProvider
 	path      string
 	loginFunc oidc.LoginFunc
+}
+
+type Page struct {
+	PostURL string
+	Name    string
+}
+
+var templates *template.Template
+
+func init() {
+	var err error
+	templates, err = template.ParseFiles(loginPagePath)
+	if err != nil {
+		log.Printf("no login page template: %s", err)
+	}
 }
 
 func NewLocalIDPConnector(lidp *LocalIdentityProvider, path string, lf oidc.LoginFunc) *LocalIDPConnector {
@@ -36,24 +56,43 @@ func (c *LocalIDPConnector) Register(mux *http.ServeMux) {
 
 func handleLoginFunc(lf oidc.LoginFunc, idp *LocalIdentityProvider) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		acr, err := oauth2.ParseAuthCodeRequest(r)
-		if err != nil {
-			phttp.WriteError(w, http.StatusBadRequest, err.Error())
+		if r.Method == "GET" {
+			p := &Page{r.URL.String(), "Local"}
+			if err := templates.ExecuteTemplate(w, "local-login.html", p); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
 			return
 		}
 
-		id := r.URL.Query().Get("uid")
-		if id == "" {
-			phttp.WriteError(w, http.StatusBadRequest, "missing uid query param")
+		if r.Method == "POST" {
+			acr, err := oauth2.ParseAuthCodeRequest(r)
+			if err != nil {
+				phttp.WriteError(w, http.StatusBadRequest, err.Error())
+				return
+			}
+
+			userid := r.FormValue("userid")
+			if userid == "" {
+				phttp.WriteError(w, http.StatusBadRequest, "missing userid")
+				return
+			}
+
+			password := r.FormValue("password")
+			if password == "" {
+				phttp.WriteError(w, http.StatusBadRequest, "missing password")
+				return
+			}
+
+			ident := idp.Identity(userid, password)
+			if ident == nil {
+				phttp.WriteError(w, http.StatusBadRequest, "invalid login")
+				return
+			}
+
+			lf(w, *acr, *ident)
 			return
 		}
 
-		ident := idp.Identity(id)
-		if ident == nil {
-			phttp.WriteError(w, http.StatusBadRequest, "unrecognized uid")
-			return
-		}
-
-		lf(w, *acr, *ident)
+		phttp.WriteError(w, http.StatusBadRequest, "invalid method")
 	}
 }

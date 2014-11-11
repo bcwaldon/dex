@@ -17,10 +17,11 @@ import (
 )
 
 func TestHTTPExchangeToken(t *testing.T) {
-	ident := oidc.Identity{
-		ID:    "d72e9ab9",
-		Name:  "Elroy",
-		Email: "elroy@example.com",
+	user := localconnector.User{
+		ID:       "elroy77",
+		Name:     "Elroy",
+		Email:    "elroy@example.com",
+		Password: "bones",
 	}
 
 	ci := oauth2.ClientIdentity{
@@ -34,7 +35,7 @@ func TestHTTPExchangeToken(t *testing.T) {
 	}
 	signer := josesig.NewSignerRSA("123", *pk)
 
-	idp := localconnector.NewLocalIdentityProvider([]oidc.Identity{ident})
+	idp := localconnector.NewLocalIdentityProvider([]localconnector.User{user})
 
 	cir := server.NewClientIdentityRepo([]oauth2.ClientIdentity{ci})
 
@@ -72,6 +73,7 @@ func TestHTTPExchangeToken(t *testing.T) {
 
 	// this will actually happen due to some interaction between the
 	// end-user and a remote identity provider
+	ident := user.Identity()
 	code, err := sm.NewSession(ci, ident)
 	if err != nil {
 		t.Fatalf("Failed creating new session: %v", err)

@@ -93,7 +93,7 @@ func handleLoginFunc(lf oidc.LoginFunc, idp *LocalIdentityProvider) http.Handler
 		}
 
 		if r.Method == "POST" {
-			acr, err := oauth2.ParseAuthCodeRequest(r)
+			acr, err := oauth2.ParseAuthCodeRequest(r.URL.Query())
 			if err != nil {
 				phttp.WriteError(w, http.StatusBadRequest, err.Error())
 				return

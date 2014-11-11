@@ -62,7 +62,7 @@ func handleAuthFunc(sm *SessionManager, ciRepo ClientIdentityRepo, idpc connecto
 			return
 		}
 
-		acr, err := oauth2.ParseAuthCodeRequest(r)
+		acr, err := oauth2.ParseAuthCodeRequest(r.URL.Query())
 		if err != nil {
 			phttp.WriteError(w, http.StatusBadRequest, err.Error())
 			return

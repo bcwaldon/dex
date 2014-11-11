@@ -31,7 +31,7 @@ func (s *Server) ProviderConfig() oidc.ProviderConfig {
 		ResponseTypesSupported:            []string{"id_token"},
 		SubjectTypesSupported:             []string{"public"},
 		IDTokenAlgValuesSupported:         []string{"RS256"},
-		TokenEndpointAuthMethodsSupported: []string{"client_secret_post"},
+		TokenEndpointAuthMethodsSupported: []string{"client_secret_basic"},
 	}
 
 	return cfg

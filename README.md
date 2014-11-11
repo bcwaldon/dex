@@ -25,7 +25,8 @@ These specs are referenced and implemented to some degree in the `jose` package 
 
 OpenID Connect (OIDC) is broken up into several specifications. The following (amongst others) are relevant:
 
-- [OpenID Connect Core 1.0](http://openid.net/specs/openid-connect-core-1_0.html)
+- [OpenID Connect Core 1.0](https://openid.net/specs/openid-connect-core-1_0.html)
+- [OpenID Connect Discovery 1.0](https://openid.net/specs/openid-connect-discovery-1_0.html)
 - [OAuth 2.0 RFC](https://tools.ietf.org/html/rfc6749)
 
 ## Example OIDC Discovery Endpoints

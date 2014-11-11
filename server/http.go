@@ -108,6 +108,7 @@ func handleTokenFunc(sm *SessionManager, ciRepo ClientIdentityRepo) http.Handler
 		if !ok {
 			w.Header().Set("WWW-Authenticate", "Basic")
 			phttp.WriteError(w, http.StatusUnauthorized, "client authentication required")
+			return
 		}
 
 		c := ciRepo.ClientIdentity(clientID)

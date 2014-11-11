@@ -42,7 +42,7 @@ func (s *Server) ProviderConfig() oidc.ProviderConfig {
 func (s *Server) HTTPHandler(idpc connector.IDPConnector) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc(httpPathDiscovery, handleDiscoveryFunc(s.ProviderConfig()))
-	mux.HandleFunc(httpPathAuth, handleAuthFunc(s.SessionManager, s.ClientIdentityRepo, idpc))
+	mux.HandleFunc(httpPathAuth, handleAuthFunc(s.ClientIdentityRepo, idpc))
 	mux.HandleFunc(httpPathToken, handleTokenFunc(s.SessionManager, s.ClientIdentityRepo))
 	mux.HandleFunc(httpPathKeys, handleKeysFunc([]jose.JWK{s.Signer.JWK()}))
 	idpc.Register(mux)

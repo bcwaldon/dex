@@ -54,7 +54,7 @@ func handleKeysFunc(keys []jose.JWK) http.HandlerFunc {
 	}
 }
 
-func handleAuthFunc(sm *SessionManager, ciRepo ClientIdentityRepo, idpc connector.IDPConnector) http.HandlerFunc {
+func handleAuthFunc(ciRepo ClientIdentityRepo, idpc connector.IDPConnector) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			w.Header().Set("Allow", "GET")
@@ -62,7 +62,7 @@ func handleAuthFunc(sm *SessionManager, ciRepo ClientIdentityRepo, idpc connecto
 			return
 		}
 
-		acr, err := oauth2.ParseAuthCodeRequest(r)
+		acr, err := oauth2.ParseAuthCodeRequest(r.URL.Query())
 		if err != nil {
 			phttp.WriteError(w, http.StatusBadRequest, err.Error())
 			return
@@ -82,8 +82,8 @@ func handleAuthFunc(sm *SessionManager, ciRepo ClientIdentityRepo, idpc connecto
 func handleTokenFunc(sm *SessionManager, ciRepo ClientIdentityRepo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
-			msg := fmt.Sprintf("POST only supported method")
-			phttp.WriteError(w, http.StatusMethodNotAllowed, msg)
+			w.Header().Set("Allow", "POST")
+			phttp.WriteError(w, http.StatusMethodNotAllowed, fmt.Sprintf("POST only acceptable method"))
 			return
 		}
 

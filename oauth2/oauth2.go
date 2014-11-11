@@ -202,12 +202,12 @@ type AuthCodeRequest struct {
 	Scope       []string
 }
 
-func ParseAuthCodeRequest(r *http.Request) (*AuthCodeRequest, error) {
-	if rt := r.URL.Query().Get("response_type"); rt != "code" {
+func ParseAuthCodeRequest(q url.Values) (*AuthCodeRequest, error) {
+	if rt := q.Get("response_type"); rt != "code" {
 		return nil, fmt.Errorf("response_type %q unsupported", rt)
 	}
 
-	redirectURL := r.URL.Query().Get("redirect_uri")
+	redirectURL := q.Get("redirect_uri")
 	if redirectURL == "" {
 		return nil, errors.New("missing redirect_uri query param")
 	}
@@ -217,12 +217,13 @@ func ParseAuthCodeRequest(r *http.Request) (*AuthCodeRequest, error) {
 		return nil, errors.New("redirect_uri query param invalid")
 	}
 
-	scope := strings.Split(r.URL.Query().Get("scope"), " ")
-	if len(scope) == 0 {
-		return nil, errors.New("requested empty scope")
+	scope := make([]string, 0)
+	qs := strings.TrimSpace(q.Get("scope"))
+	if qs != "" {
+		scope = strings.Split(qs, " ")
 	}
 
-	clientID := r.URL.Query().Get("client_id")
+	clientID := q.Get("client_id")
 	if clientID == "" {
 		return nil, errors.New("missing client_id query param")
 	}

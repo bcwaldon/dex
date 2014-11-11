@@ -8,13 +8,14 @@ import (
 	"github.com/coreos-inc/auth/oidc"
 )
 
-type user struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Email string `json:"email"`
+type User struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
-func (u user) Identity() oidc.Identity {
+func (u User) Identity() oidc.Identity {
 	return oidc.Identity{
 		ID:    u.ID,
 		Name:  u.Name,
@@ -28,40 +29,37 @@ func NewLocalIdentityProviderFromReader(r io.Reader) (*LocalIdentityProvider, er
 		return nil, err
 	}
 
-	var us []user
+	var us []User
 	if err = json.Unmarshal(b, &us); err != nil {
 		return nil, err
 	}
 
-	idents := make([]oidc.Identity, len(us))
-	for i, u := range us {
-		idents[i] = u.Identity()
-	}
-
-	return NewLocalIdentityProvider(idents), nil
+	return NewLocalIdentityProvider(us), nil
 }
 
-func NewLocalIdentityProvider(idents []oidc.Identity) *LocalIdentityProvider {
+func NewLocalIdentityProvider(users []User) *LocalIdentityProvider {
 	p := LocalIdentityProvider{
-		idents: make(map[string]oidc.Identity, len(idents)),
+		users: make(map[string]User, len(users)),
 	}
 
-	for _, ident := range idents {
-		ident := ident
-		p.idents[ident.ID] = ident
+	for _, u := range users {
+		u := u
+		p.users[u.ID] = u
 	}
 
 	return &p
 }
 
 type LocalIdentityProvider struct {
-	idents map[string]oidc.Identity
+	users map[string]User
 }
 
-func (m *LocalIdentityProvider) Identity(id string) *oidc.Identity {
-	ident, ok := m.idents[id]
-	if !ok {
+func (m *LocalIdentityProvider) Identity(id, password string) *oidc.Identity {
+	u, ok := m.users[id]
+	if !ok || u.Password != password {
 		return nil
 	}
+
+	ident := u.Identity()
 	return &ident
 }

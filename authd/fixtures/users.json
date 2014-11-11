@@ -1,1 +1,14 @@
-[{"id":"d72e9ab9","name":"Elroy","email":"elroy@example.com"},{"id":"ce7a98ba","name":"Penny","email":"penny@example.com"}]
+[
+  {
+    "id":"elroy77",
+    "name":"Elroy",
+    "email":"elroy@example.com",
+    "password": "bones"
+  },
+  {
+    "id":"penny",
+    "name":"Penny",
+    "email":"penny@example.com",
+    "password": "kibble"
+  }
+]

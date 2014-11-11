@@ -23,7 +23,7 @@ func (s *Server) ProviderConfig() oidc.ProviderConfig {
 
 		AuthEndpoint:  s.IssuerURL + httpPathAuth,
 		TokenEndpoint: s.IssuerURL + httpPathToken,
-		JWKSURI:       s.IssuerURL + httpPathKeys,
+		KeysEndpoint:  s.IssuerURL + httpPathKeys,
 
 		// google supports these:
 		//ResponseTypesSupported:            []string{"code", "token", "id_token", "code token", "code id_token", "token id_token", "code token id_token", "none"},

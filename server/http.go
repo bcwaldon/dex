@@ -56,7 +56,11 @@ func handleKeysFunc(keys []jose.JWK) http.HandlerFunc {
 
 func handleAuthFunc(sm *SessionManager, ciRepo ClientIdentityRepo, idpc connector.IDPConnector) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// TODO(sym3tri): do validation first
+		if r.Method != "GET" {
+			w.Header().Set("Allow", "GET")
+			phttp.WriteError(w, http.StatusMethodNotAllowed, "GET only acceptable method")
+			return
+		}
 
 		acr, err := oauth2.ParseAuthCodeRequest(r)
 		if err != nil {

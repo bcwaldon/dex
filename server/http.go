@@ -56,7 +56,11 @@ func handleKeysFunc(keys []jose.JWK) http.HandlerFunc {
 
 func handleAuthFunc(sm *SessionManager, ciRepo ClientIdentityRepo, idpc connector.IDPConnector) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// TODO(sym3tri): do validation first
+		if r.Method != "GET" {
+			w.Header().Set("Allow", "GET")
+			phttp.WriteError(w, http.StatusMethodNotAllowed, "GET only acceptable method")
+			return
+		}
 
 		acr, err := oauth2.ParseAuthCodeRequest(r)
 		if err != nil {
@@ -133,8 +137,11 @@ func handleTokenFunc(sm *SessionManager, ciRepo ClientIdentityRepo) http.Handler
 		}
 		b, err := json.Marshal(t)
 		if err != nil {
-			log.Printf("Failed marshaling %#v to JSON: %v", err)
+			log.Printf("Failed marshaling %#v to JSON: %v", t, err)
+			phttp.WriteError(w, http.StatusInternalServerError, "")
+			return
 		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write(b)

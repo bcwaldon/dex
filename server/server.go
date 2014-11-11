@@ -25,6 +25,7 @@ func (s *Server) ProviderConfig() oidc.ProviderConfig {
 		TokenEndpoint: s.IssuerURL + httpPathToken,
 		KeysEndpoint:  s.IssuerURL + httpPathKeys,
 
+		GrantTypesSupported:               []string{"authorization_code"},
 		ResponseTypesSupported:            []string{"code"},
 		SubjectTypesSupported:             []string{"public"},
 		IDTokenAlgValuesSupported:         []string{"RS256"},

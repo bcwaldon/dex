@@ -6,6 +6,7 @@ type ProviderConfig struct {
 	TokenEndpoint                     string   `json:"token_endpoint"`
 	KeysEndpoint                      string   `json:"jwks_uri"`
 	ResponseTypesSupported            []string `json:"response_types_supported"`
+	GrantTypesSupported               []string `json:"grant_types_supported"`
 	SubjectTypesSupported             []string `json:"subject_types_supported"`
 	IDTokenAlgValuesSupported         []string `json:"id_token_alg_values_supported"`
 	TokenEndpointAuthMethodsSupported []string `json:"token_endpoint_auth_methods_supported"`

@@ -5,6 +5,8 @@ import (
 	"crypto/rsa"
 	"fmt"
 	"net/http"
+	"net/url"
+	"path"
 	"testing"
 
 	localconnector "github.com/coreos-inc/auth/connector/local"
@@ -49,7 +51,9 @@ func TestHTTPExchangeToken(t *testing.T) {
 		ClientIdentityRepo: cir,
 	}
 
-	idpc := localconnector.NewLocalIDPConnector(idp, server.HttpPathAuthIDPC, srv.Login)
+	ns, _ := url.Parse(issuerURL)
+	ns.Path = path.Join(ns.Path, server.HttpPathAuthIDPC)
+	idpc := localconnector.NewLocalIDPConnector(*ns, srv.Login, idp)
 
 	sClient := &phttp.HandlerClient{Handler: srv.HTTPHandler(idpc)}
 

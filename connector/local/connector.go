@@ -1,21 +1,34 @@
 package local
 
 import (
+	"flag"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
+	"net/url"
+	"os"
 
+	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 	phttp "github.com/coreos-inc/auth/pkg/http"
 )
 
-// TODO(sym3tri): get from config once config is available
-const loginPagePath = "./authd/fixtures/local-login.html"
+const (
+	LocalIDPConnectorType = "local"
+
+	// TODO(sym3tri): get from config once config is available
+	loginPagePath = "./authd/fixtures/local-login.html"
+)
+
+func init() {
+	connector.Register("local", NewLocalIDPConnectorFromFlags)
+}
 
 type LocalIDPConnector struct {
-	*LocalIdentityProvider
-	path      string
+	idp       *LocalIdentityProvider
+	namespace url.URL
 	loginFunc oidc.LoginFunc
 }
 
@@ -34,10 +47,25 @@ func init() {
 	}
 }
 
-func NewLocalIDPConnector(lidp *LocalIdentityProvider, path string, lf oidc.LoginFunc) *LocalIDPConnector {
+func NewLocalIDPConnectorFromFlags(ns url.URL, lf oidc.LoginFunc, fs *flag.FlagSet) (connector.IDPConnector, error) {
+	uFile := fs.Lookup("connector-local-users").Value.String()
+	uf, err := os.Open(uFile)
+	if err != nil {
+		return nil, fmt.Errorf("unable to read users from file %q: %v", uFile, err)
+	}
+	defer uf.Close()
+	idp, err := NewLocalIdentityProviderFromReader(uf)
+	if err != nil {
+		return nil, fmt.Errorf("unable to build local identity provider from file %q: %v", uFile, err)
+	}
+
+	return NewLocalIDPConnector(ns, lf, idp), nil
+}
+
+func NewLocalIDPConnector(ns url.URL, lf oidc.LoginFunc, idp *LocalIdentityProvider) *LocalIDPConnector {
 	return &LocalIDPConnector{
-		LocalIdentityProvider: lidp,
-		path:      path,
+		idp:       idp,
+		namespace: ns,
 		loginFunc: lf,
 	}
 }
@@ -47,11 +75,11 @@ func (c *LocalIDPConnector) DisplayType() string {
 }
 
 func (c *LocalIDPConnector) LoginURL(r *http.Request) string {
-	return c.path + "/login?" + r.URL.RawQuery
+	return c.namespace.Path + "/login?" + r.URL.RawQuery
 }
 
 func (c *LocalIDPConnector) Register(mux *http.ServeMux) {
-	mux.Handle(c.path+"/login", handleLoginFunc(c.loginFunc, c.LocalIdentityProvider))
+	mux.Handle(c.namespace.Path+"/login", handleLoginFunc(c.loginFunc, c.idp))
 }
 
 func handleLoginFunc(lf oidc.LoginFunc, idp *LocalIdentityProvider) http.HandlerFunc {
@@ -89,7 +117,20 @@ func handleLoginFunc(lf oidc.LoginFunc, idp *LocalIdentityProvider) http.Handler
 				return
 			}
 
-			lf(w, *acr, *ident)
+			code, err := lf(*ident, acr.ClientID)
+			if err != nil {
+				log.Printf("Unable to log in identity #%v with client ID %s", *ident, acr.ClientID)
+				phttp.WriteError(w, http.StatusInternalServerError, "login failed")
+				return
+			}
+
+			q := acr.RedirectURL.Query()
+			q.Set("code", code)
+			acr.RedirectURL.RawQuery = q.Encode()
+			w.Header().Set("Location", acr.RedirectURL.String())
+
+			w.WriteHeader(http.StatusTemporaryRedirect)
+
 			return
 		}
 

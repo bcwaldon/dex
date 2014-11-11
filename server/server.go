@@ -1,15 +1,13 @@
 package server
 
 import (
-	"log"
+	"errors"
 	"net/http"
 
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/jose"
 	josesig "github.com/coreos-inc/auth/jose/sig"
-	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
-	phttp "github.com/coreos-inc/auth/pkg/http"
 )
 
 type Server struct {
@@ -51,23 +49,16 @@ func (s *Server) HTTPHandler(idpc connector.IDPConnector) http.Handler {
 	return mux
 }
 
-func (s *Server) Login(w http.ResponseWriter, acr oauth2.AuthCodeRequest, ident oidc.Identity) {
-	ci := s.ClientIdentityRepo.ClientIdentity(acr.ClientID)
+func (s *Server) Login(ident oidc.Identity, clientID string) (string, error) {
+	ci := s.ClientIdentityRepo.ClientIdentity(clientID)
 	if ci == nil {
-		phttp.WriteError(w, http.StatusBadRequest, "unrecognized client ID")
-		return
+		return "", errors.New("unrecognized client ID")
 	}
 
 	code, err := s.SessionManager.NewSession(*ci, ident)
 	if err != nil {
-		log.Printf("Failed creating session: %v", err)
-		phttp.WriteError(w, http.StatusInternalServerError, "")
-		return
+		return "", err
 	}
 
-	q := acr.RedirectURL.Query()
-	q.Set("code", code)
-	acr.RedirectURL.RawQuery = q.Encode()
-	w.Header().Set("Location", acr.RedirectURL.String())
-	w.WriteHeader(http.StatusTemporaryRedirect)
+	return code, nil
 }

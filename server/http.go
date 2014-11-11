@@ -82,8 +82,8 @@ func handleAuthFunc(sm *SessionManager, ciRepo ClientIdentityRepo, idpc connecto
 func handleTokenFunc(sm *SessionManager, ciRepo ClientIdentityRepo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
-			msg := fmt.Sprintf("POST only supported method")
-			phttp.WriteError(w, http.StatusMethodNotAllowed, msg)
+			w.Header().Set("Allow", "POST")
+			phttp.WriteError(w, http.StatusMethodNotAllowed, fmt.Sprintf("POST only acceptable method"))
 			return
 		}
 

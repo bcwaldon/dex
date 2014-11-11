@@ -125,14 +125,11 @@ func handleTokenFunc(sm *SessionManager, ciRepo ClientIdentityRepo) http.Handler
 		}
 
 		t := struct {
-			AccessToken  string `json:"access_token"`
-			RefreshToken string `json:"refresh_token"`
-			Expiry       int    `json:"expiry"`
-			IDToken      string `json:"id_token"`
+			AccessToken string `json:"access_token"`
+			IDToken     string `json:"id_token"`
 		}{
-			AccessToken:  ses.AccessToken,
-			RefreshToken: ses.RefreshToken,
-			IDToken:      ses.IDToken.Encode(),
+			AccessToken: ses.AccessToken,
+			IDToken:     ses.IDToken.Encode(),
 		}
 		b, err := json.Marshal(t)
 		if err != nil {

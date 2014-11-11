@@ -45,14 +45,6 @@ func TestParseAuthCodeRequestInvalid(t *testing.T) {
 			"client_id":     []string{"XXX"},
 		},
 
-		// zero scopes
-		url.Values{
-			"response_type": []string{"code"},
-			"redirect_uri":  []string{"https://127.0.0.1:5555/callback?foo=bar"},
-			"scope":         []string{},
-			"client_id":     []string{"XXX"},
-		},
-
 		// no redirect_uri
 		url.Values{
 			"response_type": []string{"code"},

@@ -217,11 +217,11 @@ func ParseAuthCodeRequest(q url.Values) (*AuthCodeRequest, error) {
 		return nil, errors.New("redirect_uri query param invalid")
 	}
 
+	scope := make([]string, 0)
 	qs := strings.TrimSpace(q.Get("scope"))
-	if qs == "" {
-		return nil, errors.New("requested empty scope")
+	if qs != "" {
+		scope = strings.Split(qs, " ")
 	}
-	scope := strings.Split(qs, " ")
 
 	clientID := q.Get("client_id")
 	if clientID == "" {

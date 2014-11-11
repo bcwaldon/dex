@@ -12,7 +12,7 @@ import (
 
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
-	oidchttp "github.com/coreos-inc/auth/oidc/http"
+	phttp "github.com/coreos-inc/auth/pkg/http"
 )
 
 var (
@@ -89,7 +89,7 @@ func NewClientHandler(c *oidc.Client) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handleIndex)
 	mux.HandleFunc("/login", handleLoginFunc(c))
-	mux.HandleFunc(pathCallback, oidchttp.NewClientCallbackHandlerFunc(c))
+	mux.HandleFunc(pathCallback, handleCallbackFunc(c))
 	return mux
 }
 
@@ -105,5 +105,29 @@ func handleLoginFunc(c *oidc.Client) http.HandlerFunc {
 		q.Set("uid", r.URL.Query().Get("uid"))
 		u.RawQuery = q.Encode()
 		http.Redirect(w, r, u.String(), http.StatusFound)
+	}
+}
+
+func handleCallbackFunc(c *oidc.Client) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		code := r.URL.Query().Get("code")
+		if code == "" {
+			phttp.WriteError(w, http.StatusBadRequest, "code query param must be set")
+			return
+		}
+
+		tok, err := c.ExchangeAuthCode(code)
+		if err != nil {
+			phttp.WriteError(w, http.StatusBadRequest, fmt.Sprintf("unable to verify auth code with issuer: %v", err))
+			return
+		}
+
+		claims, err := tok.Claims()
+		if err != nil {
+			phttp.WriteError(w, http.StatusBadRequest, fmt.Sprintf("unable to construct claims: %v", err))
+			return
+		}
+
+		w.Write([]byte(fmt.Sprintf("OK: %v", claims)))
 	}
 }

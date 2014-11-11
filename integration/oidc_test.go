@@ -13,7 +13,6 @@ import (
 	josesig "github.com/coreos-inc/auth/jose/sig"
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
-	oidchttp "github.com/coreos-inc/auth/oidc/http"
 	phttp "github.com/coreos-inc/auth/pkg/http"
 	"github.com/coreos-inc/auth/server"
 )
@@ -72,7 +71,7 @@ func TestHTTPExchangeToken(t *testing.T) {
 	}
 
 	m := http.NewServeMux()
-	m.HandleFunc("/callback", oidchttp.NewClientCallbackHandlerFunc(cl))
+	m.HandleFunc("/callback", handleCallbackFunc(cl))
 	cClient := &phttp.HandlerClient{Handler: m}
 
 	// this will actually happen due to some interaction between the
@@ -95,5 +94,28 @@ func TestHTTPExchangeToken(t *testing.T) {
 
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("Received status code %d, want %d", resp.StatusCode, http.StatusOK)
+	}
+}
+
+func handleCallbackFunc(c *oidc.Client) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		code := r.URL.Query().Get("code")
+		if code == "" {
+			phttp.WriteError(w, http.StatusBadRequest, "code query param must be set")
+			return
+		}
+
+		tok, err := c.ExchangeAuthCode(code)
+		if err != nil {
+			phttp.WriteError(w, http.StatusBadRequest, fmt.Sprintf("unable to verify auth code with issuer: %v", err))
+			return
+		}
+
+		if _, err := tok.Claims(); err != nil {
+			phttp.WriteError(w, http.StatusBadRequest, fmt.Sprintf("unable to construct claims: %v", err))
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
 	}
 }

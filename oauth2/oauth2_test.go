@@ -77,3 +77,39 @@ func TestParseAuthCodeRequestInvalid(t *testing.T) {
 		}
 	}
 }
+
+func TestClientIdentityMatch(t *testing.T) {
+	tests := []struct {
+		a ClientIdentity
+		b ClientIdentity
+		w bool
+	}{
+		{
+			a: ClientIdentity{ID: "foo", Secret: "bar"},
+			b: ClientIdentity{ID: "foo", Secret: "bar"},
+			w: true,
+		},
+		{
+			a: ClientIdentity{ID: "foo", Secret: "bar"},
+			b: ClientIdentity{ID: "foo", Secret: "baz"},
+			w: false,
+		},
+		{
+			a: ClientIdentity{ID: "foo", Secret: "bar"},
+			b: ClientIdentity{ID: "baz", Secret: "bar"},
+			w: false,
+		},
+	}
+
+	for i, tt := range tests {
+		atob := tt.a.Match(tt.b)
+		if tt.w != atob {
+			t.Errorf("case %d: a.Match(b): want=%t, got=%t", i, tt.w, atob)
+		}
+
+		btoa := tt.b.Match(tt.a)
+		if tt.w != btoa {
+			t.Errorf("case %d: b.Match(a): want=%t, got=%t", i, tt.w, btoa)
+		}
+	}
+}

@@ -111,26 +111,25 @@ func handleTokenFunc(sm *SessionManager, ciRepo ClientIdentityRepo) http.Handler
 			return
 		}
 
-		c := ciRepo.ClientIdentity(clientID)
-		if c == nil || c.Secret != clientSecret {
+		ci := ciRepo.ClientIdentity(clientID)
+		if ci == nil || ci.Secret != clientSecret {
 			w.Header().Set("WWW-Authenticate", "Basic")
 			phttp.WriteError(w, http.StatusUnauthorized, "unrecognized client")
 			return
 		}
 
-		ses := sm.LookupByAuthCode(code)
+		ses := sm.Exchange(*ci, code)
 		if ses == nil {
-			phttp.WriteError(w, http.StatusBadRequest, "unrecognized auth code")
+			phttp.WriteError(w, http.StatusBadRequest, "invalid_grant")
 			return
 		}
 
-		t := struct {
-			AccessToken string `json:"access_token"`
-			IDToken     string `json:"id_token"`
-		}{
-			AccessToken: ses.AccessToken,
+		t := oAuth2Token{
+			AccessToken: ses.IDToken.Encode(),
 			IDToken:     ses.IDToken.Encode(),
+			TokenType:   "bearer",
 		}
+
 		b, err := json.Marshal(t)
 		if err != nil {
 			log.Printf("Failed marshaling %#v to JSON: %v", t, err)
@@ -142,4 +141,10 @@ func handleTokenFunc(sm *SessionManager, ciRepo ClientIdentityRepo) http.Handler
 		w.WriteHeader(http.StatusOK)
 		w.Write(b)
 	}
+}
+
+type oAuth2Token struct {
+	AccessToken string `json:"access_token"`
+	IDToken     string `json:"id_token"`
+	TokenType   string `json:"token_type"`
 }

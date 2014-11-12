@@ -51,10 +51,10 @@ func (s *Server) Login(ident oidc.Identity, clientID string) (string, error) {
 		return "", errors.New("unrecognized client ID")
 	}
 
-	code, err := s.SessionManager.NewSession(*ci, ident)
+	ses, err := s.SessionManager.NewSession(*ci, ident)
 	if err != nil {
 		return "", err
 	}
 
-	return code, nil
+	return ses.AuthCode, nil
 }

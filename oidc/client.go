@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/coreos-inc/auth/jose"
@@ -69,6 +70,21 @@ func createScope(scopes []string) []string {
 
 	ms = append(ms, DefaultScope...)
 	return ms
+}
+
+func ParseTokenFromRequest(r *http.Request) (token jose.JWT, err error) {
+	ah := r.Header.Get("Authorization")
+	if ah == "" {
+		err = errors.New("missing Authorization header")
+		return
+	}
+
+	if len(ah) <= 6 || strings.ToUpper(ah[0:6]) != "BEARER" {
+		err = errors.New("should be a bearer token")
+		return
+	}
+
+	return jose.ParseJWT(ah[7:])
 }
 
 type Client struct {

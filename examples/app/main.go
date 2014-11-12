@@ -66,7 +66,7 @@ func main() {
 
 	log.Printf("Fetched provider config from %s: %#v", *issuerURL, *cfg)
 
-	client, err := oidc.NewClient(http.DefaultClient, *cfg, ci, redirectURL.String())
+	client, err := oidc.NewClient(http.DefaultClient, *cfg, ci, redirectURL.String(), nil)
 	if err != nil {
 		log.Fatalf("Failed creating new OIDC Client: %v", err)
 	}

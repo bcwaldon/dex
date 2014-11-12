@@ -71,7 +71,14 @@ func handleAuthFunc(ciRepo ClientIdentityRepo, idpc connector.IDPConnector) http
 			return
 		}
 
-		w.Header().Set("Location", idpc.LoginURL(r))
+		lu, err := idpc.LoginURL(r)
+		if err != nil {
+			log.Printf("IDPConnector.LoginURL failed: %v", err)
+			phttp.WriteError(w, http.StatusInternalServerError, "")
+			return
+		}
+
+		w.Header().Set("Location", lu)
 		w.WriteHeader(http.StatusTemporaryRedirect)
 		return
 	}

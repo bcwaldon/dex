@@ -74,8 +74,8 @@ func (c *LocalIDPConnector) DisplayType() string {
 	return "Local"
 }
 
-func (c *LocalIDPConnector) LoginURL(r *http.Request) string {
-	return c.namespace.Path + "/login?" + r.URL.RawQuery
+func (c *LocalIDPConnector) LoginURL(r *http.Request) (string, error) {
+	return c.namespace.Path + "/login?" + r.URL.RawQuery, nil
 }
 
 func (c *LocalIDPConnector) Register(mux *http.ServeMux) {

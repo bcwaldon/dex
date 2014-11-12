@@ -153,7 +153,6 @@ func (c *Client) Exchange(code string) (result TokenResponse, err error) {
 		}
 		result.AccessToken = vals.Get("access_token")
 		result.TokenType = vals.Get("token_type")
-		result.RefreshToken = vals.Get("refresh_token")
 		result.IDToken = vals.Get("id_token")
 		e := vals.Get("expires_in")
 		if e == "" {
@@ -170,7 +169,6 @@ func (c *Client) Exchange(code string) (result TokenResponse, err error) {
 		}
 		result.AccessToken, _ = b["access_token"].(string)
 		result.TokenType, _ = b["token_type"].(string)
-		result.RefreshToken, _ = b["refresh_token"].(string)
 		result.IDToken, _ = b["id_token"].(string)
 		e, ok := b["expires_in"].(int)
 		if !ok {
@@ -179,21 +177,15 @@ func (c *Client) Exchange(code string) (result TokenResponse, err error) {
 		result.Expires = e
 	}
 
-	// Don't overwrite `RefreshToken` with an empty value
-	if result.RefreshToken == "" {
-		result.RefreshToken = v.Get("refresh_token")
-	}
-
 	return
 }
 
 type TokenResponse struct {
-	AccessToken  string
-	TokenType    string
-	Expires      int
-	IDToken      string
-	RefreshToken string
-	RawBody      []byte // In case callers need some other non-standard info from the token response
+	AccessToken string
+	TokenType   string
+	Expires     int
+	IDToken     string
+	RawBody     []byte // In case callers need some other non-standard info from the token response
 }
 
 type AuthCodeRequest struct {

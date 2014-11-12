@@ -18,7 +18,6 @@ type Session struct {
 	ClientIdentity oauth2.ClientIdentity
 	IssuedAt       time.Time
 	ExpiresAt      time.Time
-	AccessToken    string
 	IDToken        jose.JWT
 }
 
@@ -45,7 +44,6 @@ func (m *SessionManager) NewSession(ci oauth2.ClientIdentity, ident oidc.Identit
 		ClientIdentity: ci,
 		IssuedAt:       now,
 		ExpiresAt:      now.Add(30 * time.Second),
-		AccessToken:    genToken(),
 	}
 
 	claims := jose.Claims{

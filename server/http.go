@@ -128,7 +128,7 @@ func handleTokenFunc(sm *SessionManager, ciRepo ClientIdentityRepo) http.Handler
 			AccessToken string `json:"access_token"`
 			IDToken     string `json:"id_token"`
 		}{
-			AccessToken: ses.AccessToken,
+			AccessToken: ses.IDToken.Encode(),
 			IDToken:     ses.IDToken.Encode(),
 		}
 		b, err := json.Marshal(t)

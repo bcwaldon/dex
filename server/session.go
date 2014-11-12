@@ -14,7 +14,6 @@ import (
 
 type Session struct {
 	AuthCode       string
-	Identity       oidc.Identity
 	ClientIdentity oauth2.ClientIdentity
 	IssuedAt       time.Time
 	ExpiresAt      time.Time
@@ -40,7 +39,6 @@ func (m *SessionManager) NewSession(ci oauth2.ClientIdentity, ident oidc.Identit
 
 	s := Session{
 		AuthCode:       genToken(),
-		Identity:       ident,
 		ClientIdentity: ci,
 		IssuedAt:       now,
 		ExpiresAt:      now.Add(30 * time.Second),
@@ -49,15 +47,15 @@ func (m *SessionManager) NewSession(ci oauth2.ClientIdentity, ident oidc.Identit
 	claims := jose.Claims{
 		// required
 		"iss": m.issuerURL,
-		"sub": s.Identity.ID,
+		"sub": ident.ID,
 		"aud": s.ClientIdentity.ID,
 		// explicitly cast to float64 for consistent JSON (de)serialization
 		"exp": float64(s.ExpiresAt.Unix()),
 		"iat": float64(s.IssuedAt.Unix()),
 
 		// conventional
-		"name":  s.Identity.Name,
-		"email": s.Identity.Email,
+		"name":  ident.Name,
+		"email": ident.Email,
 	}
 
 	jwt, err := josesig.NewSignedJWT(claims, m.signer)

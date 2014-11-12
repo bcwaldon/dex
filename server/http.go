@@ -124,13 +124,12 @@ func handleTokenFunc(sm *SessionManager, ciRepo ClientIdentityRepo) http.Handler
 			return
 		}
 
-		t := struct {
-			AccessToken string `json:"access_token"`
-			IDToken     string `json:"id_token"`
-		}{
+		t := oAuth2Token{
 			AccessToken: ses.IDToken.Encode(),
 			IDToken:     ses.IDToken.Encode(),
+			TokenType:   "bearer",
 		}
+
 		b, err := json.Marshal(t)
 		if err != nil {
 			log.Printf("Failed marshaling %#v to JSON: %v", t, err)
@@ -142,4 +141,10 @@ func handleTokenFunc(sm *SessionManager, ciRepo ClientIdentityRepo) http.Handler
 		w.WriteHeader(http.StatusOK)
 		w.Write(b)
 	}
+}
+
+type oAuth2Token struct {
+	AccessToken string `json:"access_token"`
+	IDToken     string `json:"id_token"`
+	TokenType   string `json:"token_type"`
 }

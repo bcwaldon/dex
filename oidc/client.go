@@ -18,7 +18,10 @@ const (
 	discoveryConfigPath = "/.well-known/openid-configuration"
 )
 
-var TimeFunc = time.Now
+var (
+	TimeFunc     = time.Now
+	DefaultScope = []string{"openid", "email", "profile"}
+)
 
 func FetchProviderConfig(hc phttp.Client, issuerURL string) (*ProviderConfig, error) {
 	req, err := http.NewRequest("GET", issuerURL+discoveryConfigPath, nil)
@@ -45,6 +48,29 @@ func FetchProviderConfig(hc phttp.Client, issuerURL string) (*ProviderConfig, er
 	return &cfg, nil
 }
 
+// Utiltiy to check for a value in a list.
+func contains(values []string, val string) bool {
+	for _, v := range values {
+		if v == val {
+			return true
+		}
+	}
+	return false
+}
+
+// Extends the default scopes with additional scopes while avoiding duplicates.
+func createScope(scopes []string) []string {
+	ms := make([]string, 0)
+	for _, s := range scopes {
+		if !contains(DefaultScope, s) {
+			ms = append(ms, s)
+		}
+	}
+
+	ms = append(ms, DefaultScope...)
+	return ms
+}
+
 type Client struct {
 	HTTPClient     phttp.Client
 	ProviderConfig ProviderConfig
@@ -53,7 +79,7 @@ type Client struct {
 	Verifiers      map[string]josesig.Verifier // Cached store of verifiers.
 }
 
-func NewClient(hc phttp.Client, cfg ProviderConfig, ci oauth2.ClientIdentity, redirectURL string) (*Client, error) {
+func NewClient(hc phttp.Client, cfg ProviderConfig, ci oauth2.ClientIdentity, redirectURL string, scope []string) (*Client, error) {
 	// TODO: error if missing required config
 
 	ocfg := oauth2.Config{
@@ -62,8 +88,7 @@ func NewClient(hc phttp.Client, cfg ProviderConfig, ci oauth2.ClientIdentity, re
 		ClientSecret: ci.Secret,
 		AuthURL:      cfg.AuthEndpoint,
 		TokenURL:     cfg.TokenEndpoint,
-		// TODO(sym3tri): need concpet of default scope, and allow user to extend
-		Scope: []string{"openid", "email", "profile"},
+		Scope:        createScope(scope),
 	}
 
 	oac, err := oauth2.NewClient(hc, ocfg)

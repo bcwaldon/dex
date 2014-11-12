@@ -61,7 +61,7 @@ func TestHTTPExchangeToken(t *testing.T) {
 		t.Fatalf("Failed to fetch provider config: %v", err)
 	}
 
-	cl, err := oidc.NewClient(sClient, *cfg, ci, "http://client.example.com")
+	cl, err := oidc.NewClient(sClient, *cfg, ci, "http://client.example.com", nil)
 	if err != nil {
 		t.Fatalf("Failed creating new OIDC Client: %v", err)
 	}

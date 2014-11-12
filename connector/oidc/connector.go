@@ -38,7 +38,7 @@ func NewOIDCIDPConnectorFromFlags(ns url.URL, lf oidc.LoginFunc, fs *flag.FlagSe
 
 	cbURL := ns
 	cbURL.Path = path.Join(cbURL.Path, "/callback")
-	c, err := oidc.NewClient(http.DefaultClient, *cfg, ci, cbURL.String())
+	c, err := oidc.NewClient(http.DefaultClient, *cfg, ci, cbURL.String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create OIDC client: %v", err)
 	}

@@ -37,8 +37,7 @@ split=(${TEST// / })
 TEST=${split[@]/#/github.com/coreos-inc/auth/}
 
 echo "Running tests..."
-go test -i ${TEST}
-go test ${COVER} $@ ${TEST}
+godep go test ${COVER} $@ ${TEST}
 
 echo "Checking gofmt..."
 fmtRes=$(gofmt -l $FMT)

@@ -37,6 +37,10 @@ type ClientIdentity struct {
 	Secret string
 }
 
+func (ci ClientIdentity) Match(other ClientIdentity) bool {
+	return ci.ID == other.ID && ci.Secret == other.Secret
+}
+
 func NewClient(hc phttp.Client, cfg Config) (c *Client, err error) {
 	if cfg.ClientID == "" {
 		err = errors.New("missing client id")

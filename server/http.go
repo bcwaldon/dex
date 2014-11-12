@@ -17,9 +17,7 @@ var (
 	httpPathDiscovery = "/.well-known/openid-configuration"
 	httpPathAuth      = "/auth"
 	httpPathToken     = "/token"
-	httpPathRevoke    = "/revoke"
-	httpPathUserInfo  = "/user"
-	httpPathKeys      = "/keys" // a.k.a. JWKS
+	httpPathKeys      = "/keys"
 	HttpPathAuthIDPC  = "/auth/idpc"
 )
 

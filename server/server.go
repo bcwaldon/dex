@@ -21,19 +21,15 @@ func (s *Server) ProviderConfig() oidc.ProviderConfig {
 	cfg := oidc.ProviderConfig{
 		Issuer: s.IssuerURL,
 
-		AuthEndpoint:       s.IssuerURL + httpPathAuth,
-		TokenEndpoint:      s.IssuerURL + httpPathToken,
-		UserInfoEndpoint:   s.IssuerURL + httpPathUserInfo,
-		RevocationEndpoint: s.IssuerURL + httpPathRevoke,
-		JWKSURI:            s.IssuerURL + httpPathKeys,
+		AuthEndpoint:  s.IssuerURL + httpPathAuth,
+		TokenEndpoint: s.IssuerURL + httpPathToken,
+		KeysEndpoint:  s.IssuerURL + httpPathKeys,
 
-		// google supports these:
-		//ResponseTypesSupported:            []string{"code", "token", "id_token", "code token", "code id_token", "token id_token", "code token id_token", "none"},
-
-		ResponseTypesSupported:            []string{"id_token"},
+		GrantTypesSupported:               []string{"authorization_code"},
+		ResponseTypesSupported:            []string{"code"},
 		SubjectTypesSupported:             []string{"public"},
 		IDTokenAlgValuesSupported:         []string{"RS256"},
-		TokenEndpointAuthMethodsSupported: []string{"client_secret_post"},
+		TokenEndpointAuthMethodsSupported: []string{"client_secret_basic"},
 	}
 
 	return cfg

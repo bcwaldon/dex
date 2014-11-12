@@ -97,7 +97,7 @@ func (c *Client) AddVerifier(s josesig.Verifier) error {
 
 // Fetch keys from JWKs endpoint.
 func (c *Client) FetchKeys() ([]*jose.JWK, error) {
-	req, err := http.NewRequest("GET", c.ProviderConfig.JWKSURI, nil)
+	req, err := http.NewRequest("GET", c.ProviderConfig.KeysEndpoint, nil)
 	if err != nil {
 		return nil, err
 	}

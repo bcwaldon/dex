@@ -77,12 +77,12 @@ func TestHTTPExchangeToken(t *testing.T) {
 	// this will actually happen due to some interaction between the
 	// end-user and a remote identity provider
 	ident := user.Identity()
-	code, err := sm.NewSession(ci, ident)
+	ses, err := sm.NewSession(ci, ident)
 	if err != nil {
 		t.Fatalf("Failed creating new session: %v", err)
 	}
 
-	req, err := http.NewRequest("GET", fmt.Sprintf("http://client.example.com/callback?code=%s", code), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("http://client.example.com/callback?code=%s", ses.AuthCode), nil)
 	if err != nil {
 		t.Fatalf("Failed creating HTTP request: %v", err)
 	}

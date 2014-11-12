@@ -111,16 +111,16 @@ func handleTokenFunc(sm *SessionManager, ciRepo ClientIdentityRepo) http.Handler
 			return
 		}
 
-		c := ciRepo.ClientIdentity(clientID)
-		if c == nil || c.Secret != clientSecret {
+		ci := ciRepo.ClientIdentity(clientID)
+		if ci == nil || ci.Secret != clientSecret {
 			w.Header().Set("WWW-Authenticate", "Basic")
 			phttp.WriteError(w, http.StatusUnauthorized, "unrecognized client")
 			return
 		}
 
-		ses := sm.LookupByAuthCode(code)
+		ses := sm.Exchange(*ci, code)
 		if ses == nil {
-			phttp.WriteError(w, http.StatusBadRequest, "unrecognized auth code")
+			phttp.WriteError(w, http.StatusBadRequest, "invalid_grant")
 			return
 		}
 

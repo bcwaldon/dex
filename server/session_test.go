@@ -95,6 +95,19 @@ func TestSessionManagerNewSession(t *testing.T) {
 	}
 }
 
+func TestSessionManagerNewSessionSignerFails(t *testing.T) {
+	signer := &StaticSigner{sig: nil, err: errors.New("failed")}
+	sm := NewSessionManager("http://server.example.com", signer)
+
+	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
+	ident := oidc.Identity{ID: "YYY", Name: "elroy", Email: "elroy@example.com"}
+
+	_, err := sm.NewSession(ci, ident)
+	if err == nil {
+		t.Fatalf("Expected non-nil error")
+	}
+}
+
 func TestSessionManagerExchangeSession(t *testing.T) {
 	signer := &StaticSigner{sig: []byte("beer"), err: nil}
 
@@ -169,5 +182,42 @@ func TestSessionManagerExchangeSessionExpired(t *testing.T) {
 	ses2 := sm.Exchange(ci, ses1.AuthCode)
 	if ses2 != nil {
 		t.Fatalf("Expected nil Session, got %#v", ses2)
+	}
+}
+
+func TestSessionManagerExchangeUnrecognizedToken(t *testing.T) {
+	signer := &StaticSigner{sig: []byte("beer"), err: nil}
+	sm := NewSessionManager("http://server.example.com", signer)
+
+	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
+
+	ses := sm.Exchange(ci, "1234")
+	if ses != nil {
+		t.Fatalf("Expected nil Session, got %#v", ses)
+	}
+}
+
+func TestSessionManagerExchangeClientMismatch(t *testing.T) {
+	signer := &StaticSigner{sig: []byte("beer"), err: nil}
+
+	sm := NewSessionManager("http://server.example.com", signer)
+	fc := clockwork.NewFakeClock()
+	sm.clock = fc
+
+	ci1 := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
+	ci2 := oauth2.ClientIdentity{ID: "YYY", Secret: "barnacle"}
+	ident := oidc.Identity{ID: "YYY", Name: "elroy", Email: "elroy@example.com"}
+
+	ses, err := sm.NewSession(ci1, ident)
+	if err != nil {
+		t.Fatalf("Failed creating NewSession: %v", err)
+	}
+	if ses == nil {
+		t.Fatalf("Created nil Session")
+	}
+
+	got := sm.Exchange(ci2, ses.AuthCode)
+	if got != nil {
+		t.Fatalf("Expected nil Session, got %#v", ses)
 	}
 }

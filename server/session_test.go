@@ -50,6 +50,42 @@ func staticGenerateCodeFunc(code string) generateCodeFunc {
 }
 
 func TestSessionManagerNewSession(t *testing.T) {
+	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
+	sm := NewSessionManager("http://server.example.com", nil)
+	fc := clockwork.NewFakeClock()
+	sm.clock = fc
+
+	want := &Session{
+		State:          sessionStateNew,
+		ClientIdentity: ci,
+		ClientState:    "bogus",
+		CreatedAt:      fc.Now().UTC(),
+		sessionManager: sm,
+	}
+
+	got := sm.NewSession(ci, "bogus")
+	if !reflect.DeepEqual(want, got) {
+		t.Fatalf("Incorrect Session: want=%#v got=%#v", want, got)
+	}
+}
+
+func TestSessionIdentifyTwice(t *testing.T) {
+	sm := NewSessionManager("http://server.example.com", nil)
+	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
+	ident := oidc.Identity{ID: "YYY", Name: "elroy", Email: "elroy@example.com"}
+
+	ses := sm.NewSession(ci, "bogus")
+
+	if err := ses.Identify(ident); err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	if err := ses.Identify(ident); err == nil {
+		t.Fatalf("Expected non-nil error")
+	}
+}
+
+func TestSessionIDToken(t *testing.T) {
 	signer := &StaticSigner{sig: []byte("beer"), err: nil}
 
 	sm := NewSessionManager("http://server.example.com", signer)
@@ -58,6 +94,10 @@ func TestSessionManagerNewSession(t *testing.T) {
 
 	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
 	ident := oidc.Identity{ID: "YYY", Name: "elroy", Email: "elroy@example.com"}
+	ses := sm.NewSession(ci, "bogus")
+	if err := ses.Identify(ident); err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
 
 	now := sm.clock.Now().UTC()
 	claims := jose.Claims{
@@ -73,151 +113,53 @@ func TestSessionManagerNewSession(t *testing.T) {
 		"email": "elroy@example.com",
 	}
 
-	jwt, err := josesig.NewSignedJWT(claims, signer)
+	want, err := josesig.NewSignedJWT(claims, signer)
 	if err != nil {
 		t.Fatalf("Failed creating signed JWT: %v", err)
 	}
 
-	want := &Session{
-		State:          SessionStateNew,
-		AuthCode:       "fakecode",
-		ExpiresAt:      now.Add(10 * time.Minute),
-		ClientIdentity: ci,
-		IDToken:        *jwt,
-	}
-	got, err := sm.NewSession(ci, ident)
+	got, err := ses.IDToken()
 	if err != nil {
-		t.Fatalf("Failed creating NewSession: %v", err)
+		t.Fatalf("Unexpected error: %v", err)
 	}
 
 	if !reflect.DeepEqual(want, got) {
-		t.Fatalf("Incorrect Session: want=%#v got=%#v", want, got)
+		t.Fatalf("Incorrect JWT: want=%#v got=%#v", want, got)
 	}
 }
 
-func TestSessionManagerNewSessionSignerFails(t *testing.T) {
+func TestSessionIDTokenSignerFails(t *testing.T) {
 	signer := &StaticSigner{sig: nil, err: errors.New("failed")}
 	sm := NewSessionManager("http://server.example.com", signer)
 
 	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
 	ident := oidc.Identity{ID: "YYY", Name: "elroy", Email: "elroy@example.com"}
 
-	_, err := sm.NewSession(ci, ident)
-	if err == nil {
+	ses := sm.NewSession(ci, "bogus")
+	if err := ses.Identify(ident); err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	if _, err := ses.IDToken(); err == nil {
 		t.Fatalf("Expected non-nil error")
 	}
 }
 
-func TestSessionManagerExchangeSession(t *testing.T) {
-	signer := &StaticSigner{sig: []byte("beer"), err: nil}
-
-	sm := NewSessionManager("http://server.example.com", signer)
-	sm.clock = clockwork.NewFakeClock()
-
-	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
-	ident := oidc.Identity{ID: "YYY", Name: "elroy", Email: "elroy@example.com"}
-
-	ses1, err := sm.NewSession(ci, ident)
-	if err != nil {
-		t.Fatalf("Failed creating NewSession: %v", err)
-	}
-	if ses1 == nil {
-		t.Fatalf("Created nil Session")
-	}
-
-	ses2 := sm.Exchange(ci, ses1.AuthCode)
-	if !reflect.DeepEqual(ses1, ses2) {
-		t.Fatalf("Session mismatch: want=%#v got=%#v", ses1, ses2)
-	}
-}
-
-func TestSessionManagerExchangeSessionAgain(t *testing.T) {
-	signer := &StaticSigner{sig: []byte("beer"), err: nil}
-
-	sm := NewSessionManager("http://server.example.com", signer)
-	sm.clock = clockwork.NewFakeClock()
-
-	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
-	ident := oidc.Identity{ID: "YYY", Name: "elroy", Email: "elroy@example.com"}
-
-	ses1, err := sm.NewSession(ci, ident)
-	if err != nil {
-		t.Fatalf("Failed creating NewSession: %v", err)
-	}
-	if ses1 == nil {
-		t.Fatalf("Created nil Session")
-	}
-
-	ses2 := sm.Exchange(ci, ses1.AuthCode)
-	if ses2 == nil {
-		t.Fatalf("Expected non-nil Session, got=%#v", ses2)
-	}
-
-	ses3 := sm.Exchange(ci, ses1.AuthCode)
-	if ses3 != nil {
-		t.Fatalf("Expected nil Session, got %#v", ses3)
-	}
-}
-
-func TestSessionManagerExchangeSessionExpired(t *testing.T) {
-	signer := &StaticSigner{sig: []byte("beer"), err: nil}
-
-	sm := NewSessionManager("http://server.example.com", signer)
-	fc := clockwork.NewFakeClock()
-	sm.clock = fc
-
-	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
-	ident := oidc.Identity{ID: "YYY", Name: "elroy", Email: "elroy@example.com"}
-
-	ses1, err := sm.NewSession(ci, ident)
-	if err != nil {
-		t.Fatalf("Failed creating NewSession: %v", err)
-	}
-	if ses1 == nil {
-		t.Fatalf("Created nil Session")
-	}
-
-	fc.Advance(authCodeValidityWindow + time.Second)
-
-	ses2 := sm.Exchange(ci, ses1.AuthCode)
-	if ses2 != nil {
-		t.Fatalf("Expected nil Session, got %#v", ses2)
-	}
-}
-
-func TestSessionManagerExchangeUnrecognizedToken(t *testing.T) {
+func TestSessionManagerLookup(t *testing.T) {
 	signer := &StaticSigner{sig: []byte("beer"), err: nil}
 	sm := NewSessionManager("http://server.example.com", signer)
 
 	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
+	ses := sm.NewSession(ci, "bogus")
+	key := ses.NewKey()
 
-	ses := sm.Exchange(ci, "1234")
-	if ses != nil {
-		t.Fatalf("Expected nil Session, got %#v", ses)
-	}
-}
-
-func TestSessionManagerExchangeClientMismatch(t *testing.T) {
-	signer := &StaticSigner{sig: []byte("beer"), err: nil}
-
-	sm := NewSessionManager("http://server.example.com", signer)
-	fc := clockwork.NewFakeClock()
-	sm.clock = fc
-
-	ci1 := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
-	ci2 := oauth2.ClientIdentity{ID: "YYY", Secret: "barnacle"}
-	ident := oidc.Identity{ID: "YYY", Name: "elroy", Email: "elroy@example.com"}
-
-	ses, err := sm.NewSession(ci1, ident)
-	if err != nil {
-		t.Fatalf("Failed creating NewSession: %v", err)
-	}
-	if ses == nil {
-		t.Fatalf("Created nil Session")
+	got := sm.Session(key)
+	if !reflect.DeepEqual(ses, got) {
+		t.Fatalf("Incorrect Session: want=%#v got=%#v", ses, got)
 	}
 
-	got := sm.Exchange(ci2, ses.AuthCode)
-	if got != nil {
-		t.Fatalf("Expected nil Session, got %#v", ses)
+	again := sm.Session(key)
+	if again != nil {
+		t.Fatalf("Received non-nil response from second attempt with session key")
 	}
 }

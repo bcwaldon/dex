@@ -1,1 +1,7 @@
-[{"id":"XXX","secret":"secrete"}]
+[
+  {
+    "id": "XXX",
+    "secret": "secrete",
+    "redirectURL": "http://localhost:5555/callback"
+  }
+]

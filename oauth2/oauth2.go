@@ -33,8 +33,9 @@ type Client struct {
 }
 
 type ClientIdentity struct {
-	ID     string
-	Secret string
+	ID          string
+	Secret      string
+	RedirectURL url.URL
 }
 
 func (ci ClientIdentity) Match(other ClientIdentity) bool {
@@ -69,14 +70,14 @@ func NewClient(hc phttp.Client, cfg Config) (c *Client, err error) {
 
 	c = &Client{
 		identity: ClientIdentity{
-			ID:     cfg.ClientID,
-			Secret: cfg.ClientSecret,
+			ID:          cfg.ClientID,
+			Secret:      cfg.ClientSecret,
+			RedirectURL: *ru,
 		},
-		scope:       cfg.Scope,
-		authURL:     au,
-		tokenURL:    tu,
-		redirectURL: ru,
-		hc:          hc,
+		scope:    cfg.Scope,
+		authURL:  au,
+		tokenURL: tu,
+		hc:       hc,
 	}
 
 	return
@@ -102,7 +103,7 @@ func (c *Client) AuthCodeURL(state, accessType, prompt string) string {
 
 func (c *Client) commonURLValues() url.Values {
 	return url.Values{
-		"redirect_uri": {c.redirectURL.String()},
+		"redirect_uri": {c.identity.RedirectURL.String()},
 		"scope":        {strings.Join(c.scope, " ")},
 		"client_id":    {c.identity.ID},
 	}
@@ -196,6 +197,7 @@ type AuthCodeRequest struct {
 	ClientID    string
 	RedirectURL url.URL
 	Scope       []string
+	State       string
 }
 
 func ParseAuthCodeRequest(q url.Values) (*AuthCodeRequest, error) {
@@ -212,13 +214,6 @@ func ParseAuthCodeRequest(q url.Values) (*AuthCodeRequest, error) {
 	if err != nil {
 		return nil, errors.New("redirect_uri query param invalid")
 	}
-
-	scope := make([]string, 0)
-	qs := strings.TrimSpace(q.Get("scope"))
-	if qs != "" {
-		scope = strings.Split(qs, " ")
-	}
-
 	clientID := q.Get("client_id")
 	if clientID == "" {
 		return nil, errors.New("missing client_id query param")
@@ -227,7 +222,13 @@ func ParseAuthCodeRequest(q url.Values) (*AuthCodeRequest, error) {
 	acr := &AuthCodeRequest{
 		ClientID:    clientID,
 		RedirectURL: *ru,
-		Scope:       scope,
+		State:       q.Get("state"),
+		Scope:       make([]string, 0),
+	}
+
+	qs := strings.TrimSpace(q.Get("scope"))
+	if qs != "" {
+		acr.Scope = strings.Split(qs, " ")
 	}
 
 	return acr, nil

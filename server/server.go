@@ -1,7 +1,7 @@
 package server
 
 import (
-	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/coreos-inc/auth/connector"
@@ -38,23 +38,30 @@ func (s *Server) ProviderConfig() oidc.ProviderConfig {
 func (s *Server) HTTPHandler(idpc connector.IDPConnector) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc(httpPathDiscovery, handleDiscoveryFunc(s.ProviderConfig()))
-	mux.HandleFunc(httpPathAuth, handleAuthFunc(s.ClientIdentityRepo, idpc))
+	mux.HandleFunc(httpPathAuth, handleAuthFunc(s.SessionManager, s.ClientIdentityRepo, idpc))
 	mux.HandleFunc(httpPathToken, handleTokenFunc(s.SessionManager, s.ClientIdentityRepo))
 	mux.HandleFunc(httpPathKeys, handleKeysFunc([]jose.JWK{s.Signer.JWK()}))
 	idpc.Register(mux)
 	return mux
 }
 
-func (s *Server) Login(ident oidc.Identity, clientID string) (string, error) {
-	ci := s.ClientIdentityRepo.ClientIdentity(clientID)
-	if ci == nil {
-		return "", errors.New("unrecognized client ID")
+func (s *Server) Login(ident oidc.Identity, sessionKey string) (string, error) {
+	ses := s.SessionManager.Session(sessionKey)
+	if ses == nil {
+		return "", fmt.Errorf("unrecognized session %q", sessionKey)
 	}
 
-	ses, err := s.SessionManager.NewSession(*ci, ident)
+	err := ses.Identify(ident)
 	if err != nil {
 		return "", err
 	}
 
-	return ses.AuthCode, nil
+	code := ses.NewKey()
+	ru := ses.ClientIdentity.RedirectURL
+	q := ru.Query()
+	q.Set("code", code)
+	q.Set("state", ses.ClientState)
+	ru.RawQuery = q.Encode()
+
+	return ru.String(), nil
 }

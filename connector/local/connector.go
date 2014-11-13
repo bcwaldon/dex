@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 
 	"github.com/coreos-inc/auth/connector"
-	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 	phttp "github.com/coreos-inc/auth/pkg/http"
 )
@@ -74,8 +74,12 @@ func (c *LocalIDPConnector) DisplayType() string {
 	return "Local"
 }
 
-func (c *LocalIDPConnector) LoginURL(r *http.Request) (string, error) {
-	return c.namespace.Path + "/login?" + r.URL.RawQuery, nil
+func (c *LocalIDPConnector) LoginURL(sessionKey string) (string, error) {
+	q := url.Values{}
+	q.Set("session_key", sessionKey)
+	enc := q.Encode()
+
+	return path.Join(c.namespace.Path, "login") + "?" + enc, nil
 }
 
 func (c *LocalIDPConnector) Register(mux *http.ServeMux) {
@@ -84,12 +88,6 @@ func (c *LocalIDPConnector) Register(mux *http.ServeMux) {
 
 func handleLoginFunc(lf oidc.LoginFunc, idp *LocalIdentityProvider) http.HandlerFunc {
 	handlePOST := func(w http.ResponseWriter, r *http.Request) {
-		acr, err := oauth2.ParseAuthCodeRequest(r.URL.Query())
-		if err != nil {
-			phttp.WriteError(w, http.StatusBadRequest, err.Error())
-			return
-		}
-
 		if err := r.ParseForm(); err != nil {
 			msg := fmt.Sprintf("unable to parse form from body: %v", err)
 			phttp.WriteError(w, http.StatusBadRequest, msg)
@@ -114,18 +112,20 @@ func handleLoginFunc(lf oidc.LoginFunc, idp *LocalIdentityProvider) http.Handler
 			return
 		}
 
-		code, err := lf(*ident, acr.ClientID)
+		sessionKey := r.FormValue("session_key")
+		if sessionKey == "" {
+			phttp.WriteError(w, http.StatusBadRequest, "missing session_key")
+			return
+		}
+
+		redirectURL, err := lf(*ident, sessionKey)
 		if err != nil {
-			log.Printf("Unable to log in identity #%v with client ID %s", *ident, acr.ClientID)
+			log.Printf("Unable to log in %#v: %v", *ident, err)
 			phttp.WriteError(w, http.StatusInternalServerError, "login failed")
 			return
 		}
 
-		q := acr.RedirectURL.Query()
-		q.Set("code", code)
-		acr.RedirectURL.RawQuery = q.Encode()
-		w.Header().Set("Location", acr.RedirectURL.String())
-
+		w.Header().Set("Location", redirectURL)
 		w.WriteHeader(http.StatusTemporaryRedirect)
 	}
 

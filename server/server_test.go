@@ -2,6 +2,7 @@ package server
 
 import (
 	"errors"
+	"net/url"
 	"reflect"
 	"testing"
 
@@ -31,14 +32,22 @@ func TestServerProviderConfig(t *testing.T) {
 }
 
 func TestServerLogin(t *testing.T) {
-	ciRepo := NewClientIdentityRepo([]oauth2.ClientIdentity{
-		oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"},
-	})
+	ci := oauth2.ClientIdentity{
+		ID:     "XXX",
+		Secret: "secrete",
+		RedirectURL: url.URL{
+			Scheme: "http",
+			Host:   "client.example.com",
+			Path:   "/callback",
+		},
+	}
+	ciRepo := NewClientIdentityRepo([]oauth2.ClientIdentity{ci})
 
 	signer := &StaticSigner{sig: []byte("beer"), err: nil}
 
 	sm := NewSessionManager("http://server.example.com", signer)
 	sm.generateCode = staticGenerateCodeFunc("fakecode")
+	ses := sm.NewSession(ci, "bogus")
 
 	srv := &Server{
 		IssuerURL:          "http://server.example.com",
@@ -48,13 +57,14 @@ func TestServerLogin(t *testing.T) {
 	}
 
 	ident := oidc.Identity{ID: "YYY", Name: "elroy", Email: "elroy@example.com"}
-	code, err := srv.Login(ident, "XXX")
+	redirectURL, err := srv.Login(ident, ses.NewKey())
 	if err != nil {
 		t.Fatalf("Unexpected err from Server.Login: %v", err)
 	}
 
-	if code != "fakecode" {
-		t.Fatalf("Expected code=fakecode, got=%s", code)
+	wantRedirectURL := "http://client.example.com/callback?code=fakecode&state=bogus"
+	if wantRedirectURL != redirectURL {
+		t.Fatalf("Unexpected redirectURL: want=%q, got=%q", wantRedirectURL, redirectURL)
 	}
 }
 

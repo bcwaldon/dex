@@ -12,11 +12,13 @@ func TestParseAuthCodeRequest(t *testing.T) {
 		"redirect_uri":  []string{"https://127.0.0.1:5555/callback?foo=bar"},
 		"scope":         []string{"foo bar baz"},
 		"client_id":     []string{"XXX"},
+		"state":         []string{"pants"},
 	}
 
 	want := AuthCodeRequest{
 		ClientID: "XXX",
 		Scope:    []string{"foo", "bar", "baz"},
+		State:    "pants",
 		RedirectURL: url.URL{
 			Scheme:   "https",
 			Host:     "127.0.0.1:5555",

@@ -99,13 +99,19 @@ func handleLoginFunc(lf oidc.LoginFunc, idp *LocalIdentityProvider) http.Handler
 				return
 			}
 
-			userid := r.FormValue("userid")
+			if err := r.ParseForm(); err != nil {
+				msg := fmt.Sprintf("unable to parse form from body: %v", err)
+				phttp.WriteError(w, http.StatusBadRequest, msg)
+				return
+			}
+
+			userid := r.PostForm.Get("userid")
 			if userid == "" {
 				phttp.WriteError(w, http.StatusBadRequest, "missing userid")
 				return
 			}
 
-			password := r.FormValue("password")
+			password := r.PostForm.Get("password")
 			if password == "" {
 				phttp.WriteError(w, http.StatusBadRequest, "missing password")
 				return

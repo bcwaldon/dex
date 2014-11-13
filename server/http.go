@@ -111,13 +111,13 @@ func handleTokenFunc(sm *SessionManager, ciRepo ClientIdentityRepo) http.Handler
 			return
 		}
 
-		grantType := r.Form.Get("grant_type")
+		grantType := r.PostForm.Get("grant_type")
 		if grantType != "authorization_code" {
 			phttp.WriteError(w, http.StatusBadRequest, "grant_type must be 'authorization_code'")
 			return
 		}
 
-		code := r.Form.Get("code")
+		code := r.PostForm.Get("code")
 		if code == "" {
 			phttp.WriteError(w, http.StatusBadRequest, "missing code field")
 			return

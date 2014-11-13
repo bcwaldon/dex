@@ -138,9 +138,9 @@ func handleLoginFunc(lf oidc.LoginFunc, idp *LocalIdentityProvider) http.Handler
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
-		case "GET":
-			handlePOST(w, r)
 		case "POST":
+			handlePOST(w, r)
+		case "GET":
 			handleGET(w, r)
 		default:
 			w.Header().Set("Allow", "GET, POST")

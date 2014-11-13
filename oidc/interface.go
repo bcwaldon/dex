@@ -1,3 +1,3 @@
 package oidc
 
-type LoginFunc func(ident Identity, clientID string) (code string, err error)
+type LoginFunc func(ident Identity, sessionKey string) (redirectURL string, err error)

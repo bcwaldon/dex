@@ -21,7 +21,7 @@ func (f *fakeIDPConnector) DisplayType() string {
 	return "Fake"
 }
 
-func (f *fakeIDPConnector) LoginURL(r *http.Request) (string, error) {
+func (f *fakeIDPConnector) LoginURL(r *http.Request, sessionKey string) (string, error) {
 	return f.loginURL, nil
 }
 
@@ -29,7 +29,7 @@ func (f *fakeIDPConnector) Register(mux *http.ServeMux) {}
 
 func TestHandleAuthFuncMethodNotAllowed(t *testing.T) {
 	for _, m := range []string{"POST", "PUT", "DELETE"} {
-		hdlr := handleAuthFunc(nil, nil)
+		hdlr := handleAuthFunc(nil, nil, nil)
 		req, err := http.NewRequest(m, "http://example.com", nil)
 		if err != nil {
 			t.Errorf("case %s: unable to create HTTP request: %v", m, err)
@@ -52,6 +52,8 @@ func TestHandleAuthFuncResponses(t *testing.T) {
 	ciRepo := NewClientIdentityRepo([]oauth2.ClientIdentity{
 		oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"},
 	})
+	signer := &StaticSigner{sig: []byte("beer"), err: nil}
+	sm := NewSessionManager("http://fake.example.com", signer)
 
 	tests := []struct {
 		query        url.Values
@@ -88,7 +90,7 @@ func TestHandleAuthFuncResponses(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		hdlr := handleAuthFunc(ciRepo, idpc)
+		hdlr := handleAuthFunc(sm, ciRepo, idpc)
 		w := httptest.NewRecorder()
 		u := fmt.Sprintf("http://server.example.com?%s", tt.query.Encode())
 		req, err := http.NewRequest("GET", u, nil)

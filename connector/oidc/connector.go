@@ -63,18 +63,13 @@ func (c *OIDCIDPConnector) DisplayType() string {
 	return "OIDC"
 }
 
-func (c *OIDCIDPConnector) LoginURL(r *http.Request) (string, error) {
-	v := url.Values{}
-	v.Set("authd_redirect_uri", r.URL.Query().Get("redirect_uri"))
-	v.Set("authd_client_id", r.URL.Query().Get("client_id"))
-	state := v.Encode()
-
+func (c *OIDCIDPConnector) LoginURL(r *http.Request, sessionKey string) (string, error) {
 	oac, err := c.client.OAuthClient()
 	if err != nil {
 		return "", err
 	}
 
-	return oac.AuthCodeURL(state, "", ""), nil
+	return oac.AuthCodeURL(sessionKey, "", ""), nil
 }
 
 func (c *OIDCIDPConnector) Register(mux *http.ServeMux) {
@@ -107,31 +102,20 @@ func handleCallbackFunc(lf oidc.LoginFunc, c *oidc.Client) http.HandlerFunc {
 			return
 		}
 
-		state, err := url.ParseQuery(r.URL.Query().Get("state"))
-		if err != nil {
-			phttp.WriteError(w, http.StatusBadRequest, "malformed state query param")
+		sessionKey := r.URL.Query().Get("state")
+		if sessionKey == "" {
+			phttp.WriteError(w, http.StatusBadRequest, "missing state query param")
+			return
 		}
 
-		clientID := state.Get("authd_client_id")
-		code, err = lf(*ident, clientID)
+		redirectURL, err := lf(*ident, sessionKey)
 		if err != nil {
-			log.Printf("Unable to log in identity %#v with client ID %s: %v", *ident, clientID, err)
+			log.Printf("Unable to log in %#v: %v", *ident, err)
 			phttp.WriteError(w, http.StatusInternalServerError, "login failed")
 			return
 		}
 
-		aru := state.Get("authd_redirect_uri")
-		u, err := url.Parse(aru)
-		if err != nil {
-			phttp.WriteError(w, http.StatusBadRequest, "invalid authd_redirect_uri")
-			return
-		}
-
-		q := u.Query()
-		q.Set("code", code)
-		u.RawQuery = q.Encode()
-		w.Header().Set("Location", u.String())
-
+		w.Header().Set("Location", redirectURL)
 		w.WriteHeader(http.StatusTemporaryRedirect)
 		return
 

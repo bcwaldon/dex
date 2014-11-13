@@ -60,6 +60,7 @@ func (s *Server) Login(ident oidc.Identity, sessionKey string) (string, error) {
 	ru := ses.ClientIdentity.RedirectURL
 	q := ru.Query()
 	q.Set("code", code)
+	q.Set("state", ses.ClientState)
 	ru.RawQuery = q.Encode()
 
 	return ru.String(), nil

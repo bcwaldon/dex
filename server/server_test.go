@@ -47,7 +47,7 @@ func TestServerLogin(t *testing.T) {
 
 	sm := NewSessionManager("http://server.example.com", signer)
 	sm.generateCode = staticGenerateCodeFunc("fakecode")
-	ses := sm.NewSession(ci)
+	ses := sm.NewSession(ci, "bogus")
 
 	srv := &Server{
 		IssuerURL:          "http://server.example.com",
@@ -62,7 +62,7 @@ func TestServerLogin(t *testing.T) {
 		t.Fatalf("Unexpected err from Server.Login: %v", err)
 	}
 
-	wantRedirectURL := "http://client.example.com/callback?code=fakecode"
+	wantRedirectURL := "http://client.example.com/callback?code=fakecode&state=bogus"
 	if wantRedirectURL != redirectURL {
 		t.Fatalf("Unexpected redirectURL: want=%q, got=%q", wantRedirectURL, redirectURL)
 	}

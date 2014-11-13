@@ -197,6 +197,7 @@ type AuthCodeRequest struct {
 	ClientID    string
 	RedirectURL url.URL
 	Scope       []string
+	State       string
 }
 
 func ParseAuthCodeRequest(q url.Values) (*AuthCodeRequest, error) {
@@ -213,13 +214,6 @@ func ParseAuthCodeRequest(q url.Values) (*AuthCodeRequest, error) {
 	if err != nil {
 		return nil, errors.New("redirect_uri query param invalid")
 	}
-
-	scope := make([]string, 0)
-	qs := strings.TrimSpace(q.Get("scope"))
-	if qs != "" {
-		scope = strings.Split(qs, " ")
-	}
-
 	clientID := q.Get("client_id")
 	if clientID == "" {
 		return nil, errors.New("missing client_id query param")
@@ -228,7 +222,13 @@ func ParseAuthCodeRequest(q url.Values) (*AuthCodeRequest, error) {
 	acr := &AuthCodeRequest{
 		ClientID:    clientID,
 		RedirectURL: *ru,
-		Scope:       scope,
+		State:       q.Get("state"),
+		Scope:       make([]string, 0),
+	}
+
+	qs := strings.TrimSpace(q.Get("scope"))
+	if qs != "" {
+		acr.Scope = strings.Split(qs, " ")
 	}
 
 	return acr, nil

@@ -58,11 +58,12 @@ func TestSessionManagerNewSession(t *testing.T) {
 	want := &Session{
 		State:          sessionStateNew,
 		ClientIdentity: ci,
+		ClientState:    "bogus",
 		CreatedAt:      fc.Now().UTC(),
 		sessionManager: sm,
 	}
 
-	got := sm.NewSession(ci)
+	got := sm.NewSession(ci, "bogus")
 	if !reflect.DeepEqual(want, got) {
 		t.Fatalf("Incorrect Session: want=%#v got=%#v", want, got)
 	}
@@ -73,7 +74,7 @@ func TestSessionIdentifyTwice(t *testing.T) {
 	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
 	ident := oidc.Identity{ID: "YYY", Name: "elroy", Email: "elroy@example.com"}
 
-	ses := sm.NewSession(ci)
+	ses := sm.NewSession(ci, "bogus")
 
 	if err := ses.Identify(ident); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
@@ -93,7 +94,7 @@ func TestSessionIDToken(t *testing.T) {
 
 	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
 	ident := oidc.Identity{ID: "YYY", Name: "elroy", Email: "elroy@example.com"}
-	ses := sm.NewSession(ci)
+	ses := sm.NewSession(ci, "bogus")
 	if err := ses.Identify(ident); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -134,7 +135,7 @@ func TestSessionIDTokenSignerFails(t *testing.T) {
 	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
 	ident := oidc.Identity{ID: "YYY", Name: "elroy", Email: "elroy@example.com"}
 
-	ses := sm.NewSession(ci)
+	ses := sm.NewSession(ci, "bogus")
 	if err := ses.Identify(ident); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -149,7 +150,7 @@ func TestSessionManagerLookup(t *testing.T) {
 	sm := NewSessionManager("http://server.example.com", signer)
 
 	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
-	ses := sm.NewSession(ci)
+	ses := sm.NewSession(ci, "bogus")
 	key := ses.NewKey()
 
 	got := sm.Session(key)

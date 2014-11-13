@@ -42,6 +42,7 @@ type Session struct {
 	State          sessionState
 	CreatedAt      time.Time
 	ClientIdentity oauth2.ClientIdentity
+	ClientState    string
 	Identity       oidc.Identity
 	sessionManager *SessionManager
 }
@@ -66,11 +67,12 @@ type SessionManager struct {
 	clock        clockwork.Clock
 }
 
-func (m *SessionManager) NewSession(ci oauth2.ClientIdentity) *Session {
+func (m *SessionManager) NewSession(ci oauth2.ClientIdentity, cs string) *Session {
 	s := &Session{
 		State:          sessionStateNew,
 		CreatedAt:      m.clock.Now().UTC(),
 		ClientIdentity: ci,
+		ClientState:    cs,
 		sessionManager: m,
 	}
 

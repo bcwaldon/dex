@@ -78,7 +78,7 @@ func TestHTTPExchangeToken(t *testing.T) {
 
 	// this will actually happen due to some interaction between the
 	// end-user and a remote identity provider
-	ses := sm.NewSession(ci)
+	ses := sm.NewSession(ci, "bogus")
 	if err := ses.Identify(user.Identity()); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}

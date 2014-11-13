@@ -84,7 +84,7 @@ func handleAuthFunc(sm *SessionManager, ciRepo ClientIdentityRepo, idpc connecto
 			return
 		}
 
-		ses := sm.NewSession(*ci)
+		ses := sm.NewSession(*ci, acr.State)
 		lu, err := idpc.LoginURL(ses.NewKey())
 		if err != nil {
 			log.Printf("IDPConnector.LoginURL failed: %v", err)

@@ -191,7 +191,7 @@ func TestServerTokenFail(t *testing.T) {
 		signer josesig.Signer
 		argCI  oauth2.ClientIdentity
 		argKey string
-		err    error
+		err    string
 	}{
 		// control test case to make sure fixtures check out
 		{
@@ -248,7 +248,7 @@ func TestServerTokenFail(t *testing.T) {
 		ses.NewKey()
 
 		jwt, err := srv.Token(tt.argCI, tt.argKey)
-		if tt.err == nil {
+		if tt.err == "" {
 			if err != nil {
 				t.Errorf("case %d: got non-nil error: %v", i, err)
 			} else if jwt == nil {
@@ -256,8 +256,8 @@ func TestServerTokenFail(t *testing.T) {
 			}
 
 		} else {
-			if err != tt.err {
-				t.Errorf("case %d: want err %q, got %q", i, tt.err, err)
+			if err.Error() != tt.err {
+				t.Errorf("case %d: want err %q, got %q", i, tt.err, err.Error())
 			} else if jwt != nil {
 				t.Errorf("case %d: got non-nil JWT", i)
 			}

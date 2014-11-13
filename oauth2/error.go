@@ -1,18 +1,21 @@
 package oauth2
 
-type Error string
+const (
+	ErrorInvalidClient        = "invalid_client"
+	ErrorInvalidGrant         = "invalid_grant"
+	ErrorInvalidRequest       = "invalid_request"
+	ErrorServerError          = "server_error"
+	ErrorUnsupportedGrantType = "unsupported_grant_type"
+)
+
+type Error struct {
+	Type string
+}
 
 func (e *Error) Error() string {
-	return string(*e)
+	return e.Type
 }
 
-func NewError(msg string) *Error {
-	err := Error(msg)
-	return &err
+func NewError(typ string) *Error {
+	return &Error{Type: typ}
 }
-
-var (
-	ErrorInvalidClient = NewError("invalid_client")
-	ErrorInvalidGrant  = NewError("invalid_grant")
-	ErrorServerError   = NewError("server_error")
-)

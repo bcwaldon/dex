@@ -91,22 +91,22 @@ func (s *Server) Login(ident oidc.Identity, key string) (string, error) {
 func (s *Server) Token(ci oauth2.ClientIdentity, key string) (*jose.JWT, error) {
 	exist := s.ClientIdentityRepo.ClientIdentity(ci.ID)
 	if exist == nil || exist.Secret != ci.Secret {
-		return nil, oauth2.ErrorInvalidClient
+		return nil, oauth2.NewError(oauth2.ErrorInvalidClient)
 	}
 
 	ses := s.SessionManager.Session(key)
 	if ses == nil {
-		return nil, oauth2.ErrorInvalidGrant
+		return nil, oauth2.NewError(oauth2.ErrorInvalidGrant)
 	}
 
 	if !ses.ClientIdentity.Match(ci) {
-		return nil, oauth2.ErrorInvalidGrant
+		return nil, oauth2.NewError(oauth2.ErrorInvalidGrant)
 	}
 
 	jwt, err := ses.IDToken()
 	if err != nil {
 		log.Printf("Failed to generate ID token: %v", err)
-		return nil, oauth2.ErrorServerError
+		return nil, oauth2.NewError(oauth2.ErrorServerError)
 	}
 
 	return jwt, nil

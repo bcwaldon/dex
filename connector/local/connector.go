@@ -143,7 +143,8 @@ func handleLoginFunc(lf oidc.LoginFunc, idp *LocalIdentityProvider) http.Handler
 		case "POST":
 			handleGET(w, r)
 		default:
-			phttp.WriteError(w, http.StatusBadRequest, "invalid method")
+			w.Header().Set("Allow", "GET, POST")
+			phttp.WriteError(w, http.StatusMethodNotAllowed, "GET and POST only acceptable methods")
 		}
 	}
 }

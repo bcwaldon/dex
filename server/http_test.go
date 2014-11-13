@@ -118,7 +118,7 @@ func TestHandleAuthFuncResponses(t *testing.T) {
 
 func TestHandleTokenFuncMethodNotAllowed(t *testing.T) {
 	for _, m := range []string{"GET", "PUT", "DELETE"} {
-		hdlr := handleTokenFunc(nil, nil)
+		hdlr := handleTokenFunc(nil)
 		req, err := http.NewRequest(m, "http://example.com", nil)
 		if err != nil {
 			t.Errorf("case %s: unable to create HTTP request: %v", m, err)

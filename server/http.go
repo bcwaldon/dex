@@ -97,7 +97,7 @@ func handleAuthFunc(srv *Server, idpc connector.IDPConnector) http.HandlerFunc {
 	}
 }
 
-func handleTokenFunc(sm *SessionManager, ciRepo ClientIdentityRepo) http.HandlerFunc {
+func handleTokenFunc(srv *Server) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			w.Header().Set("Allow", "POST")
@@ -124,35 +124,17 @@ func handleTokenFunc(sm *SessionManager, ciRepo ClientIdentityRepo) http.Handler
 			return
 		}
 
-		clientID, clientSecret, ok := phttp.BasicAuth(r)
+		user, password, ok := phttp.BasicAuth(r)
 		if !ok {
 			w.Header().Set("WWW-Authenticate", "Basic")
-			phttp.WriteError(w, http.StatusUnauthorized, "client authentication required")
+			phttp.WriteError(w, http.StatusUnauthorized, "need to authenticate client")
 			return
 		}
 
-		ci := ciRepo.ClientIdentity(clientID)
-		if ci == nil || ci.Secret != clientSecret {
-			w.Header().Set("WWW-Authenticate", "Basic")
-			phttp.WriteError(w, http.StatusUnauthorized, "unrecognized client")
-			return
-		}
-
-		ses := sm.Session(code)
-		if ses == nil {
-			phttp.WriteError(w, http.StatusBadRequest, "invalid_grant")
-			return
-		}
-
-		if !ses.ClientIdentity.Match(*ci) {
-			phttp.WriteError(w, http.StatusBadRequest, "invalid_grant")
-			return
-		}
-
-		jwt, err := ses.IDToken()
+		ci := oauth2.ClientIdentity{ID: user, Secret: password}
+		jwt, err := srv.Token(ci, code)
 		if err != nil {
-			log.Printf("Failed to generate ID token: %v", err)
-			phttp.WriteError(w, http.StatusInternalServerError, "server_error")
+			phttp.WriteError(w, http.StatusBadRequest, "invalid_grant")
 			return
 		}
 

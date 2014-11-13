@@ -3,6 +3,7 @@ package server
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/coreos-inc/auth/connector"
@@ -41,16 +42,29 @@ func (s *Server) HTTPHandler(idpc connector.IDPConnector) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc(httpPathDiscovery, handleDiscoveryFunc(s.ProviderConfig()))
 	mux.HandleFunc(httpPathAuth, handleAuthFunc(s, idpc))
-	mux.HandleFunc(httpPathToken, handleTokenFunc(s.SessionManager, s.ClientIdentityRepo))
+	mux.HandleFunc(httpPathToken, handleTokenFunc(s))
 	mux.HandleFunc(httpPathKeys, handleKeysFunc([]jose.JWK{s.Signer.JWK()}))
 	idpc.Register(mux)
 	return mux
 }
 
-func (s *Server) Login(ident oidc.Identity, sessionKey string) (string, error) {
-	ses := s.SessionManager.Session(sessionKey)
+func (s *Server) NewSession(acr oauth2.AuthCodeRequest) (key string, err error) {
+	ci := s.ClientIdentityRepo.ClientIdentity(acr.ClientID)
+	if ci == nil {
+		err = errors.New("unrecognized client ID")
+		return
+	}
+
+	ses := s.SessionManager.NewSession(*ci, acr.State)
+	key = ses.NewKey()
+
+	return
+}
+
+func (s *Server) Login(ident oidc.Identity, key string) (string, error) {
+	ses := s.SessionManager.Session(key)
 	if ses == nil {
-		return "", fmt.Errorf("unrecognized session %q", sessionKey)
+		return "", fmt.Errorf("unrecognized session %q", key)
 	}
 
 	err := ses.Identify(ident)
@@ -68,15 +82,26 @@ func (s *Server) Login(ident oidc.Identity, sessionKey string) (string, error) {
 	return ru.String(), nil
 }
 
-func (s *Server) NewSession(acr oauth2.AuthCodeRequest) (key string, err error) {
-	ci := s.ClientIdentityRepo.ClientIdentity(acr.ClientID)
-	if ci == nil {
-		err = errors.New("unrecognized client ID")
-		return
+func (s *Server) Token(ci oauth2.ClientIdentity, key string) (*jose.JWT, error) {
+	exist := s.ClientIdentityRepo.ClientIdentity(ci.ID)
+	if exist == nil || exist.Secret != ci.Secret {
+		return nil, errors.New("unrecognized client")
 	}
 
-	ses := s.SessionManager.NewSession(*ci, acr.State)
-	key = ses.NewKey()
+	ses := s.SessionManager.Session(key)
+	if ses == nil {
+		return nil, errors.New("invalid_grant")
+	}
 
-	return
+	if !ses.ClientIdentity.Match(ci) {
+		return nil, errors.New("invalid_grant")
+	}
+
+	jwt, err := ses.IDToken()
+	if err != nil {
+		log.Printf("Failed to generate ID token: %v", err)
+		return nil, errors.New("server_error")
+	}
+
+	return jwt, nil
 }

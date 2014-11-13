@@ -134,7 +134,18 @@ func handleTokenFunc(srv OIDCServer) http.HandlerFunc {
 		ci := oauth2.ClientIdentity{ID: user, Secret: password}
 		jwt, err := srv.Token(ci, code)
 		if err != nil {
-			phttp.WriteError(w, http.StatusBadRequest, "invalid_grant")
+			var status int
+			switch err {
+			case oauth2.ErrorInvalidClient:
+				status = http.StatusUnauthorized
+				w.Header().Set("WWW-Authenticate", "Basic")
+			case oauth2.ErrorInvalidGrant:
+				status = http.StatusBadRequest
+			default:
+				status = http.StatusInternalServerError
+			}
+
+			phttp.WriteError(w, status, err.Error())
 			return
 		}
 

@@ -1,29 +1,11 @@
 package server
 
 import (
-	"encoding/json"
-	"io"
-	"io/ioutil"
-
 	"github.com/coreos-inc/auth/oauth2"
 )
 
 type ClientIdentityRepo interface {
 	ClientIdentity(clientID string) *oauth2.ClientIdentity
-}
-
-func NewClientIdentityRepoFromReader(r io.Reader) (ClientIdentityRepo, error) {
-	b, err := ioutil.ReadAll(r)
-	if err != nil {
-		return nil, err
-	}
-
-	var cs []oauth2.ClientIdentity
-	if err = json.Unmarshal(b, &cs); err != nil {
-		return nil, err
-	}
-
-	return NewClientIdentityRepo(cs), nil
 }
 
 func NewClientIdentityRepo(cs []oauth2.ClientIdentity) ClientIdentityRepo {

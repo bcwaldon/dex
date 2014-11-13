@@ -3,8 +3,11 @@ package main
 import (
 	crand "crypto/rand"
 	"crypto/rsa"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -16,6 +19,7 @@ import (
 	localconnector "github.com/coreos-inc/auth/connector/local"
 	oidcconnector "github.com/coreos-inc/auth/connector/oidc"
 	josesig "github.com/coreos-inc/auth/jose/sig"
+	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 	"github.com/coreos-inc/auth/server"
 )
@@ -94,7 +98,7 @@ func newServerFromFlags(fs *flag.FlagSet) (*server.Server, error) {
 		return nil, fmt.Errorf("unable to read clients from file %s: %v", cFile, err)
 	}
 	defer cf.Close()
-	ciRepo, err := server.NewClientIdentityRepoFromReader(cf)
+	ciRepo, err := newClientIdentityRepoFromReader(cf)
 	if err != nil {
 		return nil, fmt.Errorf("unable to read client identities from file %s: %v", cFile, err)
 	}
@@ -121,4 +125,41 @@ func newIDPConnectorFromFlags(fs *flag.FlagSet, lf oidc.LoginFunc) (connector.ID
 
 	ct := fs.Lookup("connector-type").Value.String()
 	return connector.NewIDPConnector(ct, *ns, lf, fs)
+}
+
+func newClientIdentityRepoFromReader(r io.Reader) (server.ClientIdentityRepo, error) {
+	b, err := ioutil.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+
+	var cs []clientIdentity
+	if err = json.Unmarshal(b, &cs); err != nil {
+		return nil, err
+	}
+
+	ocs := make([]oauth2.ClientIdentity, len(cs))
+	for i, c := range cs {
+		ocs[i] = oauth2.ClientIdentity(c)
+	}
+
+	return server.NewClientIdentityRepo(ocs), nil
+}
+
+type clientIdentity oauth2.ClientIdentity
+
+func (ci *clientIdentity) UnmarshalJSON(data []byte) error {
+	c := struct {
+		ID     string `json:"id"`
+		Secret string `json:"secret"`
+	}{}
+
+	if err := json.Unmarshal(data, &c); err != nil {
+		return err
+	}
+
+	ci.ID = c.ID
+	ci.Secret = c.Secret
+
+	return nil
 }

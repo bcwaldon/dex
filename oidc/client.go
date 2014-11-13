@@ -49,29 +49,6 @@ func FetchProviderConfig(hc phttp.Client, issuerURL string) (*ProviderConfig, er
 	return &cfg, nil
 }
 
-// Utiltiy to check for a value in a list.
-func contains(values []string, val string) bool {
-	for _, v := range values {
-		if v == val {
-			return true
-		}
-	}
-	return false
-}
-
-// Extends the default scopes with additional scopes while avoiding duplicates.
-func createScope(scopes []string) []string {
-	ms := make([]string, 0)
-	for _, s := range scopes {
-		if !contains(DefaultScope, s) {
-			ms = append(ms, s)
-		}
-	}
-
-	ms = append(ms, DefaultScope...)
-	return ms
-}
-
 func ParseTokenFromRequest(r *http.Request) (token jose.JWT, err error) {
 	ah := r.Header.Get("Authorization")
 	if ah == "" {
@@ -118,7 +95,7 @@ func (c *Client) OAuthClient() (*oauth2.Client, error) {
 		ClientSecret: c.ClientIdentity.Secret,
 		AuthURL:      c.ProviderConfig.AuthEndpoint,
 		TokenURL:     c.ProviderConfig.TokenEndpoint,
-		Scope:        c.Scope,
+		Scope:        c.getScope(),
 	}
 
 	return oauth2.NewClient(c.getHTTPClient(), ocfg)

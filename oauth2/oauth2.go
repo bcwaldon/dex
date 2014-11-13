@@ -33,8 +33,9 @@ type Client struct {
 }
 
 type ClientIdentity struct {
-	ID     string
-	Secret string
+	ID          string
+	Secret      string
+	RedirectURL url.URL
 }
 
 func (ci ClientIdentity) Match(other ClientIdentity) bool {
@@ -69,14 +70,14 @@ func NewClient(hc phttp.Client, cfg Config) (c *Client, err error) {
 
 	c = &Client{
 		identity: ClientIdentity{
-			ID:     cfg.ClientID,
-			Secret: cfg.ClientSecret,
+			ID:          cfg.ClientID,
+			Secret:      cfg.ClientSecret,
+			RedirectURL: *ru,
 		},
-		scope:       cfg.Scope,
-		authURL:     au,
-		tokenURL:    tu,
-		redirectURL: ru,
-		hc:          hc,
+		scope:    cfg.Scope,
+		authURL:  au,
+		tokenURL: tu,
+		hc:       hc,
 	}
 
 	return
@@ -102,7 +103,7 @@ func (c *Client) AuthCodeURL(state, accessType, prompt string) string {
 
 func (c *Client) commonURLValues() url.Values {
 	return url.Values{
-		"redirect_uri": {c.redirectURL.String()},
+		"redirect_uri": {c.identity.RedirectURL.String()},
 		"scope":        {strings.Join(c.scope, " ")},
 		"client_id":    {c.identity.ID},
 	}

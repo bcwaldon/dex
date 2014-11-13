@@ -150,16 +150,23 @@ type clientIdentity oauth2.ClientIdentity
 
 func (ci *clientIdentity) UnmarshalJSON(data []byte) error {
 	c := struct {
-		ID     string `json:"id"`
-		Secret string `json:"secret"`
+		ID          string `json:"id"`
+		Secret      string `json:"secret"`
+		RedirectURL string `json:"redirectURL"`
 	}{}
 
 	if err := json.Unmarshal(data, &c); err != nil {
 		return err
 	}
 
+	ru, err := url.Parse(c.RedirectURL)
+	if err != nil {
+		return err
+	}
+
 	ci.ID = c.ID
 	ci.Secret = c.Secret
+	ci.RedirectURL = *ru
 
 	return nil
 }

@@ -64,7 +64,7 @@ func handleKeysFunc(keys []jose.JWK) http.HandlerFunc {
 	}
 }
 
-func handleAuthFunc(srv *Server, idpc connector.IDPConnector) http.HandlerFunc {
+func handleAuthFunc(srv OIDCServer, idpc connector.IDPConnector) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			w.Header().Set("Allow", "GET")
@@ -97,7 +97,7 @@ func handleAuthFunc(srv *Server, idpc connector.IDPConnector) http.HandlerFunc {
 	}
 }
 
-func handleTokenFunc(srv *Server) http.HandlerFunc {
+func handleTokenFunc(srv OIDCServer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			w.Header().Set("Allow", "POST")

@@ -13,6 +13,12 @@ import (
 	"github.com/coreos-inc/auth/oidc"
 )
 
+type OIDCServer interface {
+	NewSession(oauth2.AuthCodeRequest) (string, error)
+	Login(oidc.Identity, string) (string, error)
+	Token(oauth2.ClientIdentity, string) (*jose.JWT, error)
+}
+
 type Server struct {
 	IssuerURL          string
 	Signer             josesig.Signer

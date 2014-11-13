@@ -69,35 +69,7 @@ func TestServerLogin(t *testing.T) {
 	}
 }
 
-func TestServerLoginUnrecognizedClient(t *testing.T) {
-	ciRepo := NewClientIdentityRepo([]oauth2.ClientIdentity{
-		oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"},
-	})
-
-	signer := &StaticSigner{sig: []byte("beer"), err: nil}
-
-	sm := NewSessionManager("http://server.example.com", signer)
-	sm.generateCode = staticGenerateCodeFunc("fakecode")
-
-	srv := &Server{
-		IssuerURL:          "http://server.example.com",
-		Signer:             signer,
-		SessionManager:     sm,
-		ClientIdentityRepo: ciRepo,
-	}
-
-	ident := oidc.Identity{ID: "YYY", Name: "elroy", Email: "elroy@example.com"}
-	code, err := srv.Login(ident, "123")
-	if err == nil {
-		t.Fatalf("Expected non-nil error")
-	}
-
-	if code != "" {
-		t.Fatalf("Expected empty code, got=%s", code)
-	}
-}
-
-func TestServerLoginNewSessionFails(t *testing.T) {
+func TestServerLoginUnrecognizedSessionKey(t *testing.T) {
 	ciRepo := NewClientIdentityRepo([]oauth2.ClientIdentity{
 		oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"},
 	})

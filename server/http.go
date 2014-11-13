@@ -23,6 +23,12 @@ var (
 
 func handleDiscoveryFunc(cfg oidc.ProviderConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			w.Header().Set("Allow", "GET")
+			phttp.WriteError(w, http.StatusMethodNotAllowed, "GET only acceptable method")
+			return
+		}
+
 		b, err := json.Marshal(cfg)
 		if err != nil {
 			log.Printf("Unable to marshal %#v to JSON: %v", cfg, err)
@@ -35,6 +41,12 @@ func handleDiscoveryFunc(cfg oidc.ProviderConfig) http.HandlerFunc {
 
 func handleKeysFunc(keys []jose.JWK) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			w.Header().Set("Allow", "GET")
+			phttp.WriteError(w, http.StatusMethodNotAllowed, "GET only acceptable method")
+			return
+		}
+
 		keys := struct {
 			Keys []jose.JWK `json:"keys"`
 		}{

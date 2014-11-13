@@ -1,12 +1,14 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/jose"
 	josesig "github.com/coreos-inc/auth/jose/sig"
+	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 )
 
@@ -64,4 +66,17 @@ func (s *Server) Login(ident oidc.Identity, sessionKey string) (string, error) {
 	ru.RawQuery = q.Encode()
 
 	return ru.String(), nil
+}
+
+func (s *Server) NewSession(acr oauth2.AuthCodeRequest) (key string, err error) {
+	ci := s.ClientIdentityRepo.ClientIdentity(acr.ClientID)
+	if ci == nil {
+		err = errors.New("unrecognized client ID")
+		return
+	}
+
+	ses := s.SessionManager.NewSession(*ci, acr.State)
+	key = ses.NewKey()
+
+	return
 }

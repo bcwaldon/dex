@@ -64,7 +64,7 @@ func handleKeysFunc(keys []jose.JWK) http.HandlerFunc {
 	}
 }
 
-func handleAuthFunc(s *Server, idpc connector.IDPConnector) http.HandlerFunc {
+func handleAuthFunc(srv *Server, idpc connector.IDPConnector) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			w.Header().Set("Allow", "GET")
@@ -78,14 +78,13 @@ func handleAuthFunc(s *Server, idpc connector.IDPConnector) http.HandlerFunc {
 			return
 		}
 
-		ci := s.ClientIdentityRepo.ClientIdentity(acr.ClientID)
-		if ci == nil {
-			phttp.WriteError(w, http.StatusBadRequest, "unrecognized client ID")
+		key, err := srv.NewSession(*acr)
+		if err != nil {
+			phttp.WriteError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 
-		ses := s.SessionManager.NewSession(*ci, acr.State)
-		lu, err := idpc.LoginURL(ses.NewKey())
+		lu, err := idpc.LoginURL(key)
 		if err != nil {
 			log.Printf("IDPConnector.LoginURL failed: %v", err)
 			phttp.WriteError(w, http.StatusInternalServerError, "")

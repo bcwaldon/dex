@@ -66,9 +66,10 @@ func main() {
 
 	log.Printf("Fetched provider config from %s: %#v", *issuerURL, *cfg)
 
-	client, err := oidc.NewClient(http.DefaultClient, *cfg, ci, redirectURL.String(), nil)
-	if err != nil {
-		log.Fatalf("Failed creating new OIDC Client: %v", err)
+	client := &oidc.Client{
+		ProviderConfig: *cfg,
+		ClientIdentity: ci,
+		RedirectURL:    redirectURL.String(),
 	}
 
 	if err = client.RefreshKeys(); err != nil {
@@ -99,8 +100,12 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 
 func handleLoginFunc(c *oidc.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		acu := c.OAuthClient.AuthCodeURL("", "", "")
-		u, _ := url.Parse(acu)
+		oac, err := c.OAuthClient()
+		if err != nil {
+			panic("unable to proceed")
+		}
+
+		u, _ := url.Parse(oac.AuthCodeURL("", "", ""))
 		q := u.Query()
 		q.Set("uid", r.URL.Query().Get("uid"))
 		u.RawQuery = q.Encode()

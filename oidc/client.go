@@ -75,59 +75,60 @@ type Client struct {
 	HTTPClient     phttp.Client
 	ProviderConfig ProviderConfig
 	ClientIdentity oauth2.ClientIdentity
-	OAuthClient    oauth2.Client
-	Verifiers      map[string]josesig.Verifier // Cached store of verifiers.
+	RedirectURL    string
+	Scope          []string
+
+	verifiers map[string]josesig.Verifier
 }
 
-func NewClient(hc phttp.Client, cfg ProviderConfig, ci oauth2.ClientIdentity, redirectURL string, scope []string) (*Client, error) {
-	// TODO: error if missing required config
+func (c *Client) getHTTPClient() phttp.Client {
+	if c.HTTPClient != nil {
+		return c.HTTPClient
+	}
+	return http.DefaultClient
+}
 
+func (c *Client) getScope() []string {
+	if c.Scope != nil {
+		return c.Scope
+	}
+	return DefaultScope
+}
+
+func (c *Client) OAuthClient() (*oauth2.Client, error) {
 	ocfg := oauth2.Config{
-		RedirectURL:  redirectURL,
-		ClientID:     ci.ID,
-		ClientSecret: ci.Secret,
-		AuthURL:      cfg.AuthEndpoint,
-		TokenURL:     cfg.TokenEndpoint,
-		Scope:        createScope(scope),
+		RedirectURL:  c.RedirectURL,
+		ClientID:     c.ClientIdentity.ID,
+		ClientSecret: c.ClientIdentity.Secret,
+		AuthURL:      c.ProviderConfig.AuthEndpoint,
+		TokenURL:     c.ProviderConfig.TokenEndpoint,
+		Scope:        c.Scope,
 	}
 
-	oac, err := oauth2.NewClient(hc, ocfg)
-	if err != nil {
-		return nil, err
-	}
-
-	c := &Client{
-		HTTPClient:     hc,
-		ProviderConfig: cfg,
-		ClientIdentity: ci,
-		OAuthClient:    *oac,
-		Verifiers:      make(map[string]josesig.Verifier),
-	}
-
-	return c, nil
+	return oauth2.NewClient(c.getHTTPClient(), ocfg)
 }
 
-// TODO: move
 func (c *Client) PurgeExpiredVerifiers() error {
 	// TODO: implement
 	return nil
 }
 
-// TODO: move
 func (c *Client) AddVerifier(s josesig.Verifier) error {
+	if c.verifiers == nil {
+		c.verifiers = make(map[string]josesig.Verifier)
+	}
 	// replace in list if exists
-	c.Verifiers[s.ID()] = s
+	c.verifiers[s.ID()] = s
 	return nil
 }
 
-// Fetch keys from JWKs endpoint.
 func (c *Client) FetchKeys() ([]*jose.JWK, error) {
 	req, err := http.NewRequest("GET", c.ProviderConfig.KeysEndpoint, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := c.HTTPClient.Do(req)
+	resp, err := c.getHTTPClient().Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +176,7 @@ func (c *Client) RefreshKeys() error {
 
 // verify if a JWT is valid or not
 func (c *Client) Verify(jwt jose.JWT) error {
-	for _, v := range c.Verifiers {
+	for _, v := range c.verifiers {
 		err := v.Verify(jwt.Signature, []byte(jwt.Data()))
 		if err == nil {
 			return VerifyClaims(jwt, c.ProviderConfig.Issuer, c.ClientIdentity.ID)
@@ -187,7 +188,12 @@ func (c *Client) Verify(jwt jose.JWT) error {
 
 // Exchange an OAauth2 auth code for an OIDC JWT
 func (c *Client) ExchangeAuthCode(code string) (jose.JWT, error) {
-	t, err := c.OAuthClient.Exchange(code)
+	oac, err := c.OAuthClient()
+	if err != nil {
+		return jose.JWT{}, err
+	}
+
+	t, err := oac.Exchange(code)
 	if err != nil {
 		return jose.JWT{}, err
 	}

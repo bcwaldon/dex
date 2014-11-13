@@ -38,9 +38,10 @@ func NewOIDCIDPConnectorFromFlags(ns url.URL, lf oidc.LoginFunc, fs *flag.FlagSe
 
 	cbURL := ns
 	cbURL.Path = path.Join(cbURL.Path, "/callback")
-	c, err := oidc.NewClient(http.DefaultClient, *cfg, ci, cbURL.String(), nil)
-	if err != nil {
-		return nil, fmt.Errorf("unable to create OIDC client: %v", err)
+	c := &oidc.Client{
+		ProviderConfig: *cfg,
+		ClientIdentity: ci,
+		RedirectURL:    cbURL.String(),
 	}
 
 	if err = c.RefreshKeys(); err != nil {
@@ -62,13 +63,18 @@ func (c *OIDCIDPConnector) DisplayType() string {
 	return "OIDC"
 }
 
-func (c *OIDCIDPConnector) LoginURL(r *http.Request) string {
+func (c *OIDCIDPConnector) LoginURL(r *http.Request) (string, error) {
 	v := url.Values{}
 	v.Set("authd_redirect_uri", r.URL.Query().Get("redirect_uri"))
 	v.Set("authd_client_id", r.URL.Query().Get("client_id"))
 	state := v.Encode()
 
-	return c.client.OAuthClient.AuthCodeURL(state, "", "")
+	oac, err := c.client.OAuthClient()
+	if err != nil {
+		return "", err
+	}
+
+	return oac.AuthCodeURL(state, "", ""), nil
 }
 
 func (c *OIDCIDPConnector) Register(mux *http.ServeMux) {

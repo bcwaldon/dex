@@ -18,8 +18,8 @@ func (f *fakeIDPConnector) DisplayType() string {
 	return "Fake"
 }
 
-func (f *fakeIDPConnector) LoginURL(r *http.Request) string {
-	return f.loginURL
+func (f *fakeIDPConnector) LoginURL(r *http.Request) (string, error) {
+	return f.loginURL, nil
 }
 
 func (f *fakeIDPConnector) Register(mux *http.ServeMux) {}

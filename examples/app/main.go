@@ -105,10 +105,10 @@ func handleLoginFunc(c *oidc.Client) http.HandlerFunc {
 			panic("unable to proceed")
 		}
 
-		u, _ := url.Parse(oac.AuthCodeURL("", "", ""))
-		q := u.Query()
-		q.Set("uid", r.URL.Query().Get("uid"))
-		u.RawQuery = q.Encode()
+		u, err := url.Parse(oac.AuthCodeURL("", "", ""))
+		if err != nil {
+			panic("unable to proceed")
+		}
 		http.Redirect(w, r, u.String(), http.StatusFound)
 	}
 }

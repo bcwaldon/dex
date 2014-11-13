@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/oidc"
@@ -73,10 +74,12 @@ func (c *LocalIDPConnector) DisplayType() string {
 	return "Local"
 }
 
-func (c *LocalIDPConnector) LoginURL(r *http.Request, sessionKey string) (string, error) {
-	q := r.URL.Query()
+func (c *LocalIDPConnector) LoginURL(sessionKey string) (string, error) {
+	q := url.Values{}
 	q.Set("session_key", sessionKey)
-	return c.namespace.Path + "/login?" + q.Encode(), nil
+	enc := q.Encode()
+
+	return path.Join(c.namespace.Path, "login") + "?" + enc, nil
 }
 
 func (c *LocalIDPConnector) Register(mux *http.ServeMux) {

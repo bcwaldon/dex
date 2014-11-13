@@ -63,7 +63,7 @@ func (c *OIDCIDPConnector) DisplayType() string {
 	return "OIDC"
 }
 
-func (c *OIDCIDPConnector) LoginURL(r *http.Request, sessionKey string) (string, error) {
+func (c *OIDCIDPConnector) LoginURL(sessionKey string) (string, error) {
 	oac, err := c.client.OAuthClient()
 	if err != nil {
 		return "", err

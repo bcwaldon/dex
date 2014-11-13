@@ -87,7 +87,7 @@ func handleLoginFunc(lf oidc.LoginFunc, idp *LocalIdentityProvider) http.Handler
 		if r.Method == "GET" {
 			p := &Page{r.URL.String(), "Local"}
 			if err := templates.ExecuteTemplate(w, "local-login.html", p); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				phttp.WriteError(w, http.StatusInternalServerError, err.Error())
 			}
 			return
 		}

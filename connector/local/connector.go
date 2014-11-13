@@ -83,57 +83,68 @@ func (c *LocalIDPConnector) Register(mux *http.ServeMux) {
 }
 
 func handleLoginFunc(lf oidc.LoginFunc, idp *LocalIdentityProvider) http.HandlerFunc {
+	handlePOST := func(w http.ResponseWriter, r *http.Request) {
+		acr, err := oauth2.ParseAuthCodeRequest(r.URL.Query())
+		if err != nil {
+			phttp.WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		if err := r.ParseForm(); err != nil {
+			msg := fmt.Sprintf("unable to parse form from body: %v", err)
+			phttp.WriteError(w, http.StatusBadRequest, msg)
+			return
+		}
+
+		userid := r.PostForm.Get("userid")
+		if userid == "" {
+			phttp.WriteError(w, http.StatusBadRequest, "missing userid")
+			return
+		}
+
+		password := r.PostForm.Get("password")
+		if password == "" {
+			phttp.WriteError(w, http.StatusBadRequest, "missing password")
+			return
+		}
+
+		ident := idp.Identity(userid, password)
+		if ident == nil {
+			phttp.WriteError(w, http.StatusBadRequest, "invalid login")
+			return
+		}
+
+		code, err := lf(*ident, acr.ClientID)
+		if err != nil {
+			log.Printf("Unable to log in identity #%v with client ID %s", *ident, acr.ClientID)
+			phttp.WriteError(w, http.StatusInternalServerError, "login failed")
+			return
+		}
+
+		q := acr.RedirectURL.Query()
+		q.Set("code", code)
+		acr.RedirectURL.RawQuery = q.Encode()
+		w.Header().Set("Location", acr.RedirectURL.String())
+
+		w.WriteHeader(http.StatusTemporaryRedirect)
+	}
+
+	handleGET := func(w http.ResponseWriter, r *http.Request) {
+		p := &Page{r.URL.String(), "Local"}
+		if err := templates.ExecuteTemplate(w, "local-login.html", p); err != nil {
+			phttp.WriteError(w, http.StatusInternalServerError, err.Error())
+		}
+	}
+
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "GET" {
-			p := &Page{r.URL.String(), "Local"}
-			if err := templates.ExecuteTemplate(w, "local-login.html", p); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-			return
+		switch r.Method {
+		case "GET":
+			handlePOST(w, r)
+		case "POST":
+			handleGET(w, r)
+		default:
+			w.Header().Set("Allow", "GET, POST")
+			phttp.WriteError(w, http.StatusMethodNotAllowed, "GET and POST only acceptable methods")
 		}
-
-		if r.Method == "POST" {
-			acr, err := oauth2.ParseAuthCodeRequest(r.URL.Query())
-			if err != nil {
-				phttp.WriteError(w, http.StatusBadRequest, err.Error())
-				return
-			}
-
-			userid := r.FormValue("userid")
-			if userid == "" {
-				phttp.WriteError(w, http.StatusBadRequest, "missing userid")
-				return
-			}
-
-			password := r.FormValue("password")
-			if password == "" {
-				phttp.WriteError(w, http.StatusBadRequest, "missing password")
-				return
-			}
-
-			ident := idp.Identity(userid, password)
-			if ident == nil {
-				phttp.WriteError(w, http.StatusBadRequest, "invalid login")
-				return
-			}
-
-			code, err := lf(*ident, acr.ClientID)
-			if err != nil {
-				log.Printf("Unable to log in identity #%v with client ID %s", *ident, acr.ClientID)
-				phttp.WriteError(w, http.StatusInternalServerError, "login failed")
-				return
-			}
-
-			q := acr.RedirectURL.Query()
-			q.Set("code", code)
-			acr.RedirectURL.RawQuery = q.Encode()
-			w.Header().Set("Location", acr.RedirectURL.String())
-
-			w.WriteHeader(http.StatusTemporaryRedirect)
-
-			return
-		}
-
-		phttp.WriteError(w, http.StatusBadRequest, "invalid method")
 	}
 }

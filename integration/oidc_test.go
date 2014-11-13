@@ -9,6 +9,7 @@ import (
 	"path"
 	"testing"
 
+	"github.com/coreos-inc/auth/connector"
 	localconnector "github.com/coreos-inc/auth/connector/local"
 	josesig "github.com/coreos-inc/auth/jose/sig"
 	"github.com/coreos-inc/auth/oauth2"
@@ -52,10 +53,12 @@ func TestHTTPExchangeToken(t *testing.T) {
 	}
 
 	ns, _ := url.Parse(issuerURL)
-	ns.Path = path.Join(ns.Path, server.HttpPathAuthIDPC)
+	ns.Path = path.Join(ns.Path, server.HttpPathAuth)
 	idpc := localconnector.NewLocalIDPConnector(*ns, srv.Login, idp)
+	idpcs := make(map[string]connector.IDPConnector)
+	idpcs["fake"] = idpc
 
-	sClient := &phttp.HandlerClient{Handler: srv.HTTPHandler(idpc)}
+	sClient := &phttp.HandlerClient{Handler: srv.HTTPHandler(idpcs, nil)}
 
 	cfg, err := oidc.FetchProviderConfig(sClient, issuerURL)
 	if err != nil {

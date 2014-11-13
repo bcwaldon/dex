@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/jose"
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
@@ -31,7 +32,7 @@ func (f *fakeIDPConnector) Register(mux *http.ServeMux) {}
 
 func TestHandleAuthFuncMethodNotAllowed(t *testing.T) {
 	for _, m := range []string{"POST", "PUT", "DELETE"} {
-		hdlr := handleAuthFunc(nil, nil)
+		hdlr := handleAuthFunc(nil, nil, nil)
 		req, err := http.NewRequest(m, "http://example.com", nil)
 		if err != nil {
 			t.Errorf("case %s: unable to create HTTP request: %v", m, err)
@@ -51,6 +52,8 @@ func TestHandleAuthFuncMethodNotAllowed(t *testing.T) {
 
 func TestHandleAuthFuncResponses(t *testing.T) {
 	idpc := &fakeIDPConnector{loginURL: "http://fake.example.com"}
+	idpcs := make(map[string]connector.IDPConnector)
+	idpcs["fake"] = idpc
 	signer := &StaticSigner{sig: []byte("beer"), err: nil}
 	srv := &Server{
 		IssuerURL:      "http://server.example.com",
@@ -79,6 +82,7 @@ func TestHandleAuthFuncResponses(t *testing.T) {
 				"response_type": []string{"code"},
 				"redirect_uri":  []string{"http://client.example.com/callback"},
 				"client_id":     []string{"XXX"},
+				"idpc_id":       []string{"fake"},
 			},
 			wantCode:     http.StatusTemporaryRedirect,
 			wantLocation: "http://fake.example.com",
@@ -90,6 +94,7 @@ func TestHandleAuthFuncResponses(t *testing.T) {
 				"response_type": []string{"code"},
 				"redirect_uri":  []string{"http://client.example.com/callback"},
 				"client_id":     []string{"YYY"},
+				"idpc_id":       []string{"fake"},
 			},
 			wantCode: http.StatusBadRequest,
 		},
@@ -98,13 +103,14 @@ func TestHandleAuthFuncResponses(t *testing.T) {
 		{
 			query: url.Values{
 				"response_type": []string{"token"},
+				"idpc_id":       []string{"fake"},
 			},
 			wantCode: http.StatusBadRequest,
 		},
 	}
 
 	for i, tt := range tests {
-		hdlr := handleAuthFunc(srv, idpc)
+		hdlr := handleAuthFunc(srv, idpcs, nil)
 		w := httptest.NewRecorder()
 		u := fmt.Sprintf("http://server.example.com?%s", tt.query.Encode())
 		req, err := http.NewRequest("GET", u, nil)
@@ -170,7 +176,7 @@ func TestHandleDiscoveryFunc(t *testing.T) {
 	u := "http://server.example.com"
 	cfg := oidc.ProviderConfig{
 		Issuer:        u,
-		AuthEndpoint:  u + httpPathAuth,
+		AuthEndpoint:  u + HttpPathAuth,
 		TokenEndpoint: u + httpPathToken,
 		KeysEndpoint:  u + httpPathKeys,
 

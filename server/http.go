@@ -64,7 +64,7 @@ func handleKeysFunc(keys []jose.JWK) http.HandlerFunc {
 	}
 }
 
-func handleAuthFunc(sm *SessionManager, ciRepo ClientIdentityRepo, idpc connector.IDPConnector) http.HandlerFunc {
+func handleAuthFunc(srv OIDCServer, idpc connector.IDPConnector) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			w.Header().Set("Allow", "GET")
@@ -78,14 +78,13 @@ func handleAuthFunc(sm *SessionManager, ciRepo ClientIdentityRepo, idpc connecto
 			return
 		}
 
-		ci := ciRepo.ClientIdentity(acr.ClientID)
-		if ci == nil {
-			phttp.WriteError(w, http.StatusBadRequest, "unrecognized client ID")
+		key, err := srv.NewSession(*acr)
+		if err != nil {
+			phttp.WriteError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 
-		ses := sm.NewSession(*ci, acr.State)
-		lu, err := idpc.LoginURL(ses.NewKey())
+		lu, err := idpc.LoginURL(key)
 		if err != nil {
 			log.Printf("IDPConnector.LoginURL failed: %v", err)
 			phttp.WriteError(w, http.StatusInternalServerError, "")
@@ -98,7 +97,7 @@ func handleAuthFunc(sm *SessionManager, ciRepo ClientIdentityRepo, idpc connecto
 	}
 }
 
-func handleTokenFunc(sm *SessionManager, ciRepo ClientIdentityRepo) http.HandlerFunc {
+func handleTokenFunc(srv OIDCServer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			w.Header().Set("Allow", "POST")
@@ -125,35 +124,17 @@ func handleTokenFunc(sm *SessionManager, ciRepo ClientIdentityRepo) http.Handler
 			return
 		}
 
-		clientID, clientSecret, ok := phttp.BasicAuth(r)
+		user, password, ok := phttp.BasicAuth(r)
 		if !ok {
 			w.Header().Set("WWW-Authenticate", "Basic")
-			phttp.WriteError(w, http.StatusUnauthorized, "client authentication required")
+			phttp.WriteError(w, http.StatusUnauthorized, "need to authenticate client")
 			return
 		}
 
-		ci := ciRepo.ClientIdentity(clientID)
-		if ci == nil || ci.Secret != clientSecret {
-			w.Header().Set("WWW-Authenticate", "Basic")
-			phttp.WriteError(w, http.StatusUnauthorized, "unrecognized client")
-			return
-		}
-
-		ses := sm.Session(code)
-		if ses == nil {
-			phttp.WriteError(w, http.StatusBadRequest, "invalid_grant")
-			return
-		}
-
-		if !ses.ClientIdentity.Match(*ci) {
-			phttp.WriteError(w, http.StatusBadRequest, "invalid_grant")
-			return
-		}
-
-		jwt, err := ses.IDToken()
+		ci := oauth2.ClientIdentity{ID: user, Secret: password}
+		jwt, err := srv.Token(ci, code)
 		if err != nil {
-			log.Printf("Failed to generate ID token: %v", err)
-			phttp.WriteError(w, http.StatusInternalServerError, "server_error")
+			phttp.WriteError(w, http.StatusBadRequest, "invalid_grant")
 			return
 		}
 

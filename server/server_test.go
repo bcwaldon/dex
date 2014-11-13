@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 
+	josesig "github.com/coreos-inc/auth/jose/sig"
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 )
@@ -121,5 +122,143 @@ func TestServerLoginNewSessionFails(t *testing.T) {
 
 	if code != "" {
 		t.Fatalf("Expected empty code, got=%s", code)
+	}
+}
+
+func TestServerToken(t *testing.T) {
+	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
+	ciRepo := NewClientIdentityRepo([]oauth2.ClientIdentity{ci})
+	signer := &StaticSigner{sig: []byte("beer"), err: nil}
+	sm := NewSessionManager("http://server.example.com", signer)
+
+	srv := &Server{
+		IssuerURL:          "http://server.example.com",
+		Signer:             signer,
+		SessionManager:     sm,
+		ClientIdentityRepo: ciRepo,
+	}
+
+	ses := sm.NewSession(ci, "bogus")
+	err := ses.Identify(oidc.Identity{})
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	jwt, err := srv.Token(ci, ses.NewKey())
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if jwt == nil {
+		t.Fatalf("Expected non-nil jwt")
+	}
+}
+
+func TestServerTokenUnrecognizedKey(t *testing.T) {
+	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
+	ciRepo := NewClientIdentityRepo([]oauth2.ClientIdentity{ci})
+	signer := &StaticSigner{sig: []byte("beer"), err: nil}
+	sm := NewSessionManager("http://server.example.com", signer)
+
+	srv := &Server{
+		IssuerURL:          "http://server.example.com",
+		Signer:             signer,
+		SessionManager:     sm,
+		ClientIdentityRepo: ciRepo,
+	}
+
+	ses := sm.NewSession(ci, "bogus")
+	err := ses.Identify(oidc.Identity{})
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	jwt, err := srv.Token(ci, "foo")
+	if err == nil {
+		t.Fatalf("Expected non-nil error")
+	}
+	if jwt != nil {
+		t.Fatalf("Expected nil jwt")
+	}
+}
+
+func TestServerTokenFail(t *testing.T) {
+	issuerURL := "http://server.example.com"
+	keyFixture := "goodkey"
+	ciFixture := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
+	signerFixture := &StaticSigner{sig: []byte("beer"), err: nil}
+
+	tests := []struct {
+		signer  josesig.Signer
+		argCI   oauth2.ClientIdentity
+		argKey  string
+		succeed bool
+	}{
+		// control test case to make sure fixtures check out
+		{
+			signer:  signerFixture,
+			argCI:   ciFixture,
+			argKey:  keyFixture,
+			succeed: true,
+		},
+
+		// unrecognized key
+		{
+			signer: signerFixture,
+			argCI:  ciFixture,
+			argKey: "foo",
+		},
+
+		// unrecognized client
+		{
+			signer: signerFixture,
+			argCI:  oauth2.ClientIdentity{ID: "YYY"},
+			argKey: keyFixture,
+		},
+
+		// signing operation fails
+		{
+			signer: &StaticSigner{sig: nil, err: errors.New("fail")},
+			argCI:  ciFixture,
+			argKey: keyFixture,
+		},
+	}
+
+	for i, tt := range tests {
+		sm := NewSessionManager("http://server.example.com", tt.signer)
+		sm.generateCode = func() string { return keyFixture }
+
+		ses := sm.NewSession(ciFixture, "bogus")
+		err := ses.Identify(oidc.Identity{})
+		if err != nil {
+			t.Errorf("case %d: unexpected error: %v", i, err)
+			continue
+		}
+
+		ciRepo := NewClientIdentityRepo([]oauth2.ClientIdentity{ciFixture})
+		srv := &Server{
+			IssuerURL:          issuerURL,
+			Signer:             tt.signer,
+			SessionManager:     sm,
+			ClientIdentityRepo: ciRepo,
+		}
+
+		// need to create the key, but no need to address it
+		ses.NewKey()
+
+		jwt, err := srv.Token(tt.argCI, tt.argKey)
+		if tt.succeed {
+			if err != nil {
+				t.Errorf("case %d: got non-nil error: %v", i, err)
+			} else if jwt == nil {
+				t.Errorf("case %d: got nil JWT", i)
+			}
+
+		} else {
+			if err == nil {
+				t.Errorf("case %d: got nil error", i)
+			} else if jwt != nil {
+				t.Errorf("case %d: got non-nil JWT", i)
+			}
+		}
 	}
 }

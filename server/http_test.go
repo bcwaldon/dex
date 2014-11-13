@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/coreos-inc/auth/oauth2"
+	"github.com/coreos-inc/auth/oidc"
 )
 
 type fakeIDPConnector struct {
@@ -124,5 +125,64 @@ func TestHandleTokenFuncMethodNotAllowed(t *testing.T) {
 		if want != got {
 			t.Errorf("case %s: expected HTTP %d, got %d", m, want, got)
 		}
+	}
+}
+
+func TestHandleDiscoveryFuncMethodNotAllowed(t *testing.T) {
+	for _, m := range []string{"POST", "PUT", "DELETE"} {
+		hdlr := handleDiscoveryFunc(oidc.ProviderConfig{})
+		req, err := http.NewRequest(m, "http://example.com", nil)
+		if err != nil {
+			t.Errorf("case %s: unable to create HTTP request: %v", m, err)
+			continue
+		}
+
+		w := httptest.NewRecorder()
+		hdlr.ServeHTTP(w, req)
+
+		want := http.StatusMethodNotAllowed
+		got := w.Code
+		if want != got {
+			t.Errorf("case %s: expected HTTP %d, got %d", m, want, got)
+		}
+	}
+}
+
+func TestHandleDiscoveryFunc(t *testing.T) {
+	u := "http://server.example.com"
+	cfg := oidc.ProviderConfig{
+		Issuer:        u,
+		AuthEndpoint:  u + httpPathAuth,
+		TokenEndpoint: u + httpPathToken,
+		KeysEndpoint:  u + httpPathKeys,
+
+		GrantTypesSupported:               []string{"authorization_code"},
+		ResponseTypesSupported:            []string{"code"},
+		SubjectTypesSupported:             []string{"public"},
+		IDTokenAlgValuesSupported:         []string{"RS256"},
+		TokenEndpointAuthMethodsSupported: []string{"client_secret_basic"},
+	}
+
+	req, err := http.NewRequest("GET", "http://server.example.com", nil)
+	if err != nil {
+		t.Fatalf("Failed creating HTTP request: err=%v", err)
+	}
+
+	w := httptest.NewRecorder()
+	hdlr := handleDiscoveryFunc(cfg)
+	hdlr.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("Incorrect status code: want=200 got=%d", w.Code)
+	}
+
+	if ct := w.Header().Get("Content-Type"); ct != "application/json" {
+		t.Fatalf("Incorrect Content-Type: want=application/json, got %s", ct)
+	}
+
+	wantBody := `{"issuer":"http://server.example.com","authorization_endpoint":"http://server.example.com/auth","token_endpoint":"http://server.example.com/token","jwks_uri":"http://server.example.com/keys","response_types_supported":["code"],"grant_types_supported":["authorization_code"],"subject_types_supported":["public"],"id_token_alg_values_supported":["RS256"],"token_endpoint_auth_methods_supported":["client_secret_basic"]}`
+	gotBody := w.Body.String()
+	if wantBody != gotBody {
+		t.Fatalf("Incorrect body: want=%s got=%s", wantBody, gotBody)
 	}
 }

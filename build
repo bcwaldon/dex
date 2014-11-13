@@ -1,4 +1,4 @@
 #!/bin/bash -e
 
-go build -o bin/authd github.com/coreos-inc/auth/authd
-go build -o bin/oidc-app github.com/coreos-inc/auth/examples/app
+godep go build -o bin/authd github.com/coreos-inc/auth/authd
+godep go build -o bin/oidc-app github.com/coreos-inc/auth/examples/app

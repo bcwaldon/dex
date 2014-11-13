@@ -2,11 +2,13 @@ package server
 
 import (
 	"fmt"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
 
+	"github.com/coreos-inc/auth/jose"
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 )
@@ -181,6 +183,70 @@ func TestHandleDiscoveryFunc(t *testing.T) {
 	}
 
 	wantBody := `{"issuer":"http://server.example.com","authorization_endpoint":"http://server.example.com/auth","token_endpoint":"http://server.example.com/token","jwks_uri":"http://server.example.com/keys","response_types_supported":["code"],"grant_types_supported":["authorization_code"],"subject_types_supported":["public"],"id_token_alg_values_supported":["RS256"],"token_endpoint_auth_methods_supported":["client_secret_basic"]}`
+	gotBody := w.Body.String()
+	if wantBody != gotBody {
+		t.Fatalf("Incorrect body: want=%s got=%s", wantBody, gotBody)
+	}
+}
+
+func TestHandleKeysFuncMethodNotAllowed(t *testing.T) {
+	for _, m := range []string{"POST", "PUT", "DELETE"} {
+		hdlr := handleKeysFunc([]jose.JWK{})
+		req, err := http.NewRequest(m, "http://example.com", nil)
+		if err != nil {
+			t.Errorf("case %s: unable to create HTTP request: %v", m, err)
+			continue
+		}
+
+		w := httptest.NewRecorder()
+		hdlr.ServeHTTP(w, req)
+
+		want := http.StatusMethodNotAllowed
+		got := w.Code
+		if want != got {
+			t.Errorf("case %s: expected HTTP %d, got %d", m, want, got)
+		}
+	}
+}
+
+func TestHandleKeysFunc(t *testing.T) {
+	keys := []jose.JWK{
+		jose.JWK{
+			ID:       "1234",
+			Type:     "RSA",
+			Alg:      "RS256",
+			Use:      "sig",
+			Exponent: 65537,
+			Modulus:  big.NewInt(int64(5716758339926702)),
+		},
+		jose.JWK{
+			ID:       "5678",
+			Type:     "RSA",
+			Alg:      "RS256",
+			Use:      "sig",
+			Exponent: 65537,
+			Modulus:  big.NewInt(int64(1234294715519622)),
+		},
+	}
+
+	req, err := http.NewRequest("GET", "http://server.example.com", nil)
+	if err != nil {
+		t.Fatalf("Failed creating HTTP request: err=%v", err)
+	}
+
+	w := httptest.NewRecorder()
+	hdlr := handleKeysFunc(keys)
+	hdlr.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("Incorrect status code: want=200 got=%d", w.Code)
+	}
+
+	if ct := w.Header().Get("Content-Type"); ct != "application/json" {
+		t.Fatalf("Incorrect Content-Type: want=application/json, got %s", ct)
+	}
+
+	wantBody := `{"keys":[{"kid":"1234","kty":"RSA","alg":"RS256","use":"sig","e":"AAAAAAABAAE=","n":"FE9chh46rg=="},{"kid":"5678","kty":"RSA","alg":"RS256","use":"sig","e":"AAAAAAABAAE=","n":"BGKVohEShg=="}]}`
 	gotBody := w.Body.String()
 	if wantBody != gotBody {
 		t.Fatalf("Incorrect body: want=%s got=%s", wantBody, gotBody)

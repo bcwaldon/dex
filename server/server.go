@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"reflect"
 
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/jose"
@@ -56,6 +57,10 @@ func (s *Server) HTTPHandler(idpc connector.IDPConnector) http.Handler {
 func (s *Server) NewSession(acr oauth2.AuthCodeRequest) (key string, err error) {
 	ci := s.ClientIdentityRepo.ClientIdentity(acr.ClientID)
 	if ci == nil {
+		return "", oauth2.NewError(oauth2.ErrorInvalidRequest)
+	}
+
+	if !reflect.DeepEqual(ci.RedirectURL, acr.RedirectURL) {
 		return "", oauth2.NewError(oauth2.ErrorInvalidRequest)
 	}
 

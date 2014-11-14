@@ -50,6 +50,7 @@ func TestServerNewSession(t *testing.T) {
 		acr oauth2.AuthCodeRequest
 		err string
 	}{
+		// assert fixtures are good
 		{
 			acr: oauth2.AuthCodeRequest{
 				ClientID:    "XXX",
@@ -64,6 +65,17 @@ func TestServerNewSession(t *testing.T) {
 			acr: oauth2.AuthCodeRequest{
 				ClientID:    "YYY",
 				RedirectURL: ciFixture.RedirectURL,
+				Scope:       []string{"foo", "bar"},
+				State:       "pants",
+			},
+			err: oauth2.ErrorInvalidRequest,
+		},
+
+		// mismatched RedirectURL
+		{
+			acr: oauth2.AuthCodeRequest{
+				ClientID:    "XXX",
+				RedirectURL: url.URL{Scheme: "http", Host: "example.com"},
 				Scope:       []string{"foo", "bar"},
 				State:       "pants",
 			},
@@ -84,8 +96,8 @@ func TestServerNewSession(t *testing.T) {
 
 		key, err := srv.NewSession(tt.acr)
 		if tt.err != "" {
-			if err.Error() != tt.err {
-				t.Errorf("case %d: incorrect error: want=%q got=%q", i, tt.err, err)
+			if err == nil || err.Error() != tt.err {
+				t.Errorf("case %d: incorrect error: want=%q got=%v", i, tt.err, err)
 			}
 			continue
 		}

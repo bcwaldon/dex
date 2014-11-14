@@ -32,6 +32,107 @@ func TestServerProviderConfig(t *testing.T) {
 	}
 }
 
+func TestServerNewSession(t *testing.T) {
+	keyFixture := "fakecode"
+	signerFixture := &StaticSigner{sig: []byte("beer"), err: nil}
+	ciFixture := oauth2.ClientIdentity{
+		ID:     "XXX",
+		Secret: "secrete",
+		RedirectURL: url.URL{
+			Scheme: "http",
+			Host:   "client.example.com",
+			Path:   "/callback",
+		},
+	}
+	ciRepoFixture := NewClientIdentityRepo([]oauth2.ClientIdentity{ciFixture})
+
+	tests := []struct {
+		acr oauth2.AuthCodeRequest
+		err string
+	}{
+		// basic request succeeds
+		{
+			acr: oauth2.AuthCodeRequest{
+				ClientID:    "XXX",
+				RedirectURL: nil,
+				Scope:       []string{"foo", "bar"},
+				State:       "pants",
+			},
+		},
+
+		// RedirectURL provided, matching that in ClientIdentity
+		{
+			acr: oauth2.AuthCodeRequest{
+				ClientID:    "XXX",
+				RedirectURL: &ciFixture.RedirectURL,
+				Scope:       []string{"foo", "bar"},
+				State:       "pants",
+			},
+		},
+
+		// unrecognized client
+		{
+			acr: oauth2.AuthCodeRequest{
+				ClientID:    "YYY",
+				RedirectURL: &ciFixture.RedirectURL,
+				Scope:       []string{"foo", "bar"},
+				State:       "pants",
+			},
+			err: oauth2.ErrorInvalidRequest,
+		},
+
+		// mismatched RedirectURL
+		{
+			acr: oauth2.AuthCodeRequest{
+				ClientID:    "XXX",
+				RedirectURL: &url.URL{Scheme: "http", Host: "example.com"},
+				Scope:       []string{"foo", "bar"},
+				State:       "pants",
+			},
+			err: oauth2.ErrorInvalidRequest,
+		},
+	}
+
+	for i, tt := range tests {
+		sm := NewSessionManager("http://server.example.com", signerFixture)
+		sm.generateCode = staticGenerateCodeFunc(keyFixture)
+
+		srv := &Server{
+			IssuerURL:          "http://server.example.com",
+			Signer:             signerFixture,
+			ClientIdentityRepo: ciRepoFixture,
+			SessionManager:     sm,
+		}
+
+		key, err := srv.NewSession(tt.acr)
+		if tt.err != "" {
+			if err == nil || err.Error() != tt.err {
+				t.Errorf("case %d: incorrect error: want=%q got=%v", i, tt.err, err)
+			}
+			continue
+		}
+
+		if err != nil {
+			t.Errorf("case %d: got non-nil error: %v", i, err)
+			continue
+		}
+
+		ses := sm.Session(key)
+		if ses == nil {
+			t.Errorf("case %d: session not retreivable", i)
+			continue
+		}
+
+		if ciFixture != ses.ClientIdentity {
+			t.Errorf("case %d: session created with incorrect ClientIdentity: want=%#v got=%#v", i, ciFixture, ses.ClientIdentity)
+		}
+
+		if tt.acr.State != ses.ClientState {
+			t.Errorf("case %d: session created with incorrect State: want=%q got=%q", i, tt.acr.State, ses.ClientState)
+		}
+	}
+}
+
 func TestServerLogin(t *testing.T) {
 	ci := oauth2.ClientIdentity{
 		ID:     "XXX",
@@ -69,35 +170,7 @@ func TestServerLogin(t *testing.T) {
 	}
 }
 
-func TestServerLoginUnrecognizedClient(t *testing.T) {
-	ciRepo := NewClientIdentityRepo([]oauth2.ClientIdentity{
-		oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"},
-	})
-
-	signer := &StaticSigner{sig: []byte("beer"), err: nil}
-
-	sm := NewSessionManager("http://server.example.com", signer)
-	sm.generateCode = staticGenerateCodeFunc("fakecode")
-
-	srv := &Server{
-		IssuerURL:          "http://server.example.com",
-		Signer:             signer,
-		SessionManager:     sm,
-		ClientIdentityRepo: ciRepo,
-	}
-
-	ident := oidc.Identity{ID: "YYY", Name: "elroy", Email: "elroy@example.com"}
-	code, err := srv.Login(ident, "123")
-	if err == nil {
-		t.Fatalf("Expected non-nil error")
-	}
-
-	if code != "" {
-		t.Fatalf("Expected empty code, got=%s", code)
-	}
-}
-
-func TestServerLoginNewSessionFails(t *testing.T) {
+func TestServerLoginUnrecognizedSessionKey(t *testing.T) {
 	ciRepo := NewClientIdentityRepo([]oauth2.ClientIdentity{
 		oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"},
 	})

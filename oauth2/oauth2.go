@@ -195,7 +195,7 @@ type TokenResponse struct {
 
 type AuthCodeRequest struct {
 	ClientID    string
-	RedirectURL url.URL
+	RedirectURL *url.URL
 	Scope       []string
 	State       string
 }
@@ -205,15 +205,16 @@ func ParseAuthCodeRequest(q url.Values) (*AuthCodeRequest, error) {
 		return nil, fmt.Errorf("response_type %q unsupported", rt)
 	}
 
+	var ru *url.URL
 	redirectURL := q.Get("redirect_uri")
-	if redirectURL == "" {
-		return nil, errors.New("missing redirect_uri query param")
+	if redirectURL != "" {
+		var err error
+		ru, err = url.Parse(redirectURL)
+		if err != nil {
+			return nil, errors.New("redirect_uri query param invalid")
+		}
 	}
 
-	ru, err := url.Parse(redirectURL)
-	if err != nil {
-		return nil, errors.New("redirect_uri query param invalid")
-	}
 	clientID := q.Get("client_id")
 	if clientID == "" {
 		return nil, errors.New("missing client_id query param")
@@ -221,7 +222,7 @@ func ParseAuthCodeRequest(q url.Values) (*AuthCodeRequest, error) {
 
 	acr := &AuthCodeRequest{
 		ClientID:    clientID,
-		RedirectURL: *ru,
+		RedirectURL: ru,
 		State:       q.Get("state"),
 		Scope:       make([]string, 0),
 	}

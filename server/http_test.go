@@ -56,7 +56,15 @@ func TestHandleAuthFuncResponses(t *testing.T) {
 		Signer:         signer,
 		SessionManager: NewSessionManager("http://fake.example.com", signer),
 		ClientIdentityRepo: NewClientIdentityRepo([]oauth2.ClientIdentity{
-			oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"},
+			oauth2.ClientIdentity{
+				ID:     "XXX",
+				Secret: "secrete",
+				RedirectURL: url.URL{
+					Scheme: "http",
+					Host:   "client.example.com",
+					Path:   "/callback",
+				},
+			},
 		}),
 	}
 

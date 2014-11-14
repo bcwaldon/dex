@@ -1,10 +1,10 @@
 package server
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"reflect"
 
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/jose"
@@ -57,14 +57,15 @@ func (s *Server) HTTPHandler(idpc connector.IDPConnector) http.Handler {
 func (s *Server) NewSession(acr oauth2.AuthCodeRequest) (key string, err error) {
 	ci := s.ClientIdentityRepo.ClientIdentity(acr.ClientID)
 	if ci == nil {
-		err = errors.New("unrecognized client ID")
-		return
+		return "", oauth2.NewError(oauth2.ErrorInvalidRequest)
+	}
+
+	if acr.RedirectURL != nil && !reflect.DeepEqual(ci.RedirectURL, *acr.RedirectURL) {
+		return "", oauth2.NewError(oauth2.ErrorInvalidRequest)
 	}
 
 	ses := s.SessionManager.NewSession(*ci, acr.State)
-	key = ses.NewKey()
-
-	return
+	return ses.NewKey(), nil
 }
 
 func (s *Server) Login(ident oidc.Identity, key string) (string, error) {

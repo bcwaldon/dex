@@ -47,10 +47,8 @@ type Session struct {
 	sessionManager *SessionManager
 }
 
-func NewSessionManager(issuerURL string, signer josesig.Signer) *SessionManager {
+func NewSessionManager() *SessionManager {
 	return &SessionManager{
-		issuerURL:    issuerURL,
-		signer:       signer,
 		sessions:     make([]*Session, 0),
 		keys:         make(map[string]*SessionKey),
 		generateCode: generateCode,
@@ -59,8 +57,6 @@ func NewSessionManager(issuerURL string, signer josesig.Signer) *SessionManager 
 }
 
 type SessionManager struct {
-	issuerURL    string
-	signer       josesig.Signer
 	sessions     []*Session
 	keys         map[string]*SessionKey
 	generateCode generateCodeFunc
@@ -123,14 +119,14 @@ func (s *Session) Identify(ident oidc.Identity) error {
 	return nil
 }
 
-func (s *Session) IDToken() (*jose.JWT, error) {
+func (s *Session) IDToken(issuerURL string, signer josesig.Signer) (*jose.JWT, error) {
 	if s.State != sessionStateIdentified {
 		return nil, fmt.Errorf("session state %s, expect %s", s.State, sessionStateIdentified)
 	}
 
 	claims := jose.Claims{
 		// required
-		"iss": s.sessionManager.issuerURL,
+		"iss": issuerURL,
 		"sub": s.Identity.ID,
 		"aud": s.ClientIdentity.ID,
 		// explicitly cast to float64 for consistent JSON (de)serialization
@@ -142,7 +138,7 @@ func (s *Session) IDToken() (*jose.JWT, error) {
 		"email": s.Identity.Email,
 	}
 
-	jwt, err := josesig.NewSignedJWT(claims, s.sessionManager.signer)
+	jwt, err := josesig.NewSignedJWT(claims, signer)
 	if err != nil {
 		return nil, err
 	}

@@ -41,7 +41,7 @@ func TestHTTPExchangeToken(t *testing.T) {
 	cir := server.NewClientIdentityRepo([]oauth2.ClientIdentity{ci})
 
 	issuerURL := "http://server.example.com"
-	sm := server.NewSessionManager(issuerURL, signer)
+	sm := server.NewSessionManager()
 
 	srv := &server.Server{
 		IssuerURL:          issuerURL,

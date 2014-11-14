@@ -104,7 +104,7 @@ func (s *Server) Token(ci oauth2.ClientIdentity, key string) (*jose.JWT, error) 
 		return nil, oauth2.NewError(oauth2.ErrorInvalidGrant)
 	}
 
-	jwt, err := ses.IDToken()
+	jwt, err := ses.IDToken(s.IssuerURL, s.Signer)
 	if err != nil {
 		log.Printf("Failed to generate ID token: %v", err)
 		return nil, oauth2.NewError(oauth2.ErrorServerError)

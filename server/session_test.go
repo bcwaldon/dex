@@ -51,7 +51,7 @@ func staticGenerateCodeFunc(code string) generateCodeFunc {
 
 func TestSessionManagerNewSession(t *testing.T) {
 	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
-	sm := NewSessionManager("http://server.example.com", nil)
+	sm := NewSessionManager()
 	fc := clockwork.NewFakeClock()
 	sm.clock = fc
 
@@ -70,7 +70,7 @@ func TestSessionManagerNewSession(t *testing.T) {
 }
 
 func TestSessionIdentifyTwice(t *testing.T) {
-	sm := NewSessionManager("http://server.example.com", nil)
+	sm := NewSessionManager()
 	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
 	ident := oidc.Identity{ID: "YYY", Name: "elroy", Email: "elroy@example.com"}
 
@@ -88,7 +88,7 @@ func TestSessionIdentifyTwice(t *testing.T) {
 func TestSessionIDToken(t *testing.T) {
 	signer := &StaticSigner{sig: []byte("beer"), err: nil}
 
-	sm := NewSessionManager("http://server.example.com", signer)
+	sm := NewSessionManager()
 	sm.generateCode = staticGenerateCodeFunc("fakecode")
 	sm.clock = clockwork.NewFakeClock()
 
@@ -118,7 +118,7 @@ func TestSessionIDToken(t *testing.T) {
 		t.Fatalf("Failed creating signed JWT: %v", err)
 	}
 
-	got, err := ses.IDToken()
+	got, err := ses.IDToken("http://server.example.com", signer)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -130,7 +130,7 @@ func TestSessionIDToken(t *testing.T) {
 
 func TestSessionIDTokenSignerFails(t *testing.T) {
 	signer := &StaticSigner{sig: nil, err: errors.New("failed")}
-	sm := NewSessionManager("http://server.example.com", signer)
+	sm := NewSessionManager()
 
 	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
 	ident := oidc.Identity{ID: "YYY", Name: "elroy", Email: "elroy@example.com"}
@@ -140,14 +140,13 @@ func TestSessionIDTokenSignerFails(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	if _, err := ses.IDToken(); err == nil {
+	if _, err := ses.IDToken("http://server.example.com", signer); err == nil {
 		t.Fatalf("Expected non-nil error")
 	}
 }
 
 func TestSessionManagerLookup(t *testing.T) {
-	signer := &StaticSigner{sig: []byte("beer"), err: nil}
-	sm := NewSessionManager("http://server.example.com", signer)
+	sm := NewSessionManager()
 
 	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
 	ses := sm.NewSession(ci, "bogus")

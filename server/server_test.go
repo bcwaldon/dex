@@ -94,7 +94,7 @@ func TestServerNewSession(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		sm := NewSessionManager("http://server.example.com", signerFixture)
+		sm := NewSessionManager()
 		sm.generateCode = staticGenerateCodeFunc(keyFixture)
 
 		srv := &Server{
@@ -147,7 +147,7 @@ func TestServerLogin(t *testing.T) {
 
 	signer := &StaticSigner{sig: []byte("beer"), err: nil}
 
-	sm := NewSessionManager("http://server.example.com", signer)
+	sm := NewSessionManager()
 	sm.generateCode = staticGenerateCodeFunc("fakecode")
 	ses := sm.NewSession(ci, "bogus")
 
@@ -177,7 +177,7 @@ func TestServerLoginUnrecognizedSessionKey(t *testing.T) {
 
 	signer := &StaticSigner{sig: nil, err: errors.New("fail")}
 
-	sm := NewSessionManager("http://server.example.com", signer)
+	sm := NewSessionManager()
 	sm.generateCode = staticGenerateCodeFunc("fakecode")
 
 	srv := &Server{
@@ -202,7 +202,7 @@ func TestServerToken(t *testing.T) {
 	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
 	ciRepo := NewClientIdentityRepo([]oauth2.ClientIdentity{ci})
 	signer := &StaticSigner{sig: []byte("beer"), err: nil}
-	sm := NewSessionManager("http://server.example.com", signer)
+	sm := NewSessionManager()
 
 	srv := &Server{
 		IssuerURL:          "http://server.example.com",
@@ -230,7 +230,7 @@ func TestServerTokenUnrecognizedKey(t *testing.T) {
 	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
 	ciRepo := NewClientIdentityRepo([]oauth2.ClientIdentity{ci})
 	signer := &StaticSigner{sig: []byte("beer"), err: nil}
-	sm := NewSessionManager("http://server.example.com", signer)
+	sm := NewSessionManager()
 
 	srv := &Server{
 		IssuerURL:          "http://server.example.com",
@@ -299,7 +299,7 @@ func TestServerTokenFail(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		sm := NewSessionManager("http://server.example.com", tt.signer)
+		sm := NewSessionManager()
 		sm.generateCode = func() string { return keyFixture }
 
 		ses := sm.NewSession(ciFixture, "bogus")

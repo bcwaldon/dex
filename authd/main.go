@@ -104,7 +104,7 @@ func newServerFromFlags(fs *flag.FlagSet) (*server.Server, error) {
 	}
 
 	signer := josesig.NewSignerRSA(staticKeyID, *privKey)
-	sm := server.NewSessionManager(listen, signer)
+	sm := server.NewSessionManager()
 	srv := server.Server{
 		IssuerURL:          listen,
 		Signer:             signer,

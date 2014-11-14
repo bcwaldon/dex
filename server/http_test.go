@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"testing"
 
 	"github.com/coreos-inc/auth/jose"
@@ -256,5 +257,85 @@ func TestHandleKeysFunc(t *testing.T) {
 	gotBody := w.Body.String()
 	if wantBody != gotBody {
 		t.Fatalf("Incorrect body: want=%s got=%s", wantBody, gotBody)
+	}
+}
+
+func TestWriteOAuth2Error(t *testing.T) {
+	tests := []struct {
+		err        *oauth2.Error
+		state      string
+		wantCode   int
+		wantHeader http.Header
+		wantBody   string
+	}{
+		{
+			err:      oauth2.NewError(oauth2.ErrorInvalidRequest),
+			state:    "bazinga",
+			wantCode: http.StatusBadRequest,
+			wantHeader: http.Header{
+				"Content-Type": []string{"application/json"},
+			},
+			wantBody: `{"error":"invalid_request","state":"bazinga"}`,
+		},
+		{
+			err:      oauth2.NewError(oauth2.ErrorInvalidRequest),
+			wantCode: http.StatusBadRequest,
+			wantHeader: http.Header{
+				"Content-Type": []string{"application/json"},
+			},
+			wantBody: `{"error":"invalid_request"}`,
+		},
+		{
+			err:      oauth2.NewError(oauth2.ErrorInvalidGrant),
+			wantCode: http.StatusBadRequest,
+			wantHeader: http.Header{
+				"Content-Type": []string{"application/json"},
+			},
+			wantBody: `{"error":"invalid_grant"}`,
+		},
+		{
+			err:      oauth2.NewError(oauth2.ErrorInvalidClient),
+			wantCode: http.StatusUnauthorized,
+			wantHeader: http.Header{
+				"Content-Type":     []string{"application/json"},
+				"Www-Authenticate": []string{"Basic"},
+			},
+			wantBody: `{"error":"invalid_client"}`,
+		},
+		{
+			err:      oauth2.NewError(oauth2.ErrorServerError),
+			wantCode: http.StatusBadRequest,
+			wantHeader: http.Header{
+				"Content-Type": []string{"application/json"},
+			},
+			wantBody: `{"error":"server_error"}`,
+		},
+		{
+			err:      oauth2.NewError(oauth2.ErrorUnsupportedGrantType),
+			wantCode: http.StatusBadRequest,
+			wantHeader: http.Header{
+				"Content-Type": []string{"application/json"},
+			},
+			wantBody: `{"error":"unsupported_grant_type"}`,
+		},
+	}
+
+	for i, tt := range tests {
+		w := httptest.NewRecorder()
+		writeOAuth2Error(w, tt.err, tt.state)
+
+		if tt.wantCode != w.Code {
+			t.Errorf("case %d: incorrect HTTP status: want=%d got=%d", i, tt.wantCode, w.Code)
+		}
+
+		gotHeader := w.Header()
+		if !reflect.DeepEqual(tt.wantHeader, gotHeader) {
+			t.Errorf("case %d: incorrect HTTP headers: want=%#v got=%#v", i, tt.wantHeader, gotHeader)
+		}
+
+		gotBody := w.Body.String()
+		if tt.wantBody != gotBody {
+			t.Errorf("case %d: incorrect HTTP body: want=%q got=%q", i, tt.wantBody, gotBody)
+		}
 	}
 }

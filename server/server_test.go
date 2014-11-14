@@ -188,17 +188,16 @@ func TestServerTokenFail(t *testing.T) {
 	signerFixture := &StaticSigner{sig: []byte("beer"), err: nil}
 
 	tests := []struct {
-		signer  josesig.Signer
-		argCI   oauth2.ClientIdentity
-		argKey  string
-		succeed bool
+		signer josesig.Signer
+		argCI  oauth2.ClientIdentity
+		argKey string
+		err    string
 	}{
 		// control test case to make sure fixtures check out
 		{
-			signer:  signerFixture,
-			argCI:   ciFixture,
-			argKey:  keyFixture,
-			succeed: true,
+			signer: signerFixture,
+			argCI:  ciFixture,
+			argKey: keyFixture,
 		},
 
 		// unrecognized key
@@ -206,6 +205,7 @@ func TestServerTokenFail(t *testing.T) {
 			signer: signerFixture,
 			argCI:  ciFixture,
 			argKey: "foo",
+			err:    oauth2.ErrorInvalidGrant,
 		},
 
 		// unrecognized client
@@ -213,6 +213,7 @@ func TestServerTokenFail(t *testing.T) {
 			signer: signerFixture,
 			argCI:  oauth2.ClientIdentity{ID: "YYY"},
 			argKey: keyFixture,
+			err:    oauth2.ErrorInvalidClient,
 		},
 
 		// signing operation fails
@@ -220,6 +221,7 @@ func TestServerTokenFail(t *testing.T) {
 			signer: &StaticSigner{sig: nil, err: errors.New("fail")},
 			argCI:  ciFixture,
 			argKey: keyFixture,
+			err:    oauth2.ErrorServerError,
 		},
 	}
 
@@ -246,7 +248,7 @@ func TestServerTokenFail(t *testing.T) {
 		ses.NewKey()
 
 		jwt, err := srv.Token(tt.argCI, tt.argKey)
-		if tt.succeed {
+		if tt.err == "" {
 			if err != nil {
 				t.Errorf("case %d: got non-nil error: %v", i, err)
 			} else if jwt == nil {
@@ -254,8 +256,8 @@ func TestServerTokenFail(t *testing.T) {
 			}
 
 		} else {
-			if err == nil {
-				t.Errorf("case %d: got nil error", i)
+			if err.Error() != tt.err {
+				t.Errorf("case %d: want err %q, got %q", i, tt.err, err.Error())
 			} else if jwt != nil {
 				t.Errorf("case %d: got non-nil JWT", i)
 			}

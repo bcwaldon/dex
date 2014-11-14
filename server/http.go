@@ -107,34 +107,39 @@ func handleTokenFunc(srv OIDCServer) http.HandlerFunc {
 
 		err := r.ParseForm()
 		if err != nil {
-			msg := fmt.Sprintf("unable to parse form from body: %v", err)
-			phttp.WriteError(w, http.StatusBadRequest, msg)
+			phttp.WriteError(w, http.StatusBadRequest, oauth2.ErrorInvalidRequest)
 			return
 		}
 
+		state := r.PostForm.Get("code")
+
 		grantType := r.PostForm.Get("grant_type")
 		if grantType != "authorization_code" {
-			phttp.WriteError(w, http.StatusBadRequest, "grant_type must be 'authorization_code'")
+			writeOAuth2Error(w, oauth2.NewError(oauth2.ErrorUnsupportedGrantType), state)
 			return
 		}
 
 		code := r.PostForm.Get("code")
 		if code == "" {
-			phttp.WriteError(w, http.StatusBadRequest, "missing code field")
+			writeOAuth2Error(w, oauth2.NewError(oauth2.ErrorInvalidRequest), state)
 			return
 		}
 
 		user, password, ok := phttp.BasicAuth(r)
 		if !ok {
 			w.Header().Set("WWW-Authenticate", "Basic")
-			phttp.WriteError(w, http.StatusUnauthorized, "need to authenticate client")
+			writeOAuth2Error(w, oauth2.NewError(oauth2.ErrorInvalidClient), state)
 			return
 		}
 
 		ci := oauth2.ClientIdentity{ID: user, Secret: password}
 		jwt, err := srv.Token(ci, code)
 		if err != nil {
-			phttp.WriteError(w, http.StatusBadRequest, "invalid_grant")
+			if oerr, ok := err.(*oauth2.Error); ok {
+				writeOAuth2Error(w, oerr, state)
+			} else {
+				phttp.WriteError(w, http.StatusInternalServerError, "")
+			}
 			return
 		}
 
@@ -147,7 +152,7 @@ func handleTokenFunc(srv OIDCServer) http.HandlerFunc {
 		b, err := json.Marshal(t)
 		if err != nil {
 			log.Printf("Failed marshaling %#v to JSON: %v", t, err)
-			phttp.WriteError(w, http.StatusInternalServerError, "")
+			writeOAuth2Error(w, oauth2.NewError(oauth2.ErrorServerError), state)
 			return
 		}
 
@@ -161,4 +166,31 @@ type oAuth2Token struct {
 	AccessToken string `json:"access_token"`
 	IDToken     string `json:"id_token"`
 	TokenType   string `json:"token_type"`
+}
+
+func writeOAuth2Error(w http.ResponseWriter, oerr *oauth2.Error, state string) {
+	status := http.StatusBadRequest
+	if oerr.Type == oauth2.ErrorInvalidClient {
+		status = http.StatusUnauthorized
+		w.Header().Set("WWW-Authenticate", "Basic")
+	}
+	w.Header().Set("Content-Type", "application/json")
+
+	s := struct {
+		Error string `json:"error"`
+		State string `json:"state,omitempty"`
+	}{
+		Error: oerr.Type,
+		State: state,
+	}
+
+	w.WriteHeader(status)
+
+	b, err := json.Marshal(s)
+	if err != nil {
+		log.Printf("Failed marshaling OAuth2 error: %v", err)
+		return
+	}
+
+	w.Write(b)
 }

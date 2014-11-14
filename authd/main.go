@@ -56,14 +56,13 @@ func main() {
 	}
 
 	listen := fs.Lookup("listen").Value.String()
-	l, err := url.Parse(listen)
+	lu, err := url.Parse(listen)
 	if err != nil {
 		log.Fatalf("Unable to use --listen flag: %v", err)
 	}
 
-	_, p, err := net.SplitHostPort(l.Host)
-	if err != nil {
-		log.Fatalf("Unable to parse host from --listen flag: %v", err)
+	if lu.Scheme != "http" {
+		log.Fatalf("Unable to listen using scheme %s", lu.Scheme)
 	}
 
 	idpc, err := newIDPConnectorFromFlags(fs, srv.Login)
@@ -73,7 +72,7 @@ func main() {
 
 	hdlr := srv.HTTPHandler(idpc)
 	httpsrv := &http.Server{
-		Addr:    fmt.Sprintf(":%s", p),
+		Addr:    lu.Host,
 		Handler: hdlr,
 	}
 

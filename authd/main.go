@@ -9,7 +9,6 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -36,7 +35,8 @@ func init() {
 
 func main() {
 	fs := flag.NewFlagSet("authd", flag.ExitOnError)
-	fs.String("listen", "http://localhost:5556", "")
+	fs.String("listen", "http://0.0.0.0:5556", "")
+	fs.String("issuer", "http://127.0.0.1:5556", "")
 	fs.String("clients", "./authd/fixtures/clients.json", "json file containing set of clients")
 
 	fs.String("connector-type", "local", "IdP connector type to configure")
@@ -85,8 +85,6 @@ func generateRSAPrivateKey() (*rsa.PrivateKey, error) {
 }
 
 func newServerFromFlags(fs *flag.FlagSet) (*server.Server, error) {
-	listen := fs.Lookup("listen").Value.String()
-
 	privKey, err := generateRSAPrivateKey()
 	if err != nil {
 		return nil, fmt.Errorf("unable to generate RSA private key: %v", err)
@@ -103,10 +101,11 @@ func newServerFromFlags(fs *flag.FlagSet) (*server.Server, error) {
 		return nil, fmt.Errorf("unable to read client identities from file %s: %v", cFile, err)
 	}
 
+	issuer := fs.Lookup("issuer").Value.String()
 	signer := josesig.NewSignerRSA(staticKeyID, *privKey)
 	sm := session.NewSessionManager()
 	srv := server.Server{
-		IssuerURL:          listen,
+		IssuerURL:          issuer,
 		Signer:             signer,
 		SessionManager:     sm,
 		ClientIdentityRepo: ciRepo,

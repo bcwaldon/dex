@@ -24,8 +24,8 @@ var (
 	DefaultScope = []string{"openid", "email", "profile"}
 )
 
-func FetchProviderConfig(hc phttp.Client, issuerURL string) (*ProviderConfig, error) {
-	req, err := http.NewRequest("GET", issuerURL+discoveryConfigPath, nil)
+func FetchProviderConfig(hc phttp.Client, discovery string) (*ProviderConfig, error) {
+	req, err := http.NewRequest("GET", discovery+discoveryConfigPath, nil)
 	if err != nil {
 		return nil, err
 	}

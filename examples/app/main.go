@@ -25,7 +25,7 @@ func main() {
 	listen := fs.String("listen", "http://localhost:5555", "")
 	clientID := fs.String("client-id", "", "")
 	clientSecret := fs.String("client-secret", "", "")
-	issuerURL := fs.String("issuer-url", "https://accounts.google.com", "")
+	discovery := fs.String("discovery", "https://accounts.google.com", "")
 	fs.Parse(os.Args[1:])
 
 	if *clientID == "" {
@@ -56,7 +56,7 @@ func main() {
 
 	var cfg *oidc.ProviderConfig
 	for {
-		cfg, err = oidc.FetchProviderConfig(http.DefaultClient, *issuerURL)
+		cfg, err = oidc.FetchProviderConfig(http.DefaultClient, *discovery)
 		if err == nil {
 			break
 		}
@@ -66,7 +66,7 @@ func main() {
 		time.Sleep(sleep)
 	}
 
-	log.Printf("Fetched provider config from %s: %#v", *issuerURL, *cfg)
+	log.Printf("Fetched provider config from %s: %#v", *discovery, *cfg)
 
 	client := &oidc.Client{
 		ProviderConfig: *cfg,

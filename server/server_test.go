@@ -50,11 +50,21 @@ func TestServerNewSession(t *testing.T) {
 		acr oauth2.AuthCodeRequest
 		err string
 	}{
-		// assert fixtures are good
+		// basic request succeeds
 		{
 			acr: oauth2.AuthCodeRequest{
 				ClientID:    "XXX",
-				RedirectURL: ciFixture.RedirectURL,
+				RedirectURL: nil,
+				Scope:       []string{"foo", "bar"},
+				State:       "pants",
+			},
+		},
+
+		// RedirectURL provided, matching that in ClientIdentity
+		{
+			acr: oauth2.AuthCodeRequest{
+				ClientID:    "XXX",
+				RedirectURL: &ciFixture.RedirectURL,
 				Scope:       []string{"foo", "bar"},
 				State:       "pants",
 			},
@@ -64,7 +74,7 @@ func TestServerNewSession(t *testing.T) {
 		{
 			acr: oauth2.AuthCodeRequest{
 				ClientID:    "YYY",
-				RedirectURL: ciFixture.RedirectURL,
+				RedirectURL: &ciFixture.RedirectURL,
 				Scope:       []string{"foo", "bar"},
 				State:       "pants",
 			},
@@ -75,7 +85,7 @@ func TestServerNewSession(t *testing.T) {
 		{
 			acr: oauth2.AuthCodeRequest{
 				ClientID:    "XXX",
-				RedirectURL: url.URL{Scheme: "http", Host: "example.com"},
+				RedirectURL: &url.URL{Scheme: "http", Host: "example.com"},
 				Scope:       []string{"foo", "bar"},
 				State:       "pants",
 			},

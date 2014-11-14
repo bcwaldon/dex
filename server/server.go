@@ -60,7 +60,7 @@ func (s *Server) NewSession(acr oauth2.AuthCodeRequest) (key string, err error) 
 		return "", oauth2.NewError(oauth2.ErrorInvalidRequest)
 	}
 
-	if !reflect.DeepEqual(ci.RedirectURL, acr.RedirectURL) {
+	if acr.RedirectURL != nil && !reflect.DeepEqual(ci.RedirectURL, *acr.RedirectURL) {
 		return "", oauth2.NewError(oauth2.ErrorInvalidRequest)
 	}
 

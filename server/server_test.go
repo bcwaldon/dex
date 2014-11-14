@@ -32,6 +32,85 @@ func TestServerProviderConfig(t *testing.T) {
 	}
 }
 
+func TestServerNewSession(t *testing.T) {
+	keyFixture := "fakecode"
+	signerFixture := &StaticSigner{sig: []byte("beer"), err: nil}
+	ciFixture := oauth2.ClientIdentity{
+		ID:     "XXX",
+		Secret: "secrete",
+		RedirectURL: url.URL{
+			Scheme: "http",
+			Host:   "client.example.com",
+			Path:   "/callback",
+		},
+	}
+	ciRepoFixture := NewClientIdentityRepo([]oauth2.ClientIdentity{ciFixture})
+
+	tests := []struct {
+		acr oauth2.AuthCodeRequest
+		err string
+	}{
+		{
+			acr: oauth2.AuthCodeRequest{
+				ClientID:    "XXX",
+				RedirectURL: ciFixture.RedirectURL,
+				Scope:       []string{"foo", "bar"},
+				State:       "pants",
+			},
+		},
+
+		// unrecognized client
+		{
+			acr: oauth2.AuthCodeRequest{
+				ClientID:    "YYY",
+				RedirectURL: ciFixture.RedirectURL,
+				Scope:       []string{"foo", "bar"},
+				State:       "pants",
+			},
+			err: oauth2.ErrorInvalidRequest,
+		},
+	}
+
+	for i, tt := range tests {
+		sm := NewSessionManager("http://server.example.com", signerFixture)
+		sm.generateCode = staticGenerateCodeFunc(keyFixture)
+
+		srv := &Server{
+			IssuerURL:          "http://server.example.com",
+			Signer:             signerFixture,
+			ClientIdentityRepo: ciRepoFixture,
+			SessionManager:     sm,
+		}
+
+		key, err := srv.NewSession(tt.acr)
+		if tt.err != "" {
+			if err.Error() != tt.err {
+				t.Errorf("case %d: incorrect error: want=%q got=%q", i, tt.err, err)
+			}
+			continue
+		}
+
+		if err != nil {
+			t.Errorf("case %d: got non-nil error: %v", i, err)
+			continue
+		}
+
+		ses := sm.Session(key)
+		if ses == nil {
+			t.Errorf("case %d: session not retreivable", i)
+			continue
+		}
+
+		if ciFixture != ses.ClientIdentity {
+			t.Errorf("case %d: session created with incorrect ClientIdentity: want=%#v got=%#v", i, ciFixture, ses.ClientIdentity)
+		}
+
+		if tt.acr.State != ses.ClientState {
+			t.Errorf("case %d: session created with incorrect State: want=%q got=%q", i, tt.acr.State, ses.ClientState)
+		}
+	}
+}
+
 func TestServerLogin(t *testing.T) {
 	ci := oauth2.ClientIdentity{
 		ID:     "XXX",

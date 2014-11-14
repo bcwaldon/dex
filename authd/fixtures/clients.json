@@ -2,7 +2,7 @@
   {
     "id": "XXX",
     "secret": "secrete",
-    "redirectURL": "http://localhost:5556/callback"
+    "redirectURL": "http://localhost:5555/callback"
   },
   {
     "id": "core-update",

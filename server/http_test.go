@@ -12,6 +12,7 @@ import (
 	"github.com/coreos-inc/auth/jose"
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
+	"github.com/coreos-inc/auth/session"
 )
 
 type fakeIDPConnector struct {
@@ -54,7 +55,7 @@ func TestHandleAuthFuncResponses(t *testing.T) {
 	srv := &Server{
 		IssuerURL:      "http://server.example.com",
 		Signer:         signer,
-		SessionManager: NewSessionManager(),
+		SessionManager: session.NewSessionManager(),
 		ClientIdentityRepo: NewClientIdentityRepo([]oauth2.ClientIdentity{
 			oauth2.ClientIdentity{
 				ID:     "XXX",

@@ -15,6 +15,7 @@ import (
 	"github.com/coreos-inc/auth/oidc"
 	phttp "github.com/coreos-inc/auth/pkg/http"
 	"github.com/coreos-inc/auth/server"
+	"github.com/coreos-inc/auth/session"
 )
 
 func TestHTTPExchangeToken(t *testing.T) {
@@ -41,7 +42,7 @@ func TestHTTPExchangeToken(t *testing.T) {
 	cir := server.NewClientIdentityRepo([]oauth2.ClientIdentity{ci})
 
 	issuerURL := "http://server.example.com"
-	sm := server.NewSessionManager()
+	sm := session.NewSessionManager()
 
 	srv := &server.Server{
 		IssuerURL:          issuerURL,
@@ -78,12 +79,12 @@ func TestHTTPExchangeToken(t *testing.T) {
 
 	// this will actually happen due to some interaction between the
 	// end-user and a remote identity provider
-	ses := sm.NewSession(ci, "bogus")
-	if err := ses.Identify(user.Identity()); err != nil {
+	sessionID := sm.NewSession(ci, "bogus")
+	if _, err = sm.Identify(sessionID, user.Identity()); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	req, err := http.NewRequest("GET", fmt.Sprintf("http://client.example.com/callback?code=%s", ses.NewKey()), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("http://client.example.com/callback?code=%s", sm.NewSessionKey(sessionID)), nil)
 	if err != nil {
 		t.Fatalf("Failed creating HTTP request: %v", err)
 	}

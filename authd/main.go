@@ -22,6 +22,7 @@ import (
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 	"github.com/coreos-inc/auth/server"
+	"github.com/coreos-inc/auth/session"
 )
 
 var (
@@ -104,7 +105,7 @@ func newServerFromFlags(fs *flag.FlagSet) (*server.Server, error) {
 	}
 
 	signer := josesig.NewSignerRSA(staticKeyID, *privKey)
-	sm := server.NewSessionManager()
+	sm := session.NewSessionManager()
 	srv := server.Server{
 		IssuerURL:          listen,
 		Signer:             signer,

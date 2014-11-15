@@ -13,6 +13,19 @@ import (
 	"github.com/coreos-inc/auth/session"
 )
 
+type StaticKeyManager struct {
+	signer josesig.Signer
+	keys   []jose.JWK
+}
+
+func (m *StaticKeyManager) Signer() (josesig.Signer, error) {
+	return m.signer, nil
+}
+
+func (m *StaticKeyManager) JWKs() []jose.JWK {
+	return m.keys
+}
+
 type StaticSigner struct {
 	sig []byte
 	err error
@@ -122,7 +135,9 @@ func TestServerLogin(t *testing.T) {
 	}
 	ciRepo := NewClientIdentityRepo([]oauth2.ClientIdentity{ci})
 
-	signer := &StaticSigner{sig: []byte("beer"), err: nil}
+	km := &StaticKeyManager{
+		signer: &StaticSigner{sig: []byte("beer"), err: nil},
+	}
 
 	sm := session.NewSessionManager()
 	sm.GenerateCode = staticGenerateCodeFunc("fakecode")
@@ -130,7 +145,7 @@ func TestServerLogin(t *testing.T) {
 
 	srv := &Server{
 		IssuerURL:          "http://server.example.com",
-		Signer:             signer,
+		KeyManager:         km,
 		SessionManager:     sm,
 		ClientIdentityRepo: ciRepo,
 	}
@@ -151,11 +166,13 @@ func TestServerLoginUnrecognizedSessionKey(t *testing.T) {
 	ciRepo := NewClientIdentityRepo([]oauth2.ClientIdentity{
 		oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"},
 	})
-	signer := &StaticSigner{sig: nil, err: errors.New("fail")}
+	km := &StaticKeyManager{
+		signer: &StaticSigner{sig: nil, err: errors.New("fail")},
+	}
 	sm := session.NewSessionManager()
 	srv := &Server{
 		IssuerURL:          "http://server.example.com",
-		Signer:             signer,
+		KeyManager:         km,
 		SessionManager:     sm,
 		ClientIdentityRepo: ciRepo,
 	}
@@ -174,12 +191,14 @@ func TestServerLoginUnrecognizedSessionKey(t *testing.T) {
 func TestServerToken(t *testing.T) {
 	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
 	ciRepo := NewClientIdentityRepo([]oauth2.ClientIdentity{ci})
-	signer := &StaticSigner{sig: []byte("beer"), err: nil}
+	km := &StaticKeyManager{
+		signer: &StaticSigner{sig: []byte("beer"), err: nil},
+	}
 	sm := session.NewSessionManager()
 
 	srv := &Server{
 		IssuerURL:          "http://server.example.com",
-		Signer:             signer,
+		KeyManager:         km,
 		SessionManager:     sm,
 		ClientIdentityRepo: ciRepo,
 	}
@@ -202,12 +221,14 @@ func TestServerToken(t *testing.T) {
 func TestServerTokenUnrecognizedKey(t *testing.T) {
 	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
 	ciRepo := NewClientIdentityRepo([]oauth2.ClientIdentity{ci})
-	signer := &StaticSigner{sig: []byte("beer"), err: nil}
+	km := &StaticKeyManager{
+		signer: &StaticSigner{sig: []byte("beer"), err: nil},
+	}
 	sm := session.NewSessionManager()
 
 	srv := &Server{
 		IssuerURL:          "http://server.example.com",
-		Signer:             signer,
+		KeyManager:         km,
 		SessionManager:     sm,
 		ClientIdentityRepo: ciRepo,
 	}
@@ -281,11 +302,13 @@ func TestServerTokenFail(t *testing.T) {
 			t.Errorf("case %d: unexpected error: %v", i, err)
 			continue
 		}
-
+		km := &StaticKeyManager{
+			signer: tt.signer,
+		}
 		ciRepo := NewClientIdentityRepo([]oauth2.ClientIdentity{ciFixture})
 		srv := &Server{
 			IssuerURL:          issuerURL,
-			Signer:             tt.signer,
+			KeyManager:         km,
 			SessionManager:     sm,
 			ClientIdentityRepo: ciRepo,
 		}

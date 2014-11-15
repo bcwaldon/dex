@@ -1,8 +1,6 @@
 package integration
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -11,7 +9,7 @@ import (
 
 	"github.com/coreos-inc/auth/connector"
 	localconnector "github.com/coreos-inc/auth/connector/local"
-	josesig "github.com/coreos-inc/auth/jose/sig"
+	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 	phttp "github.com/coreos-inc/auth/pkg/http"
@@ -32,12 +30,6 @@ func TestHTTPExchangeToken(t *testing.T) {
 		Secret: "XXX",
 	}
 
-	pk, err := rsa.GenerateKey(rand.Reader, 1024)
-	if err != nil {
-		t.Fatalf("Unable to generate RSA private key: %v", err)
-	}
-	signer := josesig.NewSignerRSA("123", *pk)
-
 	idp := localconnector.NewLocalIdentityProvider([]localconnector.User{user})
 
 	cir := server.NewClientIdentityRepo([]oauth2.ClientIdentity{ci})
@@ -45,9 +37,17 @@ func TestHTTPExchangeToken(t *testing.T) {
 	issuerURL := "http://server.example.com"
 	sm := session.NewSessionManager()
 
+	k, err := key.GenerateRSAKey()
+	if err != nil {
+		t.Fatalf("Unable to generate RSA key: %v", err)
+	}
+
+	km := key.NewRSAKeyManager()
+	km.Set([]key.RSAKey{*k}, k)
+
 	srv := &server.Server{
 		IssuerURL:          issuerURL,
-		Signer:             signer,
+		KeyManager:         km,
 		SessionManager:     sm,
 		ClientIdentityRepo: cir,
 	}

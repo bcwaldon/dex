@@ -8,6 +8,7 @@ import (
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/jose"
 	josesig "github.com/coreos-inc/auth/jose/sig"
+	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 	"github.com/coreos-inc/auth/session"
@@ -22,7 +23,7 @@ type OIDCServer interface {
 
 type Server struct {
 	IssuerURL          string
-	Signer             josesig.Signer
+	KeyManager         key.KeyManager
 	SessionManager     *session.SessionManager
 	ClientIdentityRepo ClientIdentityRepo
 }
@@ -50,7 +51,7 @@ func (s *Server) HTTPHandler(idpcs map[string]connector.IDPConnector, tpl *templ
 	mux.HandleFunc(httpPathDiscovery, handleDiscoveryFunc(s.ProviderConfig()))
 	mux.HandleFunc(HttpPathAuth, handleAuthFunc(s, idpcs, tpl))
 	mux.HandleFunc(httpPathToken, handleTokenFunc(s))
-	mux.HandleFunc(httpPathKeys, handleKeysFunc([]jose.JWK{s.Signer.JWK()}))
+	mux.HandleFunc(httpPathKeys, handleKeysFunc(s.KeyManager))
 
 	for _, idpc := range idpcs {
 		idpc.Register(mux)
@@ -112,7 +113,13 @@ func (s *Server) Token(ci oauth2.ClientIdentity, key string) (*jose.JWT, error) 
 		return nil, oauth2.NewError(oauth2.ErrorInvalidGrant)
 	}
 
-	jwt, err := josesig.NewSignedJWT(ses.Claims(s.IssuerURL), s.Signer)
+	signer, err := s.KeyManager.Signer()
+	if err != nil {
+		log.Printf("Failed to generate ID token: %v", err)
+		return nil, oauth2.NewError(oauth2.ErrorServerError)
+	}
+
+	jwt, err := josesig.NewSignedJWT(ses.Claims(s.IssuerURL), signer)
 	if err != nil {
 		log.Printf("Failed to generate ID token: %v", err)
 		return nil, oauth2.NewError(oauth2.ErrorServerError)

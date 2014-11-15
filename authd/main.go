@@ -1,8 +1,6 @@
 package main
 
 import (
-	crand "crypto/rand"
-	"crypto/rsa"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -20,16 +18,12 @@ import (
 	"github.com/coreos-inc/auth/connector"
 	localconnector "github.com/coreos-inc/auth/connector/local"
 	oidcconnector "github.com/coreos-inc/auth/connector/oidc"
-	josesig "github.com/coreos-inc/auth/jose/sig"
+	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 	pflag "github.com/coreos-inc/auth/pkg/flag"
 	"github.com/coreos-inc/auth/server"
 	"github.com/coreos-inc/auth/session"
-)
-
-var (
-	staticKeyID = "2b3390f656ff335d6fdb8dfe117748c9f2709c02"
 )
 
 func init() {
@@ -98,15 +92,14 @@ func main() {
 	log.Fatal(httpsrv.ListenAndServe())
 }
 
-func generateRSAPrivateKey() (*rsa.PrivateKey, error) {
-	return rsa.GenerateKey(crand.Reader, 1024)
-}
-
 func newServerFromFlags(fs *flag.FlagSet) (*server.Server, error) {
-	privKey, err := generateRSAPrivateKey()
+	k, err := key.GenerateRSAKey()
 	if err != nil {
-		return nil, fmt.Errorf("unable to generate RSA private key: %v", err)
+		return nil, fmt.Errorf("unable to initialize key manager: %v", err)
 	}
+
+	km := key.NewRSAKeyManager()
+	km.Set([]key.RSAKey{*k}, k)
 
 	cFile := fs.Lookup("clients").Value.String()
 	cf, err := os.Open(cFile)
@@ -120,11 +113,10 @@ func newServerFromFlags(fs *flag.FlagSet) (*server.Server, error) {
 	}
 
 	issuer := fs.Lookup("issuer").Value.String()
-	signer := josesig.NewSignerRSA(staticKeyID, *privKey)
 	sm := session.NewSessionManager()
 	srv := server.Server{
 		IssuerURL:          issuer,
-		Signer:             signer,
+		KeyManager:         km,
 		SessionManager:     sm,
 		ClientIdentityRepo: ciRepo,
 	}

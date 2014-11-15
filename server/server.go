@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"reflect"
@@ -11,6 +10,7 @@ import (
 	josesig "github.com/coreos-inc/auth/jose/sig"
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
+	"github.com/coreos-inc/auth/session"
 )
 
 type OIDCServer interface {
@@ -22,7 +22,7 @@ type OIDCServer interface {
 type Server struct {
 	IssuerURL          string
 	Signer             josesig.Signer
-	SessionManager     *SessionManager
+	SessionManager     *session.SessionManager
 	ClientIdentityRepo ClientIdentityRepo
 }
 
@@ -54,7 +54,7 @@ func (s *Server) HTTPHandler(idpc connector.IDPConnector) http.Handler {
 	return mux
 }
 
-func (s *Server) NewSession(acr oauth2.AuthCodeRequest) (key string, err error) {
+func (s *Server) NewSession(acr oauth2.AuthCodeRequest) (string, error) {
 	ci := s.ClientIdentityRepo.ClientIdentity(acr.ClientID)
 	if ci == nil {
 		return "", oauth2.NewError(oauth2.ErrorInvalidRequest)
@@ -64,22 +64,22 @@ func (s *Server) NewSession(acr oauth2.AuthCodeRequest) (key string, err error) 
 		return "", oauth2.NewError(oauth2.ErrorInvalidRequest)
 	}
 
-	ses := s.SessionManager.NewSession(*ci, acr.State)
-	return ses.NewKey(), nil
+	sessionID := s.SessionManager.NewSession(*ci, acr.State)
+	return s.SessionManager.NewSessionKey(sessionID), nil
 }
 
 func (s *Server) Login(ident oidc.Identity, key string) (string, error) {
-	ses := s.SessionManager.Session(key)
-	if ses == nil {
-		return "", fmt.Errorf("unrecognized session %q", key)
-	}
-
-	err := ses.Identify(ident)
+	sessionID, err := s.SessionManager.ExchangeKey(key)
 	if err != nil {
 		return "", err
 	}
 
-	code := ses.NewKey()
+	ses, err := s.SessionManager.Identify(sessionID, ident)
+	if err != nil {
+		return "", err
+	}
+
+	code := s.SessionManager.NewSessionKey(sessionID)
 	ru := ses.ClientIdentity.RedirectURL
 	q := ru.Query()
 	q.Set("code", code)
@@ -95,16 +95,21 @@ func (s *Server) Token(ci oauth2.ClientIdentity, key string) (*jose.JWT, error) 
 		return nil, oauth2.NewError(oauth2.ErrorInvalidClient)
 	}
 
-	ses := s.SessionManager.Session(key)
-	if ses == nil {
+	sessionID, err := s.SessionManager.ExchangeKey(key)
+	if err != nil {
 		return nil, oauth2.NewError(oauth2.ErrorInvalidGrant)
+	}
+
+	ses, err := s.SessionManager.Kill(sessionID)
+	if err != nil {
+		return nil, oauth2.NewError(oauth2.ErrorInvalidRequest)
 	}
 
 	if !ses.ClientIdentity.Match(ci) {
 		return nil, oauth2.NewError(oauth2.ErrorInvalidGrant)
 	}
 
-	jwt, err := ses.IDToken()
+	jwt, err := josesig.NewSignedJWT(ses.Claims(s.IssuerURL), s.Signer)
 	if err != nil {
 		log.Printf("Failed to generate ID token: %v", err)
 		return nil, oauth2.NewError(oauth2.ErrorServerError)

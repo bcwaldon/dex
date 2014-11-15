@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"path"
 	"time"
 
@@ -20,11 +21,12 @@ var (
 )
 
 func main() {
-	listen := flag.String("listen", "http://localhost:5555", "")
-	clientID := flag.String("client-id", "", "")
-	clientSecret := flag.String("client-secret", "", "")
-	issuerURL := flag.String("issuer-url", "https://accounts.google.com", "")
-	flag.Parse()
+	fs := flag.NewFlagSet("oidc-app", flag.ExitOnError)
+	listen := fs.String("listen", "http://localhost:5555", "")
+	clientID := fs.String("client-id", "", "")
+	clientSecret := fs.String("client-secret", "", "")
+	issuerURL := fs.String("issuer-url", "https://accounts.google.com", "")
+	fs.Parse(os.Args[1:])
 
 	if *clientID == "" {
 		log.Fatal("--client-id must be set")

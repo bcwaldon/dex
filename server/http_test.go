@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -80,12 +81,34 @@ func TestHandleAuthFuncResponses(t *testing.T) {
 		{
 			query: url.Values{
 				"response_type": []string{"code"},
+				"client_id":     []string{"XXX"},
+				"idpc_id":       []string{"fake"},
+			},
+			wantCode:     http.StatusTemporaryRedirect,
+			wantLocation: "http://fake.example.com",
+		},
+
+		// provided redirect_uri matches client
+		{
+			query: url.Values{
+				"response_type": []string{"code"},
 				"redirect_uri":  []string{"http://client.example.com/callback"},
 				"client_id":     []string{"XXX"},
 				"idpc_id":       []string{"fake"},
 			},
 			wantCode:     http.StatusTemporaryRedirect,
 			wantLocation: "http://fake.example.com",
+		},
+
+		// provided redirect_uri does not match client
+		{
+			query: url.Values{
+				"response_type": []string{"code"},
+				"redirect_uri":  []string{"http://unrecognized.example.com/callback"},
+				"client_id":     []string{"XXX"},
+				"idpc_id":       []string{"fake"},
+			},
+			wantCode: http.StatusBadRequest,
 		},
 
 		// nonexistant client_id
@@ -99,13 +122,15 @@ func TestHandleAuthFuncResponses(t *testing.T) {
 			wantCode: http.StatusBadRequest,
 		},
 
-		// ParseAuthCodeRequest should fail
+		// unsupported response type, redirects back to client
 		{
 			query: url.Values{
 				"response_type": []string{"token"},
+				"client_id":     []string{"XXX"},
 				"idpc_id":       []string{"fake"},
 			},
-			wantCode: http.StatusBadRequest,
+			wantCode:     http.StatusTemporaryRedirect,
+			wantLocation: "http://client.example.com/callback?error=unsupported_response_type&state=",
 		},
 	}
 
@@ -275,9 +300,9 @@ func TestHandleKeysFunc(t *testing.T) {
 	}
 }
 
-func TestWriteOAuth2Error(t *testing.T) {
+func TestWriteTokenError(t *testing.T) {
 	tests := []struct {
-		err        *oauth2.Error
+		err        error
 		state      string
 		wantCode   int
 		wantHeader http.Header
@@ -333,11 +358,19 @@ func TestWriteOAuth2Error(t *testing.T) {
 			},
 			wantBody: `{"error":"unsupported_grant_type"}`,
 		},
+		{
+			err:      errors.New("generic failure"),
+			wantCode: http.StatusBadRequest,
+			wantHeader: http.Header{
+				"Content-Type": []string{"application/json"},
+			},
+			wantBody: `{"error":"server_error"}`,
+		},
 	}
 
 	for i, tt := range tests {
 		w := httptest.NewRecorder()
-		writeOAuth2Error(w, tt.err, tt.state)
+		writeTokenError(w, tt.err, tt.state)
 
 		if tt.wantCode != w.Code {
 			t.Errorf("case %d: incorrect HTTP status: want=%d got=%d", i, tt.wantCode, w.Code)
@@ -351,6 +384,101 @@ func TestWriteOAuth2Error(t *testing.T) {
 		gotBody := w.Body.String()
 		if tt.wantBody != gotBody {
 			t.Errorf("case %d: incorrect HTTP body: want=%q got=%q", i, tt.wantBody, gotBody)
+		}
+	}
+}
+
+func TestWriteAuthError(t *testing.T) {
+	wantCode := http.StatusBadRequest
+	wantHeader := http.Header{"Content-Type": []string{"application/json"}}
+	tests := []struct {
+		err      error
+		state    string
+		wantBody string
+	}{
+		{
+			err:      errors.New("foobar"),
+			state:    "bazinga",
+			wantBody: `{"error":"server_error","state":"bazinga"}`,
+		},
+		{
+			err:      oauth2.NewError(oauth2.ErrorInvalidRequest),
+			state:    "foo",
+			wantBody: `{"error":"invalid_request","state":"foo"}`,
+		},
+		{
+			err:      oauth2.NewError(oauth2.ErrorUnsupportedResponseType),
+			state:    "bar",
+			wantBody: `{"error":"unsupported_response_type","state":"bar"}`,
+		},
+	}
+
+	for i, tt := range tests {
+		w := httptest.NewRecorder()
+		writeAuthError(w, tt.err, tt.state)
+
+		if wantCode != w.Code {
+			t.Errorf("case %d: incorrect HTTP status: want=%d got=%d", i, wantCode, w.Code)
+		}
+
+		gotHeader := w.Header()
+		if !reflect.DeepEqual(wantHeader, gotHeader) {
+			t.Errorf("case %d: incorrect HTTP headers: want=%#v got=%#v", i, wantHeader, gotHeader)
+		}
+
+		gotBody := w.Body.String()
+		if tt.wantBody != gotBody {
+			t.Errorf("case %d: incorrect HTTP body: want=%q got=%q", i, tt.wantBody, gotBody)
+		}
+	}
+}
+
+func TestRedirectAuthError(t *testing.T) {
+	wantCode := http.StatusTemporaryRedirect
+
+	tests := []struct {
+		err         error
+		state       string
+		redirectURL url.URL
+		wantLoc     string
+	}{
+		{
+			err:         errors.New("foobar"),
+			state:       "bazinga",
+			redirectURL: url.URL{Scheme: "http", Host: "server.example.com"},
+			wantLoc:     "http://server.example.com?error=server_error&state=bazinga",
+		},
+		{
+			err:         oauth2.NewError(oauth2.ErrorInvalidRequest),
+			state:       "foo",
+			redirectURL: url.URL{Scheme: "http", Host: "server.example.com"},
+			wantLoc:     "http://server.example.com?error=invalid_request&state=foo",
+		},
+		{
+			err:         oauth2.NewError(oauth2.ErrorUnsupportedResponseType),
+			state:       "bar",
+			redirectURL: url.URL{Scheme: "http", Host: "server.example.com"},
+			wantLoc:     "http://server.example.com?error=unsupported_response_type&state=bar",
+		},
+	}
+
+	for i, tt := range tests {
+		w := httptest.NewRecorder()
+		redirectAuthError(w, tt.err, tt.state, tt.redirectURL)
+
+		if wantCode != w.Code {
+			t.Errorf("case %d: incorrect HTTP status: want=%d got=%d", i, wantCode, w.Code)
+		}
+
+		wantHeader := http.Header{"Location": []string{tt.wantLoc}}
+		gotHeader := w.Header()
+		if !reflect.DeepEqual(wantHeader, gotHeader) {
+			t.Errorf("case %d: incorrect HTTP headers: want=%#v got=%#v", i, wantHeader, gotHeader)
+		}
+
+		gotBody := w.Body.String()
+		if gotBody != "" {
+			t.Errorf("case %d: incorrect empty HTTP body, got=%q", i, gotBody)
 		}
 	}
 }

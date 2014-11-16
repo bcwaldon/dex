@@ -6,6 +6,8 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"net/url"
+	"reflect"
 
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/jose"
@@ -110,20 +112,31 @@ func handleAuthFunc(srv OIDCServer, idpcs map[string]connector.IDPConnector, tpl
 
 		acr, err := oauth2.ParseAuthCodeRequest(q)
 		if err != nil {
-			phttp.WriteError(w, http.StatusBadRequest, err.Error())
+			writeAuthError(w, err, acr.State)
 			return
 		}
 
-		key, err := srv.NewSession(*acr)
+		ci := srv.Client(acr.ClientID)
+		if ci == nil || (acr.RedirectURL != nil && !reflect.DeepEqual(ci.RedirectURL, *acr.RedirectURL)) {
+			writeAuthError(w, oauth2.NewError(oauth2.ErrorInvalidRequest), acr.State)
+			return
+		}
+
+		if acr.ResponseType != oauth2.ResponseTypeCode {
+			redirectAuthError(w, oauth2.NewError(oauth2.ErrorUnsupportedResponseType), acr.State, ci.RedirectURL)
+			return
+		}
+
+		key, err := srv.NewSession(*ci, acr.State)
 		if err != nil {
-			phttp.WriteError(w, http.StatusBadRequest, err.Error())
+			redirectAuthError(w, err, acr.State, ci.RedirectURL)
 			return
 		}
 
 		lu, err := idpc.LoginURL(key)
 		if err != nil {
 			log.Printf("IDPConnector.LoginURL failed: %v", err)
-			phttp.WriteError(w, http.StatusInternalServerError, "")
+			redirectAuthError(w, err, acr.State, ci.RedirectURL)
 			return
 		}
 
@@ -143,7 +156,7 @@ func handleTokenFunc(srv OIDCServer) http.HandlerFunc {
 
 		err := r.ParseForm()
 		if err != nil {
-			phttp.WriteError(w, http.StatusBadRequest, oauth2.ErrorInvalidRequest)
+			writeTokenError(w, oauth2.NewError(oauth2.ErrorInvalidRequest), "")
 			return
 		}
 
@@ -151,31 +164,26 @@ func handleTokenFunc(srv OIDCServer) http.HandlerFunc {
 
 		grantType := r.PostForm.Get("grant_type")
 		if grantType != "authorization_code" {
-			writeOAuth2Error(w, oauth2.NewError(oauth2.ErrorUnsupportedGrantType), state)
+			writeTokenError(w, oauth2.NewError(oauth2.ErrorUnsupportedGrantType), state)
 			return
 		}
 
 		code := r.PostForm.Get("code")
 		if code == "" {
-			writeOAuth2Error(w, oauth2.NewError(oauth2.ErrorInvalidRequest), state)
+			writeTokenError(w, oauth2.NewError(oauth2.ErrorInvalidRequest), state)
 			return
 		}
 
 		user, password, ok := phttp.BasicAuth(r)
 		if !ok {
-			w.Header().Set("WWW-Authenticate", "Basic")
-			writeOAuth2Error(w, oauth2.NewError(oauth2.ErrorInvalidClient), state)
+			writeTokenError(w, oauth2.NewError(oauth2.ErrorInvalidClient), state)
 			return
 		}
 
 		ci := oauth2.ClientIdentity{ID: user, Secret: password}
 		jwt, err := srv.Token(ci, code)
 		if err != nil {
-			if oerr, ok := err.(*oauth2.Error); ok {
-				writeOAuth2Error(w, oerr, state)
-			} else {
-				phttp.WriteError(w, http.StatusInternalServerError, "")
-			}
+			writeTokenError(w, err, state)
 			return
 		}
 
@@ -188,7 +196,7 @@ func handleTokenFunc(srv OIDCServer) http.HandlerFunc {
 		b, err := json.Marshal(t)
 		if err != nil {
 			log.Printf("Failed marshaling %#v to JSON: %v", t, err)
-			writeOAuth2Error(w, oauth2.NewError(oauth2.ErrorServerError), state)
+			writeTokenError(w, oauth2.NewError(oauth2.ErrorServerError), state)
 			return
 		}
 
@@ -204,29 +212,69 @@ type oAuth2Token struct {
 	TokenType   string `json:"token_type"`
 }
 
-func writeOAuth2Error(w http.ResponseWriter, oerr *oauth2.Error, state string) {
-	status := http.StatusBadRequest
-	if oerr.Type == oauth2.ErrorInvalidClient {
+type oAuth2ErrorResponse struct {
+	Error string `json:"error"`
+	State string `json:"state,omitempty"`
+}
+
+func writeTokenError(w http.ResponseWriter, err error, state string) {
+	oerr, ok := err.(*oauth2.Error)
+	if !ok {
+		oerr = oauth2.NewError(oauth2.ErrorServerError)
+	}
+
+	var status int
+	switch oerr.Type {
+	case oauth2.ErrorInvalidClient:
 		status = http.StatusUnauthorized
 		w.Header().Set("WWW-Authenticate", "Basic")
-	}
-	w.Header().Set("Content-Type", "application/json")
-
-	s := struct {
-		Error string `json:"error"`
-		State string `json:"state,omitempty"`
-	}{
-		Error: oerr.Type,
-		State: state,
+	default:
+		status = http.StatusBadRequest
 	}
 
-	w.WriteHeader(status)
-
-	b, err := json.Marshal(s)
+	r := &oAuth2ErrorResponse{Error: oerr.Type, State: state}
+	b, err := json.Marshal(r)
 	if err != nil {
 		log.Printf("Failed marshaling OAuth2 error: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
 	w.Write(b)
+}
+
+func writeAuthError(w http.ResponseWriter, err error, state string) {
+	oerr, ok := err.(*oauth2.Error)
+	if !ok {
+		oerr = oauth2.NewError(oauth2.ErrorServerError)
+	}
+
+	r := &oAuth2ErrorResponse{Error: oerr.Type, State: state}
+	b, err := json.Marshal(r)
+	if err != nil {
+		log.Printf("Failed marshaling OAuth2 error: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusBadRequest)
+	w.Write(b)
+}
+
+func redirectAuthError(w http.ResponseWriter, err error, state string, redirectURL url.URL) {
+	oerr, ok := err.(*oauth2.Error)
+	if !ok {
+		oerr = oauth2.NewError(oauth2.ErrorServerError)
+	}
+
+	q := redirectURL.Query()
+	q.Set("error", oerr.Type)
+	q.Set("state", state)
+	redirectURL.RawQuery = q.Encode()
+
+	w.Header().Set("Location", redirectURL.String())
+	w.WriteHeader(http.StatusTemporaryRedirect)
 }

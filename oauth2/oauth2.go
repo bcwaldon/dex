@@ -14,6 +14,10 @@ import (
 	phttp "github.com/coreos-inc/auth/pkg/http"
 )
 
+const (
+	ResponseTypeCode = "code"
+)
+
 type Config struct {
 	ClientID     string
 	ClientSecret string
@@ -194,37 +198,19 @@ type TokenResponse struct {
 }
 
 type AuthCodeRequest struct {
-	ClientID    string
-	RedirectURL *url.URL
-	Scope       []string
-	State       string
+	ResponseType string
+	ClientID     string
+	RedirectURL  *url.URL
+	Scope        []string
+	State        string
 }
 
-func ParseAuthCodeRequest(q url.Values) (*AuthCodeRequest, error) {
-	if rt := q.Get("response_type"); rt != "code" {
-		return nil, fmt.Errorf("response_type %q unsupported", rt)
-	}
-
-	var ru *url.URL
-	redirectURL := q.Get("redirect_uri")
-	if redirectURL != "" {
-		var err error
-		ru, err = url.Parse(redirectURL)
-		if err != nil {
-			return nil, errors.New("redirect_uri query param invalid")
-		}
-	}
-
-	clientID := q.Get("client_id")
-	if clientID == "" {
-		return nil, errors.New("missing client_id query param")
-	}
-
-	acr := &AuthCodeRequest{
-		ClientID:    clientID,
-		RedirectURL: ru,
-		State:       q.Get("state"),
-		Scope:       make([]string, 0),
+func ParseAuthCodeRequest(q url.Values) (AuthCodeRequest, error) {
+	acr := AuthCodeRequest{
+		ResponseType: q.Get("response_type"),
+		ClientID:     q.Get("client_id"),
+		State:        q.Get("state"),
+		Scope:        make([]string, 0),
 	}
 
 	qs := strings.TrimSpace(q.Get("scope"))
@@ -232,5 +218,22 @@ func ParseAuthCodeRequest(q url.Values) (*AuthCodeRequest, error) {
 		acr.Scope = strings.Split(qs, " ")
 	}
 
-	return acr, nil
+	err := func() error {
+		if acr.ClientID == "" {
+			return NewError(ErrorInvalidRequest)
+		}
+
+		redirectURL := q.Get("redirect_uri")
+		if redirectURL != "" {
+			ru, err := url.Parse(redirectURL)
+			if err != nil {
+				return NewError(ErrorInvalidRequest)
+			}
+			acr.RedirectURL = ru
+		}
+
+		return nil
+	}()
+
+	return acr, err
 }

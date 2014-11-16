@@ -4,7 +4,6 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-	"reflect"
 
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/jose"
@@ -15,7 +14,8 @@ import (
 )
 
 type OIDCServer interface {
-	NewSession(oauth2.AuthCodeRequest) (string, error)
+	Client(string) *oauth2.ClientIdentity
+	NewSession(oauth2.ClientIdentity, string) (string, error)
 	Login(oidc.Identity, string) (string, error)
 	Token(oauth2.ClientIdentity, string) (*jose.JWT, error)
 }
@@ -59,19 +59,13 @@ func (s *Server) HTTPHandler(idpcs map[string]connector.IDPConnector, tpl *templ
 	return mux
 }
 
-func (s *Server) NewSession(acr oauth2.AuthCodeRequest) (string, error) {
-	ci := s.ClientIdentityRepo.ClientIdentity(acr.ClientID)
-	if ci == nil {
-		return "", oauth2.NewError(oauth2.ErrorInvalidRequest)
-	}
+func (s *Server) Client(clientID string) *oauth2.ClientIdentity {
+	return s.ClientIdentityRepo.ClientIdentity(clientID)
+}
 
-	if acr.RedirectURL != nil && !reflect.DeepEqual(ci.RedirectURL, *acr.RedirectURL) {
-		return "", oauth2.NewError(oauth2.ErrorInvalidRequest)
-	}
-
-	sessionID := s.SessionManager.NewSession(*ci, acr.State)
-	log.Printf("Session %s created: clientID=%s state=%s", sessionID, ci.ID, acr.State)
-
+func (s *Server) NewSession(ci oauth2.ClientIdentity, state string) (string, error) {
+	sessionID := s.SessionManager.NewSession(ci, state)
+	log.Printf("Session %s created: clientID=%s state=%s", sessionID, ci.ID, state)
 	return s.SessionManager.NewSessionKey(sessionID), nil
 }
 

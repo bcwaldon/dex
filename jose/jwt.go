@@ -2,6 +2,7 @@ package jose
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -16,17 +17,22 @@ func ParseJWT(token string) (jwt JWT, err error) {
 		return
 	}
 
-	// TODO: validate "typ" header param is "JWT"
+	return toJWT(jws)
+}
 
-	jwt = JWT(jws)
-	return
+func toJWT(jws JWS) (JWT, error) {
+	if jws.Header["typ"] != "JWT" {
+		return JWT{}, errors.New("unrecognized header typ")
+	}
+
+	return JWT(jws), nil
 }
 
 func NewJWT(header JOSEHeader, claims Claims) (jwt JWT, err error) {
 	jwt = JWT{}
-	jwt.Header = header
 
-	// TODO: validate "typ" header param is "JWT"
+	jwt.Header = header
+	jwt.Header["typ"] = "JWT"
 
 	claimBytes, err := marshalClaims(claims)
 	if err != nil {

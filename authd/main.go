@@ -14,6 +14,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/coreos-inc/auth/connector"
 	localconnector "github.com/coreos-inc/auth/connector/local"
@@ -53,7 +54,8 @@ func main() {
 		log.Fatalf(err.Error())
 	}
 
-	srv, err := newServerFromFlags(fs)
+	km := key.NewPrivateKeyManager()
+	srv, err := newServerFromFlags(fs, km)
 	if err != nil {
 		log.Fatalf("Unable to build Server: %v", err)
 	}
@@ -78,6 +80,12 @@ func main() {
 		log.Fatalf("Unable to parse login page template: %v", err)
 	}
 
+	kRepo := key.NewPrivateKeySetRepo()
+	go key.NewKeySetSyncer(kRepo, km).Run()
+
+	krot := key.NewPrivateKeyRotator(kRepo, 30*time.Second)
+	go krot.Run()
+
 	hdlr := srv.HTTPHandler(idpcs, tpl)
 	httpsrv := &http.Server{
 		Addr:    lu.Host,
@@ -88,15 +96,7 @@ func main() {
 	log.Fatal(httpsrv.ListenAndServe())
 }
 
-func newServerFromFlags(fs *flag.FlagSet) (*server.Server, error) {
-	k, err := key.GenerateRSAKey()
-	if err != nil {
-		return nil, fmt.Errorf("unable to initialize key manager: %v", err)
-	}
-
-	km := key.NewRSAKeyManager()
-	km.Set([]key.RSAKey{*k}, k)
-
+func newServerFromFlags(fs *flag.FlagSet, km key.PrivateKeyManager) (*server.Server, error) {
 	cFile := fs.Lookup("clients").Value.String()
 	cf, err := os.Open(cFile)
 	if err != nil {

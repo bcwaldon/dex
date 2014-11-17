@@ -6,11 +6,14 @@ import (
 	"reflect"
 	"strconv"
 	"testing"
+	"time"
+
+	"github.com/jonboulle/clockwork"
 
 	"github.com/coreos-inc/auth/jose"
 )
 
-func generateRSAKeyStatic(t *testing.T, idAndN int) *RSAKey {
+func generatePrivateRSAKeyStatic(t *testing.T, idAndN int) *privateRSAKey {
 	n := big.NewInt(int64(idAndN))
 	if n == nil {
 		t.Fatalf("Call to NewInt(%d) failed", idAndN)
@@ -20,14 +23,14 @@ func generateRSAKeyStatic(t *testing.T, idAndN int) *RSAKey {
 		PublicKey: rsa.PublicKey{N: n, E: 65537},
 	}
 
-	return &RSAKey{
-		ID:         strconv.Itoa(idAndN),
-		PrivateKey: pk,
+	return &privateRSAKey{
+		id:         strconv.Itoa(idAndN),
+		privateKey: pk,
 	}
 }
 
-func TestRSAKeyManagerJWKsRotate(t *testing.T) {
-	k1 := generateRSAKeyStatic(t, 1)
+func TestPrivateKeyManagerJWKsRotate(t *testing.T) {
+	k1 := generatePrivateRSAKeyStatic(t, 1)
 	jwk1 := jose.JWK{
 		ID:       "1",
 		Type:     "RSA",
@@ -37,7 +40,7 @@ func TestRSAKeyManagerJWKsRotate(t *testing.T) {
 		Exponent: 65537,
 	}
 
-	k2 := generateRSAKeyStatic(t, 2)
+	k2 := generatePrivateRSAKeyStatic(t, 2)
 	jwk2 := jose.JWK{
 		ID:       "2",
 		Type:     "RSA",
@@ -47,7 +50,7 @@ func TestRSAKeyManagerJWKsRotate(t *testing.T) {
 		Exponent: 65537,
 	}
 
-	k3 := generateRSAKeyStatic(t, 3)
+	k3 := generatePrivateRSAKeyStatic(t, 3)
 	jwk3 := jose.JWK{
 		ID:       "3",
 		Type:     "RSA",
@@ -57,37 +60,38 @@ func TestRSAKeyManagerJWKsRotate(t *testing.T) {
 		Exponent: 65537,
 	}
 
-	km := NewRSAKeyManager()
-	km.Set([]RSAKey{*k1, *k2, *k3}, k1)
+	km := NewPrivateKeyManager()
+	err := km.Set(&PrivateKeySet{
+		keys:        []PrivateKey{k1, k2, k3},
+		activeKeyID: k1.id,
+		expiresAt:   time.Now().Add(time.Minute),
+	})
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
 
 	want := []jose.JWK{jwk1, jwk2, jwk3}
-	got := km.JWKs()
+	got, err := km.JWKs()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
 	if !reflect.DeepEqual(want, got) {
 		t.Fatalf("JWK mismatch: want=%#v got=%#v", want, got)
 	}
 }
 
-func TestRSAKeyManagerNoKeys(t *testing.T) {
-	km := NewRSAKeyManager()
-	s, err := km.Signer()
-	if err == nil {
-		t.Errorf("Expected non-nil error")
-	}
-	if s != nil {
-		t.Errorf("Expected nil Signer")
-	}
+func TestPrivateKeyManagerSigner(t *testing.T) {
+	k := generatePrivateRSAKeyStatic(t, 13)
 
-	jwks := km.JWKs()
-	if len(jwks) != 0 {
-		t.Errorf("Expected 0 JWKs, got %d", len(jwks))
+	km := NewPrivateKeyManager()
+	err := km.Set(&PrivateKeySet{
+		keys:        []PrivateKey{k},
+		activeKeyID: k.id,
+		expiresAt:   time.Now().Add(time.Minute),
+	})
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
 	}
-}
-
-func TestRSAKeyManagerSigner(t *testing.T) {
-	k := generateRSAKeyStatic(t, 13)
-
-	km := NewRSAKeyManager()
-	km.Set([]RSAKey{*k}, k)
 
 	signer, err := km.Signer()
 	if err != nil {
@@ -98,5 +102,79 @@ func TestRSAKeyManagerSigner(t *testing.T) {
 	gotID := signer.ID()
 	if wantID != gotID {
 		t.Fatalf("Signer has incorrect ID: want=%s got=%s", wantID, gotID)
+	}
+}
+
+func TestPrivateKeyManagerHealthyFail(t *testing.T) {
+	keyFixture := generatePrivateRSAKeyStatic(t, 1)
+	tests := []*privateKeyManager{
+		// keySet nil
+		&privateKeyManager{
+			keySet: nil,
+			clock:  clockwork.NewRealClock(),
+		},
+		// zero keys
+		&privateKeyManager{
+			keySet: &PrivateKeySet{
+				keys:      []PrivateKey{},
+				expiresAt: time.Now().Add(time.Minute),
+			},
+			clock: clockwork.NewRealClock(),
+		},
+		// key set expired
+		&privateKeyManager{
+			keySet: &PrivateKeySet{
+				keys:      []PrivateKey{keyFixture},
+				expiresAt: time.Now().Add(-1 * time.Minute),
+			},
+			clock: clockwork.NewRealClock(),
+		},
+	}
+
+	for i, tt := range tests {
+		if err := tt.Healthy(); err == nil {
+			t.Errorf("case %d: nil error", i)
+		}
+	}
+}
+
+func TestPrivateKeyManagerHealthyFailsOtherMethods(t *testing.T) {
+	km := NewPrivateKeyManager()
+	if _, err := km.JWKs(); err == nil {
+		t.Fatalf("Expected non-nil error")
+	}
+	if _, err := km.Signer(); err == nil {
+		t.Fatalf("Expected non-nil error")
+	}
+}
+
+func TestPrivateKeyManagerExpiresAt(t *testing.T) {
+	fc := clockwork.NewFakeClock()
+	now := fc.Now().UTC()
+
+	k := generatePrivateRSAKeyStatic(t, 17)
+	km := &privateKeyManager{
+		clock: fc,
+	}
+
+	want := fc.Now().UTC()
+	got := km.ExpiresAt()
+	if want != got {
+		t.Fatalf("Incorrect expiration time: want=%v got=%v", want, got)
+	}
+
+	err := km.Set(&PrivateKeySet{
+		keys:        []PrivateKey{k},
+		activeKeyID: k.id,
+		expiresAt:   now.Add(2 * time.Minute),
+	})
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	want = fc.Now().UTC().Add(2 * time.Minute)
+	got = km.ExpiresAt()
+	if want != got {
+		t.Fatalf("Incorrect expiration time: want=%v got=%v", want, got)
 	}
 }

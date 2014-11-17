@@ -23,7 +23,7 @@ type OIDCServer interface {
 
 type Server struct {
 	IssuerURL          string
-	KeyManager         key.KeyManager
+	KeyManager         key.PrivateKeyManager
 	SessionManager     *session.SessionManager
 	ClientIdentityRepo ClientIdentityRepo
 }

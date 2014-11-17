@@ -43,7 +43,7 @@ func handleDiscoveryFunc(cfg oidc.ProviderConfig) http.HandlerFunc {
 	}
 }
 
-func handleKeysFunc(km key.KeyManager) http.HandlerFunc {
+func handleKeysFunc(km key.PrivateKeyManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			w.Header().Set("Allow", "GET")
@@ -51,10 +51,17 @@ func handleKeysFunc(km key.KeyManager) http.HandlerFunc {
 			return
 		}
 
+		jwks, err := km.JWKs()
+		if err != nil {
+			log.Printf("Failed to get JWKs while serving HTTP request: %v", err)
+			phttp.WriteError(w, http.StatusInternalServerError, "")
+			return
+		}
+
 		keys := struct {
 			Keys []jose.JWK `json:"keys"`
 		}{
-			Keys: km.JWKs(),
+			Keys: jwks,
 		}
 
 		b, err := json.Marshal(keys)

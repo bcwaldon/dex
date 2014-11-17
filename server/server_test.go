@@ -5,25 +5,33 @@ import (
 	"net/url"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/coreos-inc/auth/jose"
 	josesig "github.com/coreos-inc/auth/jose/sig"
+	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 	"github.com/coreos-inc/auth/session"
 )
 
 type StaticKeyManager struct {
-	signer josesig.Signer
-	keys   []jose.JWK
+	key.PrivateKeyManager
+	expiresAt time.Time
+	signer    josesig.Signer
+	keys      []jose.JWK
+}
+
+func (m *StaticKeyManager) ExpiresAt() time.Time {
+	return m.expiresAt
 }
 
 func (m *StaticKeyManager) Signer() (josesig.Signer, error) {
 	return m.signer, nil
 }
 
-func (m *StaticKeyManager) JWKs() []jose.JWK {
-	return m.keys
+func (m *StaticKeyManager) JWKs() ([]jose.JWK, error) {
+	return m.keys, nil
 }
 
 type StaticSigner struct {

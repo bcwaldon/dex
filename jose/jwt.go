@@ -2,7 +2,6 @@ package jose
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 )
@@ -15,14 +14,6 @@ func ParseJWT(token string) (jwt JWT, err error) {
 	jws, err := ParseJWS(token)
 	if err != nil {
 		return
-	}
-
-	return toJWT(jws)
-}
-
-func toJWT(jws JWS) (JWT, error) {
-	if jws.Header["typ"] != "JWT" {
-		return JWT{}, errors.New("unrecognized header typ")
 	}
 
 	return JWT(jws), nil

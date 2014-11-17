@@ -53,22 +53,6 @@ func TestParseJWT(t *testing.T) {
 	}
 }
 
-func TestToJWTWrongType(t *testing.T) {
-	jws := JWS{
-		RawHeader: "foo",
-		Header: JOSEHeader{
-			"typ": "JWE",
-		},
-		RawPayload: "foo",
-		Payload:    []byte("{}"),
-		Signature:  []byte("foo"),
-	}
-
-	if _, err := toJWT(jws); err == nil {
-		t.Fatalf("Expected non-nil error")
-	}
-}
-
 func TestNewJWTHeaderTyp(t *testing.T) {
 	jwt, err := NewJWT(JOSEHeader{}, Claims{})
 	if err != nil {

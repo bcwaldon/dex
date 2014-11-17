@@ -70,6 +70,8 @@ func (s *Server) NewSession(acr oauth2.AuthCodeRequest) (string, error) {
 	}
 
 	sessionID := s.SessionManager.NewSession(*ci, acr.State)
+	log.Printf("Session %s created: clientID=%s state=%s", sessionID, ci.ID, acr.State)
+
 	return s.SessionManager.NewSessionKey(sessionID), nil
 }
 
@@ -83,6 +85,8 @@ func (s *Server) Login(ident oidc.Identity, key string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	log.Printf("Session %s identified: clientID=%s identity=%#v", sessionID, ses.ClientIdentity.ID, ident)
 
 	code := s.SessionManager.NewSessionKey(sessionID)
 	ru := ses.ClientIdentity.RedirectURL
@@ -119,6 +123,8 @@ func (s *Server) Token(ci oauth2.ClientIdentity, key string) (*jose.JWT, error) 
 		log.Printf("Failed to generate ID token: %v", err)
 		return nil, oauth2.NewError(oauth2.ErrorServerError)
 	}
+
+	log.Printf("Session %s token sent: clientID=%s", sessionID, ci.ID)
 
 	return jwt, nil
 }

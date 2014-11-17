@@ -36,27 +36,32 @@ type SessionManager struct {
 	keys         sessionKeyRepo
 }
 
-func (m *SessionManager) NewSession(ci oauth2.ClientIdentity, cs string) string {
+func (m *SessionManager) NewSession(ci oauth2.ClientIdentity, cs string) (string, error) {
 	s := Session{
 		ID:             m.GenerateCode(),
 		State:          sessionStateNew,
 		CreatedAt:      m.Clock.Now().UTC(),
 		ClientIdentity: ci,
 		ClientState:    cs,
-		sessionManager: m,
 	}
 
-	m.sessions.Set(s)
-	return s.ID
+	err := m.sessions.Set(s)
+	if err != nil {
+		return "", err
+	}
+	return s.ID, nil
 }
 
-func (m *SessionManager) NewSessionKey(sessionID string) string {
+func (m *SessionManager) NewSessionKey(sessionID string) (string, error) {
 	k := sessionKey{
 		key:       m.GenerateCode(),
 		sessionID: sessionID,
 	}
-	m.keys.Push(k, sessionKeyValidityWindow)
-	return k.key
+	err := m.keys.Push(k, sessionKeyValidityWindow)
+	if err != nil {
+		return "", err
+	}
+	return k.key, nil
 }
 
 func (m *SessionManager) ExchangeKey(key string) (string, error) {
@@ -64,9 +69,9 @@ func (m *SessionManager) ExchangeKey(key string) (string, error) {
 }
 
 func (m *SessionManager) getSessionInState(sessionID string, state sessionState) (*Session, error) {
-	s := m.sessions.Get(sessionID)
-	if s == nil {
-		return nil, fmt.Errorf("key refers to nonexistent session")
+	s, err := m.sessions.Get(sessionID)
+	if err != nil {
+		return nil, err
 	}
 
 	if s.State != state {
@@ -84,7 +89,10 @@ func (m *SessionManager) Identify(sessionID string, ident oidc.Identity) (*Sessi
 
 	s.Identity = ident
 	s.State = sessionStateIdentified
-	s.sessionManager.sessions.Set(*s)
+
+	if err = m.sessions.Set(*s); err != nil {
+		return nil, err
+	}
 
 	return s, nil
 }
@@ -96,7 +104,10 @@ func (m *SessionManager) Kill(sessionID string) (*Session, error) {
 	}
 
 	s.State = sessionStateDead
-	s.sessionManager.sessions.Set(*s)
+
+	if err = m.sessions.Set(*s); err != nil {
+		return nil, err
+	}
 
 	return s, nil
 }

@@ -2,18 +2,19 @@ package session
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jonboulle/clockwork"
 )
 
 type sessionRepo interface {
-	Set(Session)
-	Get(string) *Session
+	Set(Session) error
+	Get(string) (*Session, error)
 }
 
 type sessionKeyRepo interface {
-	Push(sessionKey, time.Duration)
+	Push(sessionKey, time.Duration) error
 	Pop(string) (string, error)
 }
 
@@ -27,16 +28,17 @@ type memSessionRepo struct {
 	store map[string]Session
 }
 
-func (m *memSessionRepo) Get(sessionID string) *Session {
+func (m *memSessionRepo) Get(sessionID string) (*Session, error) {
 	s, ok := m.store[sessionID]
 	if !ok {
-		return nil
+		return nil, fmt.Errorf("unrecognized ID")
 	}
-	return &s
+	return &s, nil
 }
 
-func (m *memSessionRepo) Set(s Session) {
+func (m *memSessionRepo) Set(s Session) error {
 	m.store[s.ID] = s
+	return nil
 }
 
 type expiringSessionKey struct {
@@ -70,9 +72,10 @@ func (m *memSessionKeyRepo) Pop(key string) (string, error) {
 	return esk.sessionKey.sessionID, nil
 }
 
-func (m *memSessionKeyRepo) Push(sk sessionKey, exp time.Duration) {
+func (m *memSessionKeyRepo) Push(sk sessionKey, ttl time.Duration) error {
 	m.store[sk.key] = expiringSessionKey{
 		sessionKey: sk,
-		expiresAt:  m.clock.Now().UTC().Add(exp),
+		expiresAt:  m.clock.Now().UTC().Add(ttl),
 	}
+	return nil
 }

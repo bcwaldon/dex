@@ -65,9 +65,12 @@ func TestMemSessionRepoGetNoExist(t *testing.T) {
 		store: make(map[string]Session),
 	}
 
-	ses := r.Get("123")
+	ses, err := r.Get("123")
 	if ses != nil {
 		t.Fatalf("Expected nil, got %#v", ses)
+	}
+	if err == nil {
+		t.Fatalf("Expected non-nil error")
 	}
 }
 
@@ -78,7 +81,7 @@ func TestMemSessionRepoSetGet(t *testing.T) {
 
 	r.Set(Session{ID: "123", ClientState: "blargh"})
 
-	ses := r.Get("123")
+	ses, _ := r.Get("123")
 	if ses == nil {
 		t.Fatalf("Expected non-nil Session")
 	}
@@ -96,7 +99,7 @@ func TestMemSessionRepoSetTwice(t *testing.T) {
 	r.Set(Session{ID: "123", ClientState: "blargh"})
 	r.Set(Session{ID: "123", ClientState: "boom"})
 
-	ses := r.Get("123")
+	ses, _ := r.Get("123")
 	if ses == nil {
 		t.Fatalf("Expected non-nil Session")
 	}

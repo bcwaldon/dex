@@ -126,7 +126,10 @@ func TestServerLogin(t *testing.T) {
 
 	sm := session.NewSessionManager()
 	sm.GenerateCode = staticGenerateCodeFunc("fakecode")
-	sessionID := sm.NewSession(ci, "bogus")
+	sessionID, err := sm.NewSession(ci, "bogus")
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
 
 	srv := &Server{
 		IssuerURL:          "http://server.example.com",
@@ -136,7 +139,12 @@ func TestServerLogin(t *testing.T) {
 	}
 
 	ident := oidc.Identity{ID: "YYY", Name: "elroy", Email: "elroy@example.com"}
-	redirectURL, err := srv.Login(ident, sm.NewSessionKey(sessionID))
+	key, err := sm.NewSessionKey(sessionID)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	redirectURL, err := srv.Login(ident, key)
 	if err != nil {
 		t.Fatalf("Unexpected err from Server.Login: %v", err)
 	}
@@ -184,13 +192,21 @@ func TestServerToken(t *testing.T) {
 		ClientIdentityRepo: ciRepo,
 	}
 
-	sessionID := sm.NewSession(ci, "bogus")
-	_, err := sm.Identify(sessionID, oidc.Identity{})
+	sessionID, err := sm.NewSession(ci, "bogus")
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	_, err = sm.Identify(sessionID, oidc.Identity{})
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	jwt, err := srv.Token(ci, sm.NewSessionKey(sessionID))
+	key, err := sm.NewSessionKey(sessionID)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	jwt, err := srv.Token(ci, key)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -212,8 +228,12 @@ func TestServerTokenUnrecognizedKey(t *testing.T) {
 		ClientIdentityRepo: ciRepo,
 	}
 
-	sessionID := sm.NewSession(ci, "bogus")
-	_, err := sm.Identify(sessionID, oidc.Identity{})
+	sessionID, err := sm.NewSession(ci, "bogus")
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	_, err = sm.Identify(sessionID, oidc.Identity{})
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -275,8 +295,12 @@ func TestServerTokenFail(t *testing.T) {
 		sm := session.NewSessionManager()
 		sm.GenerateCode = func() string { return keyFixture }
 
-		sessionID := sm.NewSession(ciFixture, "bogus")
-		_, err := sm.Identify(sessionID, oidc.Identity{})
+		sessionID, err := sm.NewSession(ciFixture, "bogus")
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		_, err = sm.Identify(sessionID, oidc.Identity{})
 		if err != nil {
 			t.Errorf("case %d: unexpected error: %v", i, err)
 			continue
@@ -290,8 +314,10 @@ func TestServerTokenFail(t *testing.T) {
 			ClientIdentityRepo: ciRepo,
 		}
 
-		// need to create the key, but no need to address it
-		sm.NewSessionKey(sessionID)
+		_, err = sm.NewSessionKey(sessionID)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
 
 		jwt, err := srv.Token(tt.argCI, tt.argKey)
 		if tt.err == "" {

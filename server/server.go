@@ -64,9 +64,13 @@ func (s *Server) Client(clientID string) *oauth2.ClientIdentity {
 }
 
 func (s *Server) NewSession(ci oauth2.ClientIdentity, state string) (string, error) {
-	sessionID := s.SessionManager.NewSession(ci, state)
+	sessionID, err := s.SessionManager.NewSession(ci, state)
+	if err != nil {
+		return "", err
+	}
+
 	log.Printf("Session %s created: clientID=%s state=%s", sessionID, ci.ID, state)
-	return s.SessionManager.NewSessionKey(sessionID), nil
+	return s.SessionManager.NewSessionKey(sessionID)
 }
 
 func (s *Server) Login(ident oidc.Identity, key string) (string, error) {
@@ -82,7 +86,11 @@ func (s *Server) Login(ident oidc.Identity, key string) (string, error) {
 
 	log.Printf("Session %s identified: clientID=%s identity=%#v", sessionID, ses.ClientIdentity.ID, ident)
 
-	code := s.SessionManager.NewSessionKey(sessionID)
+	code, err := s.SessionManager.NewSessionKey(sessionID)
+	if err != nil {
+		return "", err
+	}
+
 	ru := ses.ClientIdentity.RedirectURL
 	q := ru.Query()
 	q.Set("code", code)

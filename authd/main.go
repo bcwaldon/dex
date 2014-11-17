@@ -78,10 +78,6 @@ func main() {
 		log.Fatalf("Unable to parse login page template: %v", err)
 	}
 
-	if fs.Lookup("connector-id").Value.String() == "" {
-		log.Fatalf("Missing --connector-id flag")
-	}
-
 	hdlr := srv.HTTPHandler(idpcs, tpl)
 	httpsrv := &http.Server{
 		Addr:    lu.Host,
@@ -145,11 +141,14 @@ func newIDPConnectorsFromFlags(fs *flag.FlagSet, lf oidc.LoginFunc) (map[string]
 		return nil, err
 	}
 
-	ct := fs.Lookup("connector-type").Value.String()
-
 	idpcID := fs.Lookup("connector-id").Value.String()
+	if idpcID == "" {
+		log.Fatalf("Missing --connector-id flag")
+	}
+
 	ns.Path = path.Join(ns.Path, server.HttpPathAuth, strings.ToLower(idpcID))
 
+	ct := fs.Lookup("connector-type").Value.String()
 	idcp, err := connector.NewIDPConnector(ct, *ns, lf, fs)
 	if err != nil {
 		return nil, err

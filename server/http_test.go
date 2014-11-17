@@ -52,13 +52,11 @@ func TestHandleAuthFuncMethodNotAllowed(t *testing.T) {
 }
 
 func TestHandleAuthFuncResponses(t *testing.T) {
-	idpc := &fakeIDPConnector{loginURL: "http://fake.example.com"}
-	idpcs := make(map[string]connector.IDPConnector)
-	idpcs["fake"] = idpc
-	signer := &StaticSigner{sig: []byte("beer"), err: nil}
+	idpcs := map[string]connector.IDPConnector{
+		"fake": &fakeIDPConnector{loginURL: "http://fake.example.com"},
+	}
 	srv := &Server{
 		IssuerURL:      "http://server.example.com",
-		Signer:         signer,
 		SessionManager: session.NewSessionManager(),
 		ClientIdentityRepo: NewClientIdentityRepo([]oauth2.ClientIdentity{
 			oauth2.ClientIdentity{
@@ -238,7 +236,7 @@ func TestHandleDiscoveryFunc(t *testing.T) {
 
 func TestHandleKeysFuncMethodNotAllowed(t *testing.T) {
 	for _, m := range []string{"POST", "PUT", "DELETE"} {
-		hdlr := handleKeysFunc([]jose.JWK{})
+		hdlr := handleKeysFunc(nil)
 		req, err := http.NewRequest(m, "http://example.com", nil)
 		if err != nil {
 			t.Errorf("case %s: unable to create HTTP request: %v", m, err)
@@ -257,22 +255,24 @@ func TestHandleKeysFuncMethodNotAllowed(t *testing.T) {
 }
 
 func TestHandleKeysFunc(t *testing.T) {
-	keys := []jose.JWK{
-		jose.JWK{
-			ID:       "1234",
-			Type:     "RSA",
-			Alg:      "RS256",
-			Use:      "sig",
-			Exponent: 65537,
-			Modulus:  big.NewInt(int64(5716758339926702)),
-		},
-		jose.JWK{
-			ID:       "5678",
-			Type:     "RSA",
-			Alg:      "RS256",
-			Use:      "sig",
-			Exponent: 65537,
-			Modulus:  big.NewInt(int64(1234294715519622)),
+	km := &StaticKeyManager{
+		keys: []jose.JWK{
+			jose.JWK{
+				ID:       "1234",
+				Type:     "RSA",
+				Alg:      "RS256",
+				Use:      "sig",
+				Exponent: 65537,
+				Modulus:  big.NewInt(int64(5716758339926702)),
+			},
+			jose.JWK{
+				ID:       "5678",
+				Type:     "RSA",
+				Alg:      "RS256",
+				Use:      "sig",
+				Exponent: 65537,
+				Modulus:  big.NewInt(int64(1234294715519622)),
+			},
 		},
 	}
 
@@ -282,7 +282,7 @@ func TestHandleKeysFunc(t *testing.T) {
 	}
 
 	w := httptest.NewRecorder()
-	hdlr := handleKeysFunc(keys)
+	hdlr := handleKeysFunc(km)
 	hdlr.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {

@@ -16,7 +16,6 @@ type Verifier interface {
 type Signer interface {
 	Verifier
 	Sign(data []byte) (sig []byte, err error)
-	JWK() jose.JWK
 }
 
 func NewVerifier(jwk jose.JWK) (Verifier, error) {

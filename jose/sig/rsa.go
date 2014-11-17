@@ -68,14 +68,3 @@ func (s *SignerRSA) Sign(data []byte) ([]byte, error) {
 	h.Write(data)
 	return rsa.SignPKCS1v15(rand.Reader, &s.PrivateKey, s.Hash, h.Sum(nil))
 }
-
-func (s *SignerRSA) JWK() jose.JWK {
-	return jose.JWK{
-		ID:       s.ID(),
-		Type:     "RSA",
-		Alg:      s.Alg(),
-		Use:      "sig",
-		Exponent: s.VerifierRSA.PublicKey.E,
-		Modulus:  s.VerifierRSA.PublicKey.N,
-	}
-}

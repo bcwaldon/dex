@@ -68,14 +68,3 @@ func (s *SignerHMAC) Sign(data []byte) ([]byte, error) {
 	h.Write(data)
 	return h.Sum(nil), nil
 }
-
-func (s *SignerHMAC) JWK() jose.JWK {
-	return jose.JWK{
-		ID: s.ID(),
-		// TODO (sym3tri): verify the type string here
-		Type:   "HMAC",
-		Alg:    s.Alg(),
-		Use:    "sig",
-		Secret: s.Secret,
-	}
-}

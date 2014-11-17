@@ -11,6 +11,7 @@ import (
 
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/jose"
+	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 	phttp "github.com/coreos-inc/auth/pkg/http"
@@ -41,7 +42,7 @@ func handleDiscoveryFunc(cfg oidc.ProviderConfig) http.HandlerFunc {
 	}
 }
 
-func handleKeysFunc(keys []jose.JWK) http.HandlerFunc {
+func handleKeysFunc(km key.KeyManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			w.Header().Set("Allow", "GET")
@@ -52,7 +53,7 @@ func handleKeysFunc(keys []jose.JWK) http.HandlerFunc {
 		keys := struct {
 			Keys []jose.JWK `json:"keys"`
 		}{
-			Keys: keys,
+			Keys: km.JWKs(),
 		}
 
 		b, err := json.Marshal(keys)

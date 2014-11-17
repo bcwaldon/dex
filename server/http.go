@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 
@@ -15,10 +16,9 @@ import (
 
 var (
 	httpPathDiscovery = "/.well-known/openid-configuration"
-	httpPathAuth      = "/auth"
 	httpPathToken     = "/token"
 	httpPathKeys      = "/keys"
-	HttpPathAuthIDPC  = "/auth/idpc"
+	HttpPathAuth      = "/auth"
 )
 
 func handleDiscoveryFunc(cfg oidc.ProviderConfig) http.HandlerFunc {
@@ -64,7 +64,36 @@ func handleKeysFunc(keys []jose.JWK) http.HandlerFunc {
 	}
 }
 
-func handleAuthFunc(srv OIDCServer, idpc connector.IDPConnector) http.HandlerFunc {
+func renderLoginPage(w http.ResponseWriter, r *http.Request, idpcs map[string]connector.IDPConnector, tpl *template.Template) {
+	links := make([]struct {
+		DisplayType string
+		URL         string
+		ID          string
+	}, len(idpcs))
+
+	n := 0
+	for id, c := range idpcs {
+		links[n].ID = id
+		links[n].DisplayType = c.DisplayType()
+
+		v := r.URL.Query()
+		v.Set("idpc_id", id)
+		links[n].URL = HttpPathAuth + "?" + v.Encode()
+		n++
+	}
+
+	if tpl == nil {
+		phttp.WriteError(w, http.StatusInternalServerError, "error loading login page")
+		return
+	}
+
+	if err := tpl.Execute(w, links); err != nil {
+		phttp.WriteError(w, http.StatusInternalServerError, "error loading login page")
+		return
+	}
+}
+
+func handleAuthFunc(srv OIDCServer, idpcs map[string]connector.IDPConnector, tpl *template.Template) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			w.Header().Set("Allow", "GET")
@@ -72,7 +101,14 @@ func handleAuthFunc(srv OIDCServer, idpc connector.IDPConnector) http.HandlerFun
 			return
 		}
 
-		acr, err := oauth2.ParseAuthCodeRequest(r.URL.Query())
+		q := r.URL.Query()
+		idpc, ok := idpcs[q.Get("idpc_id")]
+		if !ok {
+			renderLoginPage(w, r, idpcs, tpl)
+			return
+		}
+
+		acr, err := oauth2.ParseAuthCodeRequest(q)
 		if err != nil {
 			phttp.WriteError(w, http.StatusBadRequest, err.Error())
 			return

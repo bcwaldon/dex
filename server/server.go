@@ -1,6 +1,7 @@
 package server
 
 import (
+	"html/template"
 	"log"
 	"net/http"
 	"reflect"
@@ -30,7 +31,7 @@ func (s *Server) ProviderConfig() oidc.ProviderConfig {
 	cfg := oidc.ProviderConfig{
 		Issuer: s.IssuerURL,
 
-		AuthEndpoint:  s.IssuerURL + httpPathAuth,
+		AuthEndpoint:  s.IssuerURL + HttpPathAuth,
 		TokenEndpoint: s.IssuerURL + httpPathToken,
 		KeysEndpoint:  s.IssuerURL + httpPathKeys,
 
@@ -44,13 +45,17 @@ func (s *Server) ProviderConfig() oidc.ProviderConfig {
 	return cfg
 }
 
-func (s *Server) HTTPHandler(idpc connector.IDPConnector) http.Handler {
+func (s *Server) HTTPHandler(idpcs map[string]connector.IDPConnector, tpl *template.Template) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc(httpPathDiscovery, handleDiscoveryFunc(s.ProviderConfig()))
-	mux.HandleFunc(httpPathAuth, handleAuthFunc(s, idpc))
+	mux.HandleFunc(HttpPathAuth, handleAuthFunc(s, idpcs, tpl))
 	mux.HandleFunc(httpPathToken, handleTokenFunc(s))
 	mux.HandleFunc(httpPathKeys, handleKeysFunc([]jose.JWK{s.Signer.JWK()}))
-	idpc.Register(mux)
+
+	for _, idpc := range idpcs {
+		idpc.Register(mux)
+	}
+
 	return mux
 }
 

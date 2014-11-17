@@ -24,6 +24,7 @@ import (
 	josesig "github.com/coreos-inc/auth/jose/sig"
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
+	pflag "github.com/coreos-inc/auth/pkg/flag"
 	"github.com/coreos-inc/auth/server"
 	"github.com/coreos-inc/auth/session"
 )
@@ -50,8 +51,11 @@ func main() {
 	fs.String("connector-oidc-client-id", "", "")
 	fs.String("connector-oidc-client-secret", "", "")
 
-	err := fs.Parse(os.Args[1:])
-	if err != nil {
+	if err := fs.Parse(os.Args[1:]); err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	if err := pflag.SetFlagsFromEnv(fs); err != nil {
 		log.Fatalf(err.Error())
 	}
 

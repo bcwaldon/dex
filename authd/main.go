@@ -147,8 +147,8 @@ func newLoginTemplateFromFlags(fs *flag.FlagSet) (*template.Template, error) {
 }
 
 func newIDPConnectorsFromFlags(fs *flag.FlagSet, lf oidc.LoginFunc) (map[string]connector.IDPConnector, error) {
-	listen := fs.Lookup("listen").Value.String()
-	ns, err := url.Parse(listen)
+	issuer := fs.Lookup("issuer").Value.String()
+	ns, err := url.Parse(issuer)
 	if err != nil {
 		return nil, err
 	}

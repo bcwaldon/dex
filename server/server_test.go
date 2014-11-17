@@ -70,8 +70,13 @@ func TestServerProviderConfig(t *testing.T) {
 }
 
 func TestServerNewSession(t *testing.T) {
-	signerFixture := &StaticSigner{sig: []byte("beer"), err: nil}
-	ciFixture := oauth2.ClientIdentity{
+	sm := session.NewSessionManager()
+	srv := &Server{
+		SessionManager: sm,
+	}
+
+	state := "pants"
+	ci := oauth2.ClientIdentity{
 		ID:     "XXX",
 		Secret: "secrete",
 		RedirectURL: url.URL{
@@ -80,96 +85,28 @@ func TestServerNewSession(t *testing.T) {
 			Path:   "/callback",
 		},
 	}
-	ciRepoFixture := NewClientIdentityRepo([]oauth2.ClientIdentity{ciFixture})
 
-	tests := []struct {
-		acr oauth2.AuthCodeRequest
-		err string
-	}{
-		// basic request succeeds
-		{
-			acr: oauth2.AuthCodeRequest{
-				ClientID:    "XXX",
-				RedirectURL: nil,
-				Scope:       []string{"foo", "bar"},
-				State:       "pants",
-			},
-		},
-
-		// RedirectURL provided, matching that in ClientIdentity
-		{
-			acr: oauth2.AuthCodeRequest{
-				ClientID:    "XXX",
-				RedirectURL: &ciFixture.RedirectURL,
-				Scope:       []string{"foo", "bar"},
-				State:       "pants",
-			},
-		},
-
-		// unrecognized client
-		{
-			acr: oauth2.AuthCodeRequest{
-				ClientID:    "YYY",
-				RedirectURL: &ciFixture.RedirectURL,
-				Scope:       []string{"foo", "bar"},
-				State:       "pants",
-			},
-			err: oauth2.ErrorInvalidRequest,
-		},
-
-		// mismatched RedirectURL
-		{
-			acr: oauth2.AuthCodeRequest{
-				ClientID:    "XXX",
-				RedirectURL: &url.URL{Scheme: "http", Host: "example.com"},
-				Scope:       []string{"foo", "bar"},
-				State:       "pants",
-			},
-			err: oauth2.ErrorInvalidRequest,
-		},
+	key, err := srv.NewSession(ci, state)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	for i, tt := range tests {
-		sm := session.NewSessionManager()
-		srv := &Server{
-			IssuerURL:          "http://server.example.com",
-			Signer:             signerFixture,
-			ClientIdentityRepo: ciRepoFixture,
-			SessionManager:     sm,
-		}
+	sessionID, err := sm.ExchangeKey(key)
+	if err != nil {
+		t.Fatalf("Session not retreivable: %v", err)
+	}
 
-		key, err := srv.NewSession(tt.acr)
-		if tt.err != "" {
-			if err == nil || err.Error() != tt.err {
-				t.Errorf("case %d: incorrect error: want=%q got=%v", i, tt.err, err)
-			}
-			continue
-		}
+	ses, err := sm.Identify(sessionID, oidc.Identity{})
+	if err != nil {
+		t.Fatalf("Unable to add Identity to Session: %v", err)
+	}
 
-		if err != nil {
-			t.Errorf("case %d: got non-nil error: %v", i, err)
-			continue
-		}
+	if !reflect.DeepEqual(ci, ses.ClientIdentity) {
+		t.Fatalf("Session created with incorrect ClientIdentity: want=%#v got=%#v", ci, ses.ClientIdentity)
+	}
 
-		sessionID, err := sm.ExchangeKey(key)
-		if err != nil {
-			t.Errorf("case %d: session not retreivable", i)
-			continue
-		}
-
-		ses, err := sm.Identify(sessionID, oidc.Identity{})
-		if err != nil {
-			t.Errorf("case %d: unable to add Identity to Session: %v", i, err)
-			continue
-		}
-
-		if ciFixture != ses.ClientIdentity {
-			t.Errorf("case %d: session created with incorrect ClientIdentity: want=%#v got=%#v", i, ciFixture, ses.ClientIdentity)
-		}
-
-		if tt.acr.State != ses.ClientState {
-			t.Errorf("case %d: session created with incorrect State: want=%q got=%q", i, tt.acr.State, ses.ClientState)
-		}
+	if state != ses.ClientState {
+		t.Fatalf("Session created with incorrect State: want=%q got=%q", state, ses.ClientState)
 	}
 }
 

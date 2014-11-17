@@ -8,9 +8,11 @@ import (
 
 func TestParseAuthCodeRequest(t *testing.T) {
 	tests := []struct {
-		query url.Values
-		want  AuthCodeRequest
+		query   url.Values
+		wantACR AuthCodeRequest
+		wantErr error
 	}{
+		// no redirect_uri
 		{
 			query: url.Values{
 				"response_type": []string{"code"},
@@ -18,15 +20,16 @@ func TestParseAuthCodeRequest(t *testing.T) {
 				"client_id":     []string{"XXX"},
 				"state":         []string{"pants"},
 			},
-
-			want: AuthCodeRequest{
-				ClientID:    "XXX",
-				Scope:       []string{"foo", "bar", "baz"},
-				State:       "pants",
-				RedirectURL: nil,
+			wantACR: AuthCodeRequest{
+				ResponseType: "code",
+				ClientID:     "XXX",
+				Scope:        []string{"foo", "bar", "baz"},
+				State:        "pants",
+				RedirectURL:  nil,
 			},
 		},
 
+		// with redirect_uri
 		{
 			query: url.Values{
 				"response_type": []string{"code"},
@@ -35,11 +38,11 @@ func TestParseAuthCodeRequest(t *testing.T) {
 				"client_id":     []string{"XXX"},
 				"state":         []string{"pants"},
 			},
-
-			want: AuthCodeRequest{
-				ClientID: "XXX",
-				Scope:    []string{"foo", "bar", "baz"},
-				State:    "pants",
+			wantACR: AuthCodeRequest{
+				ResponseType: "code",
+				ClientID:     "XXX",
+				Scope:        []string{"foo", "bar", "baz"},
+				State:        "pants",
 				RedirectURL: &url.URL{
 					Scheme:   "https",
 					Host:     "127.0.0.1:5555",
@@ -48,51 +51,76 @@ func TestParseAuthCodeRequest(t *testing.T) {
 				},
 			},
 		},
+
+		// unsupported response_type doesn't trigger error
+		{
+			query: url.Values{
+				"response_type": []string{"token"},
+				"redirect_uri":  []string{"https://127.0.0.1:5555/callback?foo=bar"},
+				"scope":         []string{"foo bar baz"},
+				"client_id":     []string{"XXX"},
+				"state":         []string{"pants"},
+			},
+			wantACR: AuthCodeRequest{
+				ResponseType: "token",
+				ClientID:     "XXX",
+				Scope:        []string{"foo", "bar", "baz"},
+				State:        "pants",
+				RedirectURL: &url.URL{
+					Scheme:   "https",
+					Host:     "127.0.0.1:5555",
+					Path:     "/callback",
+					RawQuery: "foo=bar",
+				},
+			},
+		},
+
+		// unparseable redirect_uri
+		{
+			query: url.Values{
+				"response_type": []string{"code"},
+				"redirect_uri":  []string{":"},
+				"scope":         []string{"foo bar baz"},
+				"client_id":     []string{"XXX"},
+				"state":         []string{"pants"},
+			},
+			wantACR: AuthCodeRequest{
+				ResponseType: "code",
+				ClientID:     "XXX",
+				Scope:        []string{"foo", "bar", "baz"},
+				State:        "pants",
+			},
+			wantErr: NewError(ErrorInvalidRequest),
+		},
+
+		// no client_id, redirect_uri not parsed
+		{
+			query: url.Values{
+				"response_type": []string{"code"},
+				"redirect_uri":  []string{"https://127.0.0.1:5555/callback?foo=bar"},
+				"scope":         []string{"foo bar baz"},
+				"client_id":     []string{},
+				"state":         []string{"pants"},
+			},
+			wantACR: AuthCodeRequest{
+				ResponseType: "code",
+				ClientID:     "",
+				Scope:        []string{"foo", "bar", "baz"},
+				State:        "pants",
+				RedirectURL:  nil,
+			},
+			wantErr: NewError(ErrorInvalidRequest),
+		},
 	}
 
 	for i, tt := range tests {
 		got, err := ParseAuthCodeRequest(tt.query)
-		if err != nil {
-			t.Errorf("case %d: err=%v", i, err)
+		if !reflect.DeepEqual(tt.wantErr, err) {
+			t.Errorf("case %d: incorrect error value: want=%q got=%q", i, tt.wantErr, err)
 		}
 
-		if !reflect.DeepEqual(tt.want, *got) {
-			t.Errorf("case %d: want=%#v got=%#v", i, tt.want, *got)
-		}
-	}
-}
-
-func TestParseAuthCodeRequestInvalid(t *testing.T) {
-	tests := []url.Values{
-		// unsupported response_type
-		url.Values{
-			"response_type": []string{"token"},
-			"redirect_uri":  []string{"https://127.0.0.1:5555/callback?foo=bar"},
-			"scope":         []string{"foo bar baz"},
-			"client_id":     []string{"XXX"},
-		},
-
-		// unparseable redirect_uri
-		url.Values{
-			"response_type": []string{"code"},
-			"redirect_uri":  []string{":"},
-			"scope":         []string{"foo bar baz"},
-			"client_id":     []string{"XXX"},
-		},
-
-		// no client_id
-		url.Values{
-			"response_type": []string{"code"},
-			"redirect_uri":  []string{"https://127.0.0.1:5555/callback?foo=bar"},
-			"scope":         []string{"foo bar baz"},
-			"client_id":     []string{},
-		},
-	}
-
-	for i, q := range tests {
-		_, err := ParseAuthCodeRequest(q)
-		if err == nil {
-			t.Errorf("case %d: want non-nil error, got nil", i)
+		if !reflect.DeepEqual(tt.wantACR, got) {
+			t.Errorf("case %d: incorrect AuthCodeRequest value: want=%#v got=%#v", i, tt.wantACR, got)
 		}
 	}
 }

@@ -3,7 +3,6 @@ package oauth2
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"mime"
 	"net/http"
@@ -141,7 +140,7 @@ func (c *Client) Exchange(code string) (result TokenResponse, err error) {
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		err = fmt.Errorf("oauth2: error getting token. code: %d, status: %s.\nResponse: %s", resp.StatusCode, resp.Status, string(body))
+		err = unmarshalError(body)
 		return
 	}
 

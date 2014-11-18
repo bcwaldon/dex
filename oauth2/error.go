@@ -1,5 +1,10 @@
 package oauth2
 
+import (
+	"encoding/json"
+	"fmt"
+)
+
 const (
 	ErrorInvalidClient           = "invalid_client"
 	ErrorInvalidGrant            = "invalid_grant"
@@ -10,7 +15,8 @@ const (
 )
 
 type Error struct {
-	Type string
+	Type  string `json:"error"`
+	State string `json:"state,omitempty"`
 }
 
 func (e *Error) Error() string {
@@ -19,4 +25,13 @@ func (e *Error) Error() string {
 
 func NewError(typ string) *Error {
 	return &Error{Type: typ}
+}
+
+func unmarshalError(b []byte) error {
+	var oerr Error
+	err := json.Unmarshal(b, &oerr)
+	if err != nil {
+		return fmt.Errorf("unrecognized error: %s", string(b))
+	}
+	return &oerr
 }

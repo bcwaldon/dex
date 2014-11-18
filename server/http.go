@@ -213,16 +213,12 @@ type oAuth2Token struct {
 	TokenType   string `json:"token_type"`
 }
 
-type oAuth2ErrorResponse struct {
-	Error string `json:"error"`
-	State string `json:"state,omitempty"`
-}
-
 func writeTokenError(w http.ResponseWriter, err error, state string) {
 	oerr, ok := err.(*oauth2.Error)
 	if !ok {
 		oerr = oauth2.NewError(oauth2.ErrorServerError)
 	}
+	oerr.State = state
 
 	var status int
 	switch oerr.Type {
@@ -233,8 +229,7 @@ func writeTokenError(w http.ResponseWriter, err error, state string) {
 		status = http.StatusBadRequest
 	}
 
-	r := &oAuth2ErrorResponse{Error: oerr.Type, State: state}
-	b, err := json.Marshal(r)
+	b, err := json.Marshal(oerr)
 	if err != nil {
 		log.Printf("Failed marshaling OAuth2 error: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -251,9 +246,9 @@ func writeAuthError(w http.ResponseWriter, err error, state string) {
 	if !ok {
 		oerr = oauth2.NewError(oauth2.ErrorServerError)
 	}
+	oerr.State = state
 
-	r := &oAuth2ErrorResponse{Error: oerr.Type, State: state}
-	b, err := json.Marshal(r)
+	b, err := json.Marshal(oerr)
 	if err != nil {
 		log.Printf("Failed marshaling OAuth2 error: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)

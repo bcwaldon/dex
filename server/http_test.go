@@ -9,6 +9,9 @@ import (
 	"net/url"
 	"reflect"
 	"testing"
+	"time"
+
+	"github.com/jonboulle/clockwork"
 
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/jose"
@@ -236,7 +239,7 @@ func TestHandleDiscoveryFunc(t *testing.T) {
 
 func TestHandleKeysFuncMethodNotAllowed(t *testing.T) {
 	for _, m := range []string{"POST", "PUT", "DELETE"} {
-		hdlr := handleKeysFunc(nil)
+		hdlr := handleKeysFunc(nil, clockwork.NewRealClock())
 		req, err := http.NewRequest(m, "http://example.com", nil)
 		if err != nil {
 			t.Errorf("case %s: unable to create HTTP request: %v", m, err)
@@ -255,7 +258,10 @@ func TestHandleKeysFuncMethodNotAllowed(t *testing.T) {
 }
 
 func TestHandleKeysFunc(t *testing.T) {
+	fc := clockwork.NewFakeClock()
+	exp := fc.Now().UTC().Add(13 * time.Second)
 	km := &StaticKeyManager{
+		expiresAt: exp,
 		keys: []jose.JWK{
 			jose.JWK{
 				ID:       "1234",
@@ -282,15 +288,21 @@ func TestHandleKeysFunc(t *testing.T) {
 	}
 
 	w := httptest.NewRecorder()
-	hdlr := handleKeysFunc(km)
+	hdlr := handleKeysFunc(km, fc)
 	hdlr.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("Incorrect status code: want=200 got=%d", w.Code)
 	}
 
-	if ct := w.Header().Get("Content-Type"); ct != "application/json" {
-		t.Fatalf("Incorrect Content-Type: want=application/json, got %s", ct)
+	wantHeader := http.Header{
+		"Content-Type":  []string{"application/json"},
+		"Cache-Control": []string{"public, max-age=13"},
+		"Expires":       []string{exp.Format(time.RFC1123)},
+	}
+	gotHeader := w.Header()
+	if !reflect.DeepEqual(wantHeader, gotHeader) {
+		t.Fatalf("Incorrect headers: want=%#v got=%#v", wantHeader, gotHeader)
 	}
 
 	wantBody := `{"keys":[{"kid":"1234","kty":"RSA","alg":"RS256","use":"sig","e":"AAAAAAABAAE=","n":"FE9chh46rg=="},{"kid":"5678","kty":"RSA","alg":"RS256","use":"sig","e":"AAAAAAABAAE=","n":"BGKVohEShg=="}]}`

@@ -67,8 +67,40 @@ func handleKeysFunc(km key.KeyManager) http.HandlerFunc {
 	}
 }
 
-func renderLoginPage(w http.ResponseWriter, r *http.Request, idpcs map[string]connector.IDPConnector, tpl *template.Template) {
-	links := make([]struct {
+type templateData struct {
+	Error   bool
+	Message string
+	Links   []struct {
+		DisplayType string
+		URL         string
+		ID          string
+	}
+}
+
+func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idpcs map[string]connector.IDPConnector, tpl *template.Template) {
+	if tpl == nil {
+		phttp.WriteError(w, http.StatusInternalServerError, "error loading login page")
+		return
+	}
+
+	td := templateData{}
+
+	// Render error message if client id is invalid.
+	// TODO(sym3tri): remove this check once we support logging into authd.
+	q := r.URL.Query()
+	ci := srv.Client(q.Get("client_id"))
+	if ci == nil {
+		td.Error = true
+		td.Message = "Invalid client ID. Return to the referring application to login."
+
+		if err := tpl.Execute(w, td); err != nil {
+			phttp.WriteError(w, http.StatusInternalServerError, "error loading login page")
+			return
+		}
+		return
+	}
+
+	td.Links = make([]struct {
 		DisplayType string
 		URL         string
 		ID          string
@@ -76,21 +108,17 @@ func renderLoginPage(w http.ResponseWriter, r *http.Request, idpcs map[string]co
 
 	n := 0
 	for id, c := range idpcs {
-		links[n].ID = id
-		links[n].DisplayType = c.DisplayType()
+		td.Links[n].ID = id
+		td.Links[n].DisplayType = c.DisplayType()
 
 		v := r.URL.Query()
 		v.Set("idpc_id", id)
-		links[n].URL = HttpPathAuth + "?" + v.Encode()
+		v.Set("response_type", "code")
+		td.Links[n].URL = HttpPathAuth + "?" + v.Encode()
 		n++
 	}
 
-	if tpl == nil {
-		phttp.WriteError(w, http.StatusInternalServerError, "error loading login page")
-		return
-	}
-
-	if err := tpl.Execute(w, links); err != nil {
+	if err := tpl.Execute(w, td); err != nil {
 		phttp.WriteError(w, http.StatusInternalServerError, "error loading login page")
 		return
 	}
@@ -107,7 +135,7 @@ func handleAuthFunc(srv OIDCServer, idpcs map[string]connector.IDPConnector, tpl
 		q := r.URL.Query()
 		idpc, ok := idpcs[q.Get("idpc_id")]
 		if !ok {
-			renderLoginPage(w, r, idpcs, tpl)
+			renderLoginPage(w, r, srv, idpcs, tpl)
 			return
 		}
 

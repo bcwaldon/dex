@@ -150,17 +150,20 @@
         <h2 id="heading">Verify Your Identity</h2>
         <div id="button-container">
 
-          {{ range $c := .}}
-
-              <div>
-                <a class="btn-link" href="{{ $c.URL }}" target="_self">
-                  <button class="btn">
-                    <span class="btn-icon btn-icon-google"></span>
-                    <span class="btn-text">Login with {{ $c.ID }}</span>
-                  </button>
-                </a>
-              </div>
-
+          {{ if .Error }}
+            {{ .Message }}
+          {{ else }}
+            {{ range $c := .Links }}
+                <div>
+                  <a class="btn-link" href="{{ $c.URL }}" target="_self">
+                    <button class="btn">
+                      <span class="btn-icon">
+                      </span>
+                      <span class="btn-text">Login with - {{ $c.ID }}</span>
+                    </button>
+                  </a>
+                </div>
+            {{ end }}
           {{ end }}
 
         </div>

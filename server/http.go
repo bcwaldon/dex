@@ -162,7 +162,11 @@ func handleAuthFunc(srv OIDCServer, idpcs map[string]connector.IDPConnector, tpl
 			return
 		}
 
-		lu, err := idpc.LoginURL(key)
+		var p string
+		if shouldReprompt(r) {
+			p = "force"
+		}
+		lu, err := idpc.LoginURL(key, p)
 		if err != nil {
 			log.Printf("IDPConnector.LoginURL failed: %v", err)
 			redirectAuthError(w, err, acr.State, ci.RedirectURL)

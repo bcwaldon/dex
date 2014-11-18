@@ -25,7 +25,7 @@ func (f *fakeIDPConnector) DisplayType() string {
 	return "Fake"
 }
 
-func (f *fakeIDPConnector) LoginURL(sessionKey string) (string, error) {
+func (f *fakeIDPConnector) LoginURL(sessionKey, prompt string) (string, error) {
 	return f.loginURL, nil
 }
 

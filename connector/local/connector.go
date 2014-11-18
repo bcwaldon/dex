@@ -74,9 +74,10 @@ func (c *LocalIDPConnector) DisplayType() string {
 	return "Local"
 }
 
-func (c *LocalIDPConnector) LoginURL(sessionKey string) (string, error) {
+func (c *LocalIDPConnector) LoginURL(sessionKey, prompt string) (string, error) {
 	q := url.Values{}
 	q.Set("session_key", sessionKey)
+	q.Set("prompt", prompt)
 	enc := q.Encode()
 
 	return path.Join(c.namespace.Path, "login") + "?" + enc, nil
@@ -130,6 +131,7 @@ func handleLoginFunc(lf oidc.LoginFunc, idp *LocalIdentityProvider) http.Handler
 	}
 
 	handleGET := func(w http.ResponseWriter, r *http.Request) {
+		// TODO(sym3tri): skip login page if valid cookie and "prompt" param is not "force"
 		p := &Page{r.URL.String(), "Local"}
 		if err := templates.ExecuteTemplate(w, "local-login.html", p); err != nil {
 			phttp.WriteError(w, http.StatusInternalServerError, err.Error())

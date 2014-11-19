@@ -25,7 +25,7 @@ func (f *fakeIDPConnector) DisplayType() string {
 	return "Fake"
 }
 
-func (f *fakeIDPConnector) LoginURL(sessionKey string) (string, error) {
+func (f *fakeIDPConnector) LoginURL(sessionKey, prompt string) (string, error) {
 	return f.loginURL, nil
 }
 
@@ -479,6 +479,45 @@ func TestRedirectAuthError(t *testing.T) {
 		gotBody := w.Body.String()
 		if gotBody != "" {
 			t.Errorf("case %d: incorrect empty HTTP body, got=%q", i, gotBody)
+		}
+	}
+}
+
+func TestShouldReprompt(t *testing.T) {
+	tests := []struct {
+		c *http.Cookie
+		v bool
+	}{
+		// No cookie
+		{
+			c: nil,
+			v: false,
+		},
+		// different cookie
+		{
+			c: &http.Cookie{
+				Name: "rando-cookie",
+			},
+			v: false,
+		},
+		// actual cookie we care about
+		{
+			c: &http.Cookie{
+				Name: "LastSeen",
+			},
+			v: true,
+		},
+	}
+
+	for i, tt := range tests {
+		r := &http.Request{Header: make(http.Header)}
+		if tt.c != nil {
+			r.AddCookie(tt.c)
+		}
+		want := tt.v
+		got := shouldReprompt(r)
+		if want != got {
+			t.Errorf("case %d: want=%t, got=%t", i, want, got)
 		}
 	}
 }

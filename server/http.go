@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
+	"time"
 
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/jose"
@@ -162,13 +163,18 @@ func handleAuthFunc(srv OIDCServer, idpcs map[string]connector.IDPConnector, tpl
 			return
 		}
 
-		lu, err := idpc.LoginURL(key)
+		var p string
+		if shouldReprompt(r) {
+			p = "force"
+		}
+		lu, err := idpc.LoginURL(key, p)
 		if err != nil {
 			log.Printf("IDPConnector.LoginURL failed: %v", err)
 			redirectAuthError(w, err, acr.State, ci.RedirectURL)
 			return
 		}
 
+		http.SetCookie(w, createLastSeenCookie())
 		w.Header().Set("Location", lu)
 		w.WriteHeader(http.StatusTemporaryRedirect)
 		return
@@ -301,4 +307,27 @@ func redirectAuthError(w http.ResponseWriter, err error, state string, redirectU
 
 	w.Header().Set("Location", redirectURL.String())
 	w.WriteHeader(http.StatusTemporaryRedirect)
+}
+
+// five minutes
+const lastSeenMaxAge = 300
+
+func createLastSeenCookie() *http.Cookie {
+	now := time.Now().UTC()
+	return &http.Cookie{
+		HttpOnly: true,
+		Name:     "LastSeen",
+		MaxAge:   lastSeenMaxAge,
+		// For old IE, ignored by most browsers.
+		Expires: now.Add(time.Second * time.Duration(lastSeenMaxAge)),
+	}
+}
+
+// shouldReprompt determines if user should be re-prompted for login based on existance of a cookie.
+func shouldReprompt(r *http.Request) bool {
+	_, err := r.Cookie("LastSeen")
+	if err == nil {
+		return true
+	}
+	return false
 }

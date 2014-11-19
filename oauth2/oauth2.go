@@ -90,8 +90,12 @@ func NewClient(hc phttp.Client, cfg Config) (c *Client, err error) {
 func (c *Client) AuthCodeURL(state, accessType, prompt string) string {
 	v := c.commonURLValues()
 	v.Set("state", state)
-	v.Set("access_type", accessType)
-	v.Set("approval_prompt", prompt)
+	if strings.ToLower(accessType) == "offline" {
+		v.Set("access_type", "offline")
+	}
+	if strings.ToLower(prompt) == "force" {
+		v.Set("approval_prompt", "force")
+	}
 	v.Set("response_type", "code")
 
 	q := v.Encode()

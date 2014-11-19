@@ -83,7 +83,7 @@ func (c *LocalIDPConnector) LoginURL(sessionKey, prompt string) (string, error) 
 	return path.Join(c.namespace.Path, "login") + "?" + enc, nil
 }
 
-func (c *LocalIDPConnector) Register(mux *http.ServeMux) {
+func (c *LocalIDPConnector) Register(mux *http.ServeMux, errorURL url.URL) {
 	mux.Handle(c.namespace.Path+"/login", handleLoginFunc(c.loginFunc, c.idp))
 }
 

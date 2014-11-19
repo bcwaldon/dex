@@ -47,7 +47,7 @@
       }
       @media (min-width: 1200px) {
         #container {
-          width: 33.3333%;
+          width: 40%;
         }
       }
       #panel {
@@ -121,6 +121,11 @@
         margin-bottom: 10px;
         min-width: 200px;
       }
+      .detail-block {
+        color: #777;
+        font-size: 12px;
+        margin-top: 20px;
+      }
     </style>
   </head>
   <body>
@@ -147,11 +152,17 @@
       </a>
 
       <div id="panel">
-        <h2 id="heading">Verify Your Identity</h2>
+        {{ if .Error }}
+          <h2 id="heading">Authentication Error</h2>
+        {{ else }}
+          <h2 id="heading">Verify Your Identity</h2>
+        {{ end }}
         <div id="button-container">
 
           {{ if .Error }}
-            {{ .Message }}
+            <div>{{ .Message }}</div>
+            <div>{{ .Instruction }}</div>
+            <div class="detail-block">{{ .Detail }}</div>
           {{ else }}
             {{ range $c := .Links }}
                 <div>

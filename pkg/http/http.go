@@ -3,8 +3,10 @@ package http
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -16,7 +18,7 @@ func WriteError(w http.ResponseWriter, code int, msg string) {
 	}
 	b, err := json.Marshal(e)
 	if err != nil {
-		log.Printf("Failed marshaling %#v to JSON: %v", err)
+		log.Printf("Failed marshaling %#v to JSON: %v", e, err)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
@@ -45,4 +47,32 @@ func BasicAuth(r *http.Request) (username, password string, ok bool) {
 		return
 	}
 	return cs[:s], cs[s+1:], true
+}
+
+func CacheControlMaxAge(hdr string) (int, bool, error) {
+	for _, field := range strings.Split(hdr, ",") {
+		parts := strings.SplitN(strings.TrimSpace(field), "=", 2)
+		k := strings.ToLower(strings.TrimSpace(parts[0]))
+		if k != "max-age" {
+			continue
+		}
+
+		if len(parts) == 1 {
+			return 0, true, errors.New("max-age has no value")
+		}
+
+		v := strings.TrimSpace(parts[1])
+		if v == "" {
+			return 0, true, errors.New("max-age has empty value")
+		}
+
+		age, err := strconv.Atoi(v)
+		if err != nil {
+			return 0, true, err
+		}
+
+		return age, true, nil
+	}
+
+	return 0, false, nil
 }

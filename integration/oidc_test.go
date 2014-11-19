@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"path"
 	"testing"
+	"time"
 
 	"github.com/coreos-inc/auth/connector"
 	localconnector "github.com/coreos-inc/auth/connector/local"
@@ -37,13 +38,16 @@ func TestHTTPExchangeToken(t *testing.T) {
 	issuerURL := "http://server.example.com"
 	sm := session.NewSessionManager()
 
-	k, err := key.GenerateRSAKey()
+	k, err := key.GeneratePrivateRSAKey()
 	if err != nil {
 		t.Fatalf("Unable to generate RSA key: %v", err)
 	}
 
-	km := key.NewRSAKeyManager()
-	km.Set([]key.RSAKey{*k}, k)
+	km := key.NewPrivateKeyManager()
+	err = km.Set(key.NewPrivateKeySet([]key.PrivateKey{k}, time.Now().Add(time.Minute)))
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
 
 	srv := &server.Server{
 		IssuerURL:          issuerURL,
@@ -70,10 +74,9 @@ func TestHTTPExchangeToken(t *testing.T) {
 		ProviderConfig: *cfg,
 		ClientIdentity: ci,
 		RedirectURL:    "http://client.example.com",
-	}
-
-	if err = cl.RefreshKeys(); err != nil {
-		t.Fatalf("Failed refreshing keys: %v", err)
+		Keys: []key.PublicKey{
+			key.NewPublicKey(k.JWK()),
+		},
 	}
 
 	m := http.NewServeMux()

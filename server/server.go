@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/jonboulle/clockwork"
+
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/jose"
 	josesig "github.com/coreos-inc/auth/jose/sig"
@@ -23,7 +25,7 @@ type OIDCServer interface {
 
 type Server struct {
 	IssuerURL          string
-	KeyManager         key.KeyManager
+	KeyManager         key.PrivateKeyManager
 	SessionManager     *session.SessionManager
 	ClientIdentityRepo ClientIdentityRepo
 }
@@ -47,11 +49,12 @@ func (s *Server) ProviderConfig() oidc.ProviderConfig {
 }
 
 func (s *Server) HTTPHandler(idpcs map[string]connector.IDPConnector, tpl *template.Template) http.Handler {
+	clock := clockwork.NewRealClock()
 	mux := http.NewServeMux()
 	mux.HandleFunc(httpPathDiscovery, handleDiscoveryFunc(s.ProviderConfig()))
 	mux.HandleFunc(HttpPathAuth, handleAuthFunc(s, idpcs, tpl))
 	mux.HandleFunc(httpPathToken, handleTokenFunc(s))
-	mux.HandleFunc(httpPathKeys, handleKeysFunc(s.KeyManager))
+	mux.HandleFunc(httpPathKeys, handleKeysFunc(s.KeyManager, clock))
 
 	for _, idpc := range idpcs {
 		idpc.Register(mux)

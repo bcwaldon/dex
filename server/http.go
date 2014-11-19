@@ -10,6 +10,8 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/jonboulle/clockwork"
+
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/jose"
 	"github.com/coreos-inc/auth/key"
@@ -43,7 +45,7 @@ func handleDiscoveryFunc(cfg oidc.ProviderConfig) http.HandlerFunc {
 	}
 }
 
-func handleKeysFunc(km key.KeyManager) http.HandlerFunc {
+func handleKeysFunc(km key.PrivateKeyManager, clock clockwork.Clock) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			w.Header().Set("Allow", "GET")
@@ -51,16 +53,29 @@ func handleKeysFunc(km key.KeyManager) http.HandlerFunc {
 			return
 		}
 
+		jwks, err := km.JWKs()
+		if err != nil {
+			log.Printf("Failed to get JWKs while serving HTTP request: %v", err)
+			phttp.WriteError(w, http.StatusInternalServerError, "")
+			return
+		}
+
 		keys := struct {
 			Keys []jose.JWK `json:"keys"`
 		}{
-			Keys: km.JWKs(),
+			Keys: jwks,
 		}
 
 		b, err := json.Marshal(keys)
 		if err != nil {
 			log.Printf("Unable to marshal signing key to JSON: %v", err)
 		}
+
+		exp := km.ExpiresAt()
+		w.Header().Set("Expires", exp.Format(time.RFC1123))
+
+		ttl := int(exp.Sub(clock.Now().UTC()).Seconds())
+		w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", ttl))
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)

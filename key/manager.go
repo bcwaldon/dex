@@ -2,42 +2,84 @@ package key
 
 import (
 	"errors"
+	"time"
+
+	"github.com/jonboulle/clockwork"
 
 	"github.com/coreos-inc/auth/jose"
 	josesig "github.com/coreos-inc/auth/jose/sig"
 )
 
-type KeyManager interface {
+type PrivateKeyManager interface {
+	ExpiresAt() time.Time
 	Signer() (josesig.Signer, error)
-	JWKs() []jose.JWK
+	JWKs() ([]jose.JWK, error)
+
+	WritableKeySetRepo
 }
 
-func NewRSAKeyManager() *RSAKeyManager {
-	return &RSAKeyManager{}
+func NewPrivateKeyManager() PrivateKeyManager {
+	return &privateKeyManager{
+		clock: clockwork.NewRealClock(),
+	}
 }
 
-type RSAKeyManager struct {
-	current *RSAKey
-	keys    []RSAKey
+type privateKeyManager struct {
+	keySet *PrivateKeySet
+	clock  clockwork.Clock
 }
 
-func (m *RSAKeyManager) Signer() (josesig.Signer, error) {
-	if m.current == nil {
-		return nil, errors.New("unable to determine signing key")
+func (m *privateKeyManager) ExpiresAt() time.Time {
+	if m.keySet == nil {
+		return m.clock.Now().UTC()
 	}
 
-	return m.current.Signer(), nil
+	return m.keySet.ExpiresAt()
 }
 
-func (m *RSAKeyManager) Set(keys []RSAKey, current *RSAKey) {
-	m.current = current
-	m.keys = keys
+func (m *privateKeyManager) Signer() (josesig.Signer, error) {
+	if err := m.Healthy(); err != nil {
+		return nil, err
+	}
+
+	return m.keySet.Active().Signer(), nil
 }
 
-func (s *RSAKeyManager) JWKs() []jose.JWK {
-	jwks := make([]jose.JWK, len(s.keys))
-	for i, k := range s.keys {
+func (m *privateKeyManager) JWKs() ([]jose.JWK, error) {
+	if err := m.Healthy(); err != nil {
+		return nil, err
+	}
+
+	keys := m.keySet.Keys()
+	jwks := make([]jose.JWK, len(keys))
+	for i, k := range keys {
 		jwks[i] = k.JWK()
 	}
-	return jwks
+	return jwks, nil
+}
+
+func (m *privateKeyManager) Healthy() error {
+	if m.keySet == nil {
+		return errors.New("uninitialized")
+	}
+
+	if len(m.keySet.Keys()) == 0 {
+		return errors.New("zero keys")
+	}
+
+	if m.keySet.ExpiresAt().Before(m.clock.Now().UTC()) {
+		return errors.New("keys expired")
+	}
+
+	return nil
+}
+
+func (m *privateKeyManager) Set(keySet KeySet) error {
+	privKeySet, ok := keySet.(*PrivateKeySet)
+	if !ok {
+		return errors.New("unable to cast to PrivateKeySet")
+	}
+
+	m.keySet = privKeySet
+	return nil
 }

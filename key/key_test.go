@@ -9,15 +9,15 @@ import (
 	"github.com/coreos-inc/auth/jose"
 )
 
-func TestRSAKeyJWK(t *testing.T) {
+func TestPrivateRSAKeyJWK(t *testing.T) {
 	n := big.NewInt(int64(17))
 	if n == nil {
 		panic("NewInt returned nil")
 	}
 
-	k := RSAKey{
-		ID: "foo",
-		PrivateKey: &rsa.PrivateKey{
+	k := &privateRSAKey{
+		id: "foo",
+		privateKey: &rsa.PrivateKey{
 			PublicKey: rsa.PublicKey{N: n, E: 65537},
 		},
 	}

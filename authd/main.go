@@ -14,6 +14,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/coreos-inc/auth/connector"
 	localconnector "github.com/coreos-inc/auth/connector/local"
@@ -53,7 +54,8 @@ func main() {
 		log.Fatalf(err.Error())
 	}
 
-	srv, err := newServerFromFlags(fs)
+	km := key.NewPrivateKeyManager()
+	srv, err := newServerFromFlags(fs, km)
 	if err != nil {
 		log.Fatalf("Unable to build Server: %v", err)
 	}
@@ -78,9 +80,11 @@ func main() {
 		log.Fatalf("Unable to parse login page template: %v", err)
 	}
 
-	if fs.Lookup("connector-id").Value.String() == "" {
-		log.Fatalf("Missing --connector-id flag")
-	}
+	kRepo := key.NewPrivateKeySetRepo()
+	key.NewKeySetSyncer(kRepo, km).Run()
+
+	krot := key.NewPrivateKeyRotator(kRepo, 60*time.Second)
+	krot.Run()
 
 	hdlr := srv.HTTPHandler(idpcs, tpl)
 	httpsrv := &http.Server{
@@ -92,15 +96,7 @@ func main() {
 	log.Fatal(httpsrv.ListenAndServe())
 }
 
-func newServerFromFlags(fs *flag.FlagSet) (*server.Server, error) {
-	k, err := key.GenerateRSAKey()
-	if err != nil {
-		return nil, fmt.Errorf("unable to initialize key manager: %v", err)
-	}
-
-	km := key.NewRSAKeyManager()
-	km.Set([]key.RSAKey{*k}, k)
-
+func newServerFromFlags(fs *flag.FlagSet, km key.PrivateKeyManager) (*server.Server, error) {
 	cFile := fs.Lookup("clients").Value.String()
 	cf, err := os.Open(cFile)
 	if err != nil {
@@ -145,11 +141,14 @@ func newIDPConnectorsFromFlags(fs *flag.FlagSet, lf oidc.LoginFunc) (map[string]
 		return nil, err
 	}
 
-	ct := fs.Lookup("connector-type").Value.String()
-
 	idpcID := fs.Lookup("connector-id").Value.String()
+	if idpcID == "" {
+		log.Fatalf("Missing --connector-id flag")
+	}
+
 	ns.Path = path.Join(ns.Path, server.HttpPathAuth, strings.ToLower(idpcID))
 
+	ct := fs.Lookup("connector-type").Value.String()
 	idcp, err := connector.NewIDPConnector(ct, *ns, lf, fs)
 	if err != nil {
 		return nil, err

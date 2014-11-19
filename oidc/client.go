@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/coreos-inc/auth/jose"
-	josesig "github.com/coreos-inc/auth/jose/sig"
+	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oauth2"
 	phttp "github.com/coreos-inc/auth/pkg/http"
 )
@@ -70,8 +70,7 @@ type Client struct {
 	ClientIdentity oauth2.ClientIdentity
 	RedirectURL    string
 	Scope          []string
-
-	verifiers map[string]josesig.Verifier
+	Keys           []key.PublicKey
 }
 
 func (c *Client) getHTTPClient() phttp.Client {
@@ -101,77 +100,33 @@ func (c *Client) OAuthClient() (*oauth2.Client, error) {
 	return oauth2.NewClient(c.getHTTPClient(), ocfg)
 }
 
-func (c *Client) PurgeExpiredVerifiers() error {
-	// TODO: implement
-	return nil
+func (c *Client) SyncKeys() chan struct{} {
+	r := newRemotePublicKeyRepo(c.getHTTPClient(), c.ProviderConfig.KeysEndpoint)
+	w := &clientKeyRepo{client: c}
+	return key.NewKeySetSyncer(r, w).Run()
 }
 
-func (c *Client) AddVerifier(s josesig.Verifier) error {
-	if c.verifiers == nil {
-		c.verifiers = make(map[string]josesig.Verifier)
-	}
-	// replace in list if exists
-	c.verifiers[s.ID()] = s
-	return nil
+type clientKeyRepo struct {
+	client *Client
 }
 
-func (c *Client) FetchKeys() ([]*jose.JWK, error) {
-	req, err := http.NewRequest("GET", c.ProviderConfig.KeysEndpoint, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := c.getHTTPClient().Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	var decoded map[string][]*jose.JWK
-	if err := json.NewDecoder(resp.Body).Decode(&decoded); err != nil {
-		return nil, err
-	}
-
-	keys, ok := decoded["keys"]
+func (r *clientKeyRepo) Set(ks key.KeySet) error {
+	pks, ok := ks.(*key.PublicKeySet)
 	if !ok {
-		return nil, errors.New("invalid response from jwks endpoint")
+		return errors.New("unable to cast to PublicKey")
 	}
-
-	return keys, nil
-}
-
-// Fetch keys, generate appropriate verifier based on signing algorithm, and update the client's cache.
-func (c *Client) RefreshKeys() error {
-	jwks, err := c.FetchKeys()
-	if err != nil {
-		return err
-	}
-
-	if err := c.PurgeExpiredVerifiers(); err != nil {
-		return err
-	}
-
-	// TODO: filter by use:"sig" first
-
-	for _, jwk := range jwks {
-		v, err := josesig.NewVerifier(*jwk)
-		if err != nil {
-			return err
-		}
-
-		if err = c.AddVerifier(v); err != nil {
-			return err
-		}
-	}
-
+	r.client.Keys = pks.Keys()
 	return nil
 }
 
 // verify if a JWT is valid or not
 func (c *Client) Verify(jwt jose.JWT) error {
-	for _, v := range c.verifiers {
-		err := v.Verify(jwt.Signature, []byte(jwt.Data()))
-		if err == nil {
+	for _, k := range c.Keys {
+		v, err := k.Verifier()
+		if err != nil {
+			return err
+		}
+		if v.Verify(jwt.Signature, []byte(jwt.Data())) == nil {
 			return VerifyClaims(jwt, c.ProviderConfig.Issuer, c.ClientIdentity.ID)
 		}
 	}

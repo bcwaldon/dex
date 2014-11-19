@@ -14,7 +14,7 @@ COVER=${COVER:-"-cover"}
 
 source ./build
 
-TESTABLE="connector/oidc integration jose jose/sig key oauth2 oidc pkg/flag server session"
+TESTABLE="connector/oidc integration jose jose/sig key oauth2 oidc pkg/flag pkg/http pkg/time server session"
 FORMATTABLE="$TESTABLE authd connector/local examples/app pkg/http"
 
 # user has not provided PKG override

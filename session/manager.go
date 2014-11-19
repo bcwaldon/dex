@@ -98,7 +98,7 @@ func (m *SessionManager) Identify(sessionID string, ident oidc.Identity) (*Sessi
 }
 
 func (m *SessionManager) Kill(sessionID string) (*Session, error) {
-	s, err := m.getSessionInState(sessionID, sessionStateIdentified)
+	s, err := m.sessions.Get(sessionID)
 	if err != nil {
 		return nil, err
 	}

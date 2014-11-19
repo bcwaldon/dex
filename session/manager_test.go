@@ -126,17 +126,3 @@ func TestSessionManagerKill(t *testing.T) {
 		t.Errorf("Unexpected Session: %#v", ses)
 	}
 }
-
-func TestSessionManagerKillUnidentified(t *testing.T) {
-	sm := NewSessionManager()
-	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
-
-	sessionID, err := sm.NewSession(ci, "bogus")
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-	_, err = sm.Kill(sessionID)
-	if err == nil {
-		t.Fatalf("Expected non-nil error")
-	}
-}

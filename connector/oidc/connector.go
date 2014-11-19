@@ -11,6 +11,7 @@ import (
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
+	phttp "github.com/coreos-inc/auth/pkg/http"
 )
 
 const (
@@ -74,14 +75,8 @@ func (c *OIDCIDPConnector) Register(mux *http.ServeMux, errorURL url.URL) {
 }
 
 func redirectError(w http.ResponseWriter, errorURL url.URL, q url.Values) {
-	vals := errorURL.Query()
-	for k, vs := range q {
-		for _, v := range vs {
-			vals.Add(k, v)
-		}
-	}
-	errorURL.RawQuery = vals.Encode()
-	w.Header().Set("Location", errorURL.String())
+	redirectURL := phttp.MergeQuery(errorURL, q)
+	w.Header().Set("Location", redirectURL.String())
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 

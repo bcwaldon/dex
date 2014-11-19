@@ -117,7 +117,6 @@ func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idp
 	e := q.Get("error")
 	idpcID := q.Get("idpc_id")
 	if e != "" {
-		// TODO(sym3tri): invalidate session from state param.
 		td.Error = true
 		td.Detail = e
 		if idpcID == "" {
@@ -171,6 +170,10 @@ func handleAuthFunc(srv OIDCServer, idpcs map[string]connector.IDPConnector, tpl
 		q := r.URL.Query()
 		e := q.Get("error")
 		if e != "" {
+			sessionKey := q.Get("state")
+			if err := srv.KillSession(sessionKey); err != nil {
+				log.Printf("error killing sessionKey=%s, error=%v", sessionKey, err)
+			}
 			renderLoginPage(w, r, srv, idpcs, tpl)
 			return
 		}

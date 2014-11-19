@@ -23,6 +23,7 @@ type OIDCServer interface {
 	NewSession(oauth2.ClientIdentity, string) (string, error)
 	Login(oidc.Identity, string) (string, error)
 	Token(oauth2.ClientIdentity, string) (*jose.JWT, error)
+	KillSession(string) error
 }
 
 type Server struct {
@@ -30,6 +31,16 @@ type Server struct {
 	KeyManager         key.PrivateKeyManager
 	SessionManager     *session.SessionManager
 	ClientIdentityRepo ClientIdentityRepo
+}
+
+func (s *Server) KillSession(sessionKey string) error {
+	sessionID, err := s.SessionManager.ExchangeKey(sessionKey)
+	if err != nil {
+		return err
+	}
+
+	_, err = s.SessionManager.Kill(sessionID)
+	return err
 }
 
 func (s *Server) ProviderConfig() oidc.ProviderConfig {

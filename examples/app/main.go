@@ -74,9 +74,7 @@ func main() {
 		RedirectURL:    redirectURL.String(),
 	}
 
-	if err = client.RefreshKeys(); err != nil {
-		log.Fatalf("Failed refreshing keys: %v", err)
-	}
+	client.SyncKeys()
 
 	hdlr := NewClientHandler(client)
 	httpsrv := &http.Server{

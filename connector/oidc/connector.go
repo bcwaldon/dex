@@ -44,9 +44,7 @@ func NewOIDCIDPConnectorFromFlags(ns url.URL, lf oidc.LoginFunc, fs *flag.FlagSe
 		RedirectURL:    cbURL.String(),
 	}
 
-	if err = c.RefreshKeys(); err != nil {
-		return nil, fmt.Errorf("failed refreshing keys: %v", err)
-	}
+	c.SyncKeys()
 
 	return NewOIDCIDPConnector(ns, lf, c), nil
 }

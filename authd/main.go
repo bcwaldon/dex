@@ -81,10 +81,10 @@ func main() {
 	}
 
 	kRepo := key.NewPrivateKeySetRepo()
-	go key.NewKeySetSyncer(kRepo, km).Run()
+	key.NewKeySetSyncer(kRepo, km).Run()
 
-	krot := key.NewPrivateKeyRotator(kRepo, 30*time.Second)
-	go krot.Run()
+	krot := key.NewPrivateKeyRotator(kRepo, 60*time.Second)
+	krot.Run()
 
 	hdlr := srv.HTTPHandler(idpcs, tpl)
 	httpsrv := &http.Server{

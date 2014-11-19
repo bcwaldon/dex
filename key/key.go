@@ -12,11 +12,16 @@ import (
 )
 
 type PublicKey interface {
+	ID() string
 	Verifier() (josesig.Verifier, error)
 }
 
 type publicRSAKey struct {
 	jwk jose.JWK
+}
+
+func (k *publicRSAKey) ID() string {
+	return k.jwk.ID
 }
 
 func (k *publicRSAKey) Verifier() (josesig.Verifier, error) {
@@ -57,22 +62,32 @@ type KeySet interface {
 	ExpiresAt() time.Time
 }
 
-type PublicKeySet interface {
-	KeySet
-	Keys() []PublicKey
+type PublicKeySet struct {
+	keys      []PublicKey
+	expiresAt time.Time
 }
 
-type publicRSAKeySet struct {
-	keys []publicRSAKey
+func NewPublicKey(jwk jose.JWK) PublicKey {
+	return &publicRSAKey{jwk: jwk}
 }
 
-func (s *publicRSAKeySet) Keys() []PublicKey {
-	pks := make([]PublicKey, len(s.keys))
-	for i, rk := range s.keys {
-		rk := rk
-		pks[i] = PublicKey(&rk)
+func NewPublicKeySet(jwks []jose.JWK, exp time.Time) *PublicKeySet {
+	keys := make([]PublicKey, len(jwks))
+	for i, jwk := range jwks {
+		keys[i] = NewPublicKey(jwk)
 	}
-	return pks
+	return &PublicKeySet{
+		keys:      keys,
+		expiresAt: exp,
+	}
+}
+
+func (s *PublicKeySet) ExpiresAt() time.Time {
+	return s.expiresAt
+}
+
+func (s *PublicKeySet) Keys() []PublicKey {
+	return s.keys
 }
 
 type PrivateKeySet struct {
@@ -90,12 +105,7 @@ func NewPrivateKeySet(keys []PrivateKey, exp time.Time) *PrivateKeySet {
 }
 
 func (s *PrivateKeySet) Keys() []PrivateKey {
-	pks := make([]PrivateKey, len(s.keys))
-	for i, rk := range s.keys {
-		rk := rk
-		pks[i] = PrivateKey(rk)
-	}
-	return pks
+	return s.keys
 }
 
 func (s *PrivateKeySet) ExpiresAt() time.Time {

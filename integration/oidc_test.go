@@ -74,10 +74,9 @@ func TestHTTPExchangeToken(t *testing.T) {
 		ProviderConfig: *cfg,
 		ClientIdentity: ci,
 		RedirectURL:    "http://client.example.com",
-	}
-
-	if err = cl.RefreshKeys(); err != nil {
-		t.Fatalf("Failed refreshing keys: %v", err)
+		Keys: []key.PublicKey{
+			key.NewPublicKey(k.JWK()),
+		},
 	}
 
 	m := http.NewServeMux()

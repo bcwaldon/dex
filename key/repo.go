@@ -37,7 +37,3 @@ func (r *memPrivateKeySetRepo) Set(ks KeySet) error {
 func (r *memPrivateKeySetRepo) Get() (KeySet, error) {
 	return KeySet(&r.pks), nil
 }
-
-type PublicKeySetRepo interface {
-	ReadableKeySetRepo
-}

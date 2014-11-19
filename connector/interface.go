@@ -25,7 +25,7 @@ func Register(ct string, fn NewIDPConnectorFunc) {
 
 type IDPConnector interface {
 	DisplayType() string
-	LoginURL(sessionKey string, prompt bool) (string, error)
+	LoginURL(sessionKey, prompt string) (string, error)
 	Register(mux *http.ServeMux, errorURL url.URL)
 }
 

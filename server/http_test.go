@@ -32,7 +32,7 @@ func (f *fakeIDPConnector) LoginURL(sessionKey, prompt string) (string, error) {
 	return f.loginURL, nil
 }
 
-func (f *fakeIDPConnector) Register(mux *http.ServeMux) {}
+func (f *fakeIDPConnector) Register(mux *http.ServeMux, errorURL url.URL) {}
 
 func TestHandleAuthFuncMethodNotAllowed(t *testing.T) {
 	for _, m := range []string{"POST", "PUT", "DELETE"} {

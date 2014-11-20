@@ -28,7 +28,7 @@ func TestMemSessionKeyRepoPushPop(t *testing.T) {
 	key := "123"
 	sessionID := "456"
 
-	r.Push(sessionKey{key: key, sessionID: sessionID}, time.Second)
+	r.Push(SessionKey{Key: key, SessionID: sessionID}, time.Second)
 
 	got, err := r.Pop(key)
 	if err != nil {
@@ -50,7 +50,7 @@ func TestMemSessionKeyRepoExpired(t *testing.T) {
 	key := "123"
 	sessionID := "456"
 
-	r.Push(sessionKey{key: key, sessionID: sessionID}, time.Second)
+	r.Push(SessionKey{Key: key, SessionID: sessionID}, time.Second)
 
 	fc.Advance(2 * time.Second)
 

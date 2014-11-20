@@ -53,15 +53,15 @@ func (m *SessionManager) NewSession(ci oauth2.ClientIdentity, cs string) (string
 }
 
 func (m *SessionManager) NewSessionKey(sessionID string) (string, error) {
-	k := sessionKey{
-		key:       m.GenerateCode(),
-		sessionID: sessionID,
+	k := SessionKey{
+		Key:       m.GenerateCode(),
+		SessionID: sessionID,
 	}
 	err := m.keys.Push(k, sessionKeyValidityWindow)
 	if err != nil {
 		return "", err
 	}
-	return k.key, nil
+	return k.Key, nil
 }
 
 func (m *SessionManager) ExchangeKey(key string) (string, error) {

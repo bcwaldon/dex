@@ -24,10 +24,10 @@ const (
 	sessionStateDead       = sessionState("EXCHANGED")
 )
 
-type sessionKey struct {
-	key       string
-	sessionID string
-	expiresAt time.Time
+type SessionKey struct {
+	Key       string
+	SessionID string
+	ExpiresAt time.Time
 }
 
 type Session struct {

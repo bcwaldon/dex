@@ -70,52 +70,79 @@ func (c *OIDCIDPConnector) LoginURL(sessionKey, prompt string) (string, error) {
 	return oac.AuthCodeURL(sessionKey, "", prompt), nil
 }
 
-func (c *OIDCIDPConnector) Register(mux *http.ServeMux) {
-	mux.Handle(c.namespace.Path+"/callback", handleCallbackFunc(c.loginFunc, c.client))
+func (c *OIDCIDPConnector) Register(mux *http.ServeMux, errorURL url.URL) {
+	mux.Handle(c.namespace.Path+"/callback", handleCallbackFunc(c.loginFunc, c.client, errorURL))
 }
 
-func handleCallbackFunc(lf oidc.LoginFunc, c *oidc.Client) http.HandlerFunc {
+func redirectError(w http.ResponseWriter, errorURL url.URL, q url.Values) {
+	redirectURL := phttp.MergeQuery(errorURL, q)
+	w.Header().Set("Location", redirectURL.String())
+	w.WriteHeader(http.StatusTemporaryRedirect)
+}
+
+func handleCallbackFunc(lf oidc.LoginFunc, c *oidc.Client, errorURL url.URL) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		code := r.URL.Query().Get("code")
+		q := r.URL.Query()
+
+		e := q.Get("error")
+		if e != "" {
+			redirectError(w, errorURL, q)
+			return
+		}
+
+		code := q.Get("code")
 		if code == "" {
-			phttp.WriteError(w, http.StatusBadRequest, "code query param must be set")
+			q.Set("error", oauth2.ErrorInvalidRequest)
+			q.Set("error_description", "code query param must be set")
+			redirectError(w, errorURL, q)
 			return
 		}
 
 		tok, err := c.ExchangeAuthCode(code)
 		if err != nil {
-			phttp.WriteError(w, http.StatusBadRequest, fmt.Sprintf("unable to verify auth code with issuer: %v", err))
+			log.Printf("unable to verify auth code with issuer: %v", err)
+			q.Set("error", oauth2.ErrorUnsupportedResponseType)
+			q.Set("error_description", "unable to verify auth code with issuer")
+			redirectError(w, errorURL, q)
 			return
 		}
 
 		claims, err := tok.Claims()
 		if err != nil {
-			phttp.WriteError(w, http.StatusBadRequest, fmt.Sprintf("unable to construct claims: %v", err))
+			log.Printf("unable to construct claims: %v", err)
+			q.Set("error", oauth2.ErrorUnsupportedResponseType)
+			q.Set("error_description", "unable to construct claims")
+			redirectError(w, errorURL, q)
 			return
 		}
 
 		ident, err := oidc.IdentityFromClaims(claims)
 		if err != nil {
-			phttp.WriteError(w, http.StatusUnauthorized, "unable to convert claims to identity")
+			q.Set("error", oauth2.ErrorUnsupportedResponseType)
+			q.Set("error_description", "unable to convert claims to identity")
+			redirectError(w, errorURL, q)
 			return
 		}
 
-		sessionKey := r.URL.Query().Get("state")
+		sessionKey := q.Get("state")
 		if sessionKey == "" {
-			phttp.WriteError(w, http.StatusBadRequest, "missing state query param")
+			q.Set("error", oauth2.ErrorInvalidRequest)
+			q.Set("error_description", "missing state query param")
+			redirectError(w, errorURL, q)
 			return
 		}
 
 		redirectURL, err := lf(*ident, sessionKey)
 		if err != nil {
 			log.Printf("Unable to log in %#v: %v", *ident, err)
-			phttp.WriteError(w, http.StatusInternalServerError, "login failed")
+			q.Set("error", oauth2.ErrorAccessDenied)
+			q.Set("error_description", "login failed")
+			redirectError(w, errorURL, q)
 			return
 		}
 
 		w.Header().Set("Location", redirectURL)
 		w.WriteHeader(http.StatusTemporaryRedirect)
 		return
-
 	}
 }

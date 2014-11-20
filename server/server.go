@@ -1,9 +1,11 @@
 package server
 
 import (
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
+	"net/url"
 
 	"github.com/jonboulle/clockwork"
 
@@ -21,6 +23,7 @@ type OIDCServer interface {
 	NewSession(oauth2.ClientIdentity, string) (string, error)
 	Login(oidc.Identity, string) (string, error)
 	Token(oauth2.ClientIdentity, string) (*jose.JWT, error)
+	KillSession(string) error
 }
 
 type Server struct {
@@ -28,6 +31,16 @@ type Server struct {
 	KeyManager         key.PrivateKeyManager
 	SessionManager     *session.SessionManager
 	ClientIdentityRepo ClientIdentityRepo
+}
+
+func (s *Server) KillSession(sessionKey string) error {
+	sessionID, err := s.SessionManager.ExchangeKey(sessionKey)
+	if err != nil {
+		return err
+	}
+
+	_, err = s.SessionManager.Kill(sessionID)
+	return err
 }
 
 func (s *Server) ProviderConfig() oidc.ProviderConfig {
@@ -56,8 +69,13 @@ func (s *Server) HTTPHandler(idpcs map[string]connector.IDPConnector, tpl *templ
 	mux.HandleFunc(httpPathToken, handleTokenFunc(s))
 	mux.HandleFunc(httpPathKeys, handleKeysFunc(s.KeyManager, clock))
 
-	for _, idpc := range idpcs {
-		idpc.Register(mux)
+	pcfg := s.ProviderConfig()
+	for id, idpc := range idpcs {
+		errorURL, err := url.Parse(fmt.Sprintf("%s?idpc_id=%s", pcfg.AuthEndpoint, id))
+		if err != nil {
+			log.Fatal(err)
+		}
+		idpc.Register(mux, *errorURL)
 	}
 
 	return mux

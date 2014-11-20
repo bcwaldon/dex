@@ -6,6 +6,7 @@ import (
 )
 
 const (
+	ErrorAccessDenied            = "access_denied"
 	ErrorInvalidClient           = "invalid_client"
 	ErrorInvalidGrant            = "invalid_grant"
 	ErrorInvalidRequest          = "invalid_request"

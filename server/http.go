@@ -84,12 +84,21 @@ func handleKeysFunc(km key.PrivateKeyManager, clock clockwork.Clock) http.Handle
 }
 
 type templateData struct {
-	Error   bool
-	Message string
-	Links   []struct {
+	Error       bool
+	Message     string
+	Instruction string
+	Detail      string
+	Links       []struct {
 		DisplayType string
 		URL         string
 		ID          string
+	}
+}
+
+func execTemplate(w http.ResponseWriter, tpl *template.Template, td templateData) {
+	if err := tpl.Execute(w, td); err != nil {
+		phttp.WriteError(w, http.StatusInternalServerError, "error loading login page")
+		return
 	}
 }
 
@@ -99,20 +108,36 @@ func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idp
 		return
 	}
 
-	td := templateData{}
+	td := templateData{
+		Instruction: "Return to the referring application to login.",
+	}
+
+	// Render error if remote IdP connector errored and redirected here.
+	q := r.URL.Query()
+	e := q.Get("error")
+	idpcID := q.Get("idpc_id")
+	if e != "" {
+		td.Error = true
+		td.Detail = q.Get("error_description")
+		if td.Detail == "" {
+			td.Detail = q.Get("error")
+		}
+		if idpcID == "" {
+			td.Message = "Error authenticating."
+		} else {
+			td.Message = fmt.Sprintf("Error authenticating with %s.", idpcID)
+		}
+		execTemplate(w, tpl, td)
+		return
+	}
 
 	// Render error message if client id is invalid.
 	// TODO(sym3tri): remove this check once we support logging into authd.
-	q := r.URL.Query()
 	ci := srv.Client(q.Get("client_id"))
 	if ci == nil {
 		td.Error = true
-		td.Message = "Invalid client ID. Return to the referring application to login."
-
-		if err := tpl.Execute(w, td); err != nil {
-			phttp.WriteError(w, http.StatusInternalServerError, "error loading login page")
-			return
-		}
+		td.Message = "Invalid client ID."
+		execTemplate(w, tpl, td)
 		return
 	}
 
@@ -134,10 +159,7 @@ func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idp
 		n++
 	}
 
-	if err := tpl.Execute(w, td); err != nil {
-		phttp.WriteError(w, http.StatusInternalServerError, "error loading login page")
-		return
-	}
+	execTemplate(w, tpl, td)
 }
 
 func handleAuthFunc(srv OIDCServer, idpcs map[string]connector.IDPConnector, tpl *template.Template) http.HandlerFunc {
@@ -149,6 +171,16 @@ func handleAuthFunc(srv OIDCServer, idpcs map[string]connector.IDPConnector, tpl
 		}
 
 		q := r.URL.Query()
+		e := q.Get("error")
+		if e != "" {
+			sessionKey := q.Get("state")
+			if err := srv.KillSession(sessionKey); err != nil {
+				log.Printf("error killing sessionKey=%s, error=%v", sessionKey, err)
+			}
+			renderLoginPage(w, r, srv, idpcs, tpl)
+			return
+		}
+
 		idpc, ok := idpcs[q.Get("idpc_id")]
 		if !ok {
 			renderLoginPage(w, r, srv, idpcs, tpl)

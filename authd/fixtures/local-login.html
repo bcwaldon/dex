@@ -117,6 +117,15 @@
         margin-bottom: 10px;
         min-width: 200px;
       }
+      .input-box:focus,
+      .input-box:active {
+        outline: none;
+        border-color: #66AFE9;
+      }
+      .error-box {
+        color: #DD1327;
+        margin-top: 20px;
+      }
     </style>
   </head>
   <body>
@@ -145,20 +154,21 @@
       <div id="panel">
         <h2 id="heading">Verify Your Identity</h2>
         <div id="button-container">
-
-            <div>
-              <form method="post" action="{{.PostURL}}">
-                <div><input name="userid" type="text" class="input-box" placeholder="user id" autofocus/></div>
-                <div><input name="password" type="password" class="input-box" placeholder="password"/></div>
-                <button type="submit" class="btn">
-                  <span class="btn-icon">
-                  </span>
-                  <span class="btn-text">Login {{ .Name }}</span>
-                </button>
-              </form>
-            </div>
-
+          <div>
+            <form method="post" action="{{.PostURL}}">
+              <div><input name="userid" type="text" class="input-box" placeholder="user id" autofocus/></div>
+              <div><input name="password" type="password" class="input-box" placeholder="password"/></div>
+              <button type="submit" class="btn">
+                <span class="btn-icon">
+                </span>
+                <span class="btn-text">Login {{ .Name }}</span>
+              </button>
+            </form>
+          </div>
         </div>
+        {{ if .Error }}
+          <div class="error-box">{{ .Message }}</div>
+        {{ end }}
       </div>
 
       <a id="contact-link" href="mailto:support@coreos.com">Contact CoreOS</a>

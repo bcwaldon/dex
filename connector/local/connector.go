@@ -11,6 +11,7 @@ import (
 	"path"
 
 	"github.com/coreos-inc/auth/connector"
+	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 	phttp "github.com/coreos-inc/auth/pkg/http"
 )
@@ -35,6 +36,8 @@ type LocalIDPConnector struct {
 type Page struct {
 	PostURL string
 	Name    string
+	Error   bool
+	Message string
 }
 
 var templates *template.Template
@@ -83,11 +86,32 @@ func (c *LocalIDPConnector) LoginURL(sessionKey, prompt string) (string, error) 
 	return path.Join(c.namespace.Path, "login") + "?" + enc, nil
 }
 
-func (c *LocalIDPConnector) Register(mux *http.ServeMux) {
-	mux.Handle(c.namespace.Path+"/login", handleLoginFunc(c.loginFunc, c.idp))
+func (c *LocalIDPConnector) Register(mux *http.ServeMux, errorURL url.URL) {
+	route := c.namespace.Path + "/login"
+	mux.Handle(route, handleLoginFunc(c.loginFunc, c.idp, route, errorURL))
 }
 
-func handleLoginFunc(lf oidc.LoginFunc, idp *LocalIdentityProvider) http.HandlerFunc {
+func redirectPostError(w http.ResponseWriter, errorURL url.URL, q url.Values) {
+	redirectURL := phttp.MergeQuery(errorURL, q)
+	w.Header().Set("Location", redirectURL.String())
+	w.WriteHeader(http.StatusSeeOther)
+}
+
+func handleLoginFunc(lf oidc.LoginFunc, idp *LocalIdentityProvider, localErrorPath string, errorURL url.URL) http.HandlerFunc {
+	handleGET := func(w http.ResponseWriter, r *http.Request, errMsg string) {
+		// TODO(sym3tri): skip login page if valid cookie and "prompt" param is not "force"
+
+		p := &Page{PostURL: r.URL.String(), Name: "Local"}
+		if errMsg != "" {
+			p.Error = true
+			p.Message = errMsg
+		}
+
+		if err := templates.ExecuteTemplate(w, "local-login.html", p); err != nil {
+			phttp.WriteError(w, http.StatusInternalServerError, err.Error())
+		}
+	}
+
 	handlePOST := func(w http.ResponseWriter, r *http.Request) {
 		if err := r.ParseForm(); err != nil {
 			msg := fmt.Sprintf("unable to parse form from body: %v", err)
@@ -97,32 +121,37 @@ func handleLoginFunc(lf oidc.LoginFunc, idp *LocalIdentityProvider) http.Handler
 
 		userid := r.PostForm.Get("userid")
 		if userid == "" {
-			phttp.WriteError(w, http.StatusBadRequest, "missing userid")
+			handleGET(w, r, "missing userid")
 			return
 		}
 
 		password := r.PostForm.Get("password")
 		if password == "" {
-			phttp.WriteError(w, http.StatusBadRequest, "missing password")
+			handleGET(w, r, "missing password")
 			return
 		}
 
 		ident := idp.Identity(userid, password)
 		if ident == nil {
-			phttp.WriteError(w, http.StatusBadRequest, "invalid login")
+			handleGET(w, r, "invalid login")
 			return
 		}
 
+		q := r.URL.Query()
 		sessionKey := r.FormValue("session_key")
 		if sessionKey == "" {
-			phttp.WriteError(w, http.StatusBadRequest, "missing session_key")
+			q.Set("error", oauth2.ErrorInvalidRequest)
+			q.Set("error_description", "missing session_key")
+			redirectPostError(w, errorURL, q)
 			return
 		}
 
 		redirectURL, err := lf(*ident, sessionKey)
 		if err != nil {
 			log.Printf("Unable to log in %#v: %v", *ident, err)
-			phttp.WriteError(w, http.StatusInternalServerError, "login failed")
+			q.Set("error", oauth2.ErrorAccessDenied)
+			q.Set("error_description", "login failed")
+			redirectPostError(w, errorURL, q)
 			return
 		}
 
@@ -130,20 +159,12 @@ func handleLoginFunc(lf oidc.LoginFunc, idp *LocalIdentityProvider) http.Handler
 		w.WriteHeader(http.StatusTemporaryRedirect)
 	}
 
-	handleGET := func(w http.ResponseWriter, r *http.Request) {
-		// TODO(sym3tri): skip login page if valid cookie and "prompt" param is not "force"
-		p := &Page{r.URL.String(), "Local"}
-		if err := templates.ExecuteTemplate(w, "local-login.html", p); err != nil {
-			phttp.WriteError(w, http.StatusInternalServerError, err.Error())
-		}
-	}
-
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "POST":
 			handlePOST(w, r)
 		case "GET":
-			handleGET(w, r)
+			handleGET(w, r, "")
 		default:
 			w.Header().Set("Allow", "GET, POST")
 			phttp.WriteError(w, http.StatusMethodNotAllowed, "GET and POST only acceptable methods")

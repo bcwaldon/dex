@@ -18,7 +18,7 @@ type sessionKeyRepo interface {
 	Pop(string) (string, error)
 }
 
-func newSessionRepo() sessionRepo {
+func newMemSessionRepo() sessionRepo {
 	return &memSessionRepo{
 		store: make(map[string]Session),
 	}
@@ -46,7 +46,7 @@ type expiringSessionKey struct {
 	expiresAt time.Time
 }
 
-func newSessionKeyRepo() sessionKeyRepo {
+func newMemSessionKeyRepo() sessionKeyRepo {
 	return &memSessionKeyRepo{
 		store: make(map[string]expiringSessionKey),
 		clock: clockwork.NewRealClock(),

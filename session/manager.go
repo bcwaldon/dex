@@ -24,8 +24,8 @@ func NewSessionManager() *SessionManager {
 	return &SessionManager{
 		GenerateCode: DefaultGenerateCode,
 		Clock:        clockwork.NewRealClock(),
-		sessions:     newSessionRepo(),
-		keys:         newSessionKeyRepo(),
+		sessions:     newMemSessionRepo(),
+		keys:         newMemSessionKeyRepo(),
 	}
 }
 

@@ -92,7 +92,8 @@ func handleCallbackFunc(lf oidc.LoginFunc, c *oidc.Client, errorURL url.URL) htt
 
 		code := q.Get("code")
 		if code == "" {
-			q.Set("error", "code query param must be set")
+			q.Set("error", oauth2.ErrorInvalidRequest)
+			q.Set("error_description", "code query param must be set")
 			redirectError(w, errorURL, q)
 			return
 		}
@@ -100,7 +101,8 @@ func handleCallbackFunc(lf oidc.LoginFunc, c *oidc.Client, errorURL url.URL) htt
 		tok, err := c.ExchangeAuthCode(code)
 		if err != nil {
 			log.Printf("unable to verify auth code with issuer: %v", err)
-			q.Set("error", "unable to verify auth code with issuer")
+			q.Set("error", oauth2.ErrorUnsupportedResponseType)
+			q.Set("error_description", "unable to verify auth code with issuer")
 			redirectError(w, errorURL, q)
 			return
 		}
@@ -108,21 +110,24 @@ func handleCallbackFunc(lf oidc.LoginFunc, c *oidc.Client, errorURL url.URL) htt
 		claims, err := tok.Claims()
 		if err != nil {
 			log.Printf("unable to construct claims: %v", err)
-			q.Set("error", "unable to construct claims")
+			q.Set("error", oauth2.ErrorUnsupportedResponseType)
+			q.Set("error_description", "unable to construct claims")
 			redirectError(w, errorURL, q)
 			return
 		}
 
 		ident, err := oidc.IdentityFromClaims(claims)
 		if err != nil {
-			q.Set("error", "unable to convert claims to identity")
+			q.Set("error", oauth2.ErrorUnsupportedResponseType)
+			q.Set("error_description", "unable to convert claims to identity")
 			redirectError(w, errorURL, q)
 			return
 		}
 
 		sessionKey := q.Get("state")
 		if sessionKey == "" {
-			q.Set("error", "missing state query param")
+			q.Set("error", oauth2.ErrorInvalidRequest)
+			q.Set("error_description", "missing state query param")
 			redirectError(w, errorURL, q)
 			return
 		}
@@ -130,7 +135,8 @@ func handleCallbackFunc(lf oidc.LoginFunc, c *oidc.Client, errorURL url.URL) htt
 		redirectURL, err := lf(*ident, sessionKey)
 		if err != nil {
 			log.Printf("Unable to log in %#v: %v", *ident, err)
-			q.Set("error", "login failed")
+			q.Set("error", oauth2.ErrorAccessDenied)
+			q.Set("error_description", "login failed")
 			redirectError(w, errorURL, q)
 			return
 		}

@@ -11,6 +11,7 @@ import (
 	"path"
 
 	"github.com/coreos-inc/auth/connector"
+	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 	phttp "github.com/coreos-inc/auth/pkg/http"
 )
@@ -139,7 +140,8 @@ func handleLoginFunc(lf oidc.LoginFunc, idp *LocalIdentityProvider, localErrorPa
 		q := r.URL.Query()
 		sessionKey := r.FormValue("session_key")
 		if sessionKey == "" {
-			q.Set("error", "missing session_key")
+			q.Set("error", oauth2.ErrorInvalidRequest)
+			q.Set("error_description", "missing session_key")
 			redirectPostError(w, errorURL, q)
 			return
 		}
@@ -147,7 +149,8 @@ func handleLoginFunc(lf oidc.LoginFunc, idp *LocalIdentityProvider, localErrorPa
 		redirectURL, err := lf(*ident, sessionKey)
 		if err != nil {
 			log.Printf("Unable to log in %#v: %v", *ident, err)
-			q.Set("error", "login failed")
+			q.Set("error", oauth2.ErrorAccessDenied)
+			q.Set("error_description", "login failed")
 			redirectPostError(w, errorURL, q)
 			return
 		}

@@ -118,7 +118,10 @@ func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idp
 	idpcID := q.Get("idpc_id")
 	if e != "" {
 		td.Error = true
-		td.Detail = e
+		td.Detail = q.Get("error_description")
+		if td.Detail == "" {
+			td.Detail = q.Get("error")
+		}
 		if idpcID == "" {
 			td.Message = "Error authenticating."
 		} else {

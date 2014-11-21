@@ -1,9 +1,9 @@
 package session
 
 import (
+	"net/url"
 	"testing"
 
-	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 )
 
@@ -14,11 +14,9 @@ func staticGenerateCodeFunc(code string) GenerateCodeFunc {
 }
 
 func TestSessionManagerNewSession(t *testing.T) {
-	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
 	sm := NewSessionManager()
 	sm.GenerateCode = staticGenerateCodeFunc("boo")
-
-	got, err := sm.NewSession(ci, "bogus")
+	got, err := sm.NewSession("XXX", "bogus", url.URL{})
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -29,14 +27,12 @@ func TestSessionManagerNewSession(t *testing.T) {
 
 func TestSessionIdentifyTwice(t *testing.T) {
 	sm := NewSessionManager()
-	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
-	ident := oidc.Identity{ID: "YYY", Name: "elroy", Email: "elroy@example.com"}
-
-	sessionID, err := sm.NewSession(ci, "bogus")
+	sessionID, err := sm.NewSession("XXX", "bogus", url.URL{})
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
+	ident := oidc.Identity{ID: "YYY", Name: "elroy", Email: "elroy@example.com"}
 	if _, err := sm.Identify(sessionID, ident); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -47,10 +43,8 @@ func TestSessionIdentifyTwice(t *testing.T) {
 }
 
 func TestSessionManagerExchangeKey(t *testing.T) {
-	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
 	sm := NewSessionManager()
-
-	sessionID, err := sm.NewSession(ci, "bogus")
+	sessionID, err := sm.NewSession("XXX", "bogus", url.URL{})
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -86,8 +80,7 @@ func TestSessionManagerGetSessionInStateNoExist(t *testing.T) {
 
 func TestSessionManagerGetSessionInStateWrongState(t *testing.T) {
 	sm := NewSessionManager()
-	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
-	sessionID, err := sm.NewSession(ci, "bogus")
+	sessionID, err := sm.NewSession("XXX", "bogus", url.URL{})
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -102,14 +95,12 @@ func TestSessionManagerGetSessionInStateWrongState(t *testing.T) {
 
 func TestSessionManagerKill(t *testing.T) {
 	sm := NewSessionManager()
-	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
-	ident := oidc.Identity{ID: "YYY", Name: "elroy", Email: "elroy@example.com"}
-
-	sessionID, err := sm.NewSession(ci, "bogus")
+	sessionID, err := sm.NewSession("XXX", "bogus", url.URL{})
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
+	ident := oidc.Identity{ID: "YYY", Name: "elroy", Email: "elroy@example.com"}
 	if _, err := sm.Identify(sessionID, ident); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}

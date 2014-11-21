@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/coreos-inc/auth/jose"
-	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 )
 
@@ -15,9 +14,7 @@ func TestSessionIDToken(t *testing.T) {
 	now := time.Now().UTC()
 	ses := &Session{
 		CreatedAt: now,
-		ClientIdentity: oauth2.ClientIdentity{
-			ID: "XXX",
-		},
+		ClientID:  "XXX",
 		Identity: oidc.Identity{
 			ID:    "YYY",
 			Name:  "elroy",

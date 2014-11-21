@@ -5,10 +5,10 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math/rand"
+	"net/url"
 
 	"github.com/jonboulle/clockwork"
 
-	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 )
 
@@ -36,13 +36,14 @@ type SessionManager struct {
 	keys         sessionKeyRepo
 }
 
-func (m *SessionManager) NewSession(ci oauth2.ClientIdentity, cs string) (string, error) {
+func (m *SessionManager) NewSession(clientID, clientState string, redirectURL url.URL) (string, error) {
 	s := Session{
-		ID:             m.GenerateCode(),
-		State:          sessionStateNew,
-		CreatedAt:      m.Clock.Now().UTC(),
-		ClientIdentity: ci,
-		ClientState:    cs,
+		ID:          m.GenerateCode(),
+		State:       sessionStateNew,
+		CreatedAt:   m.Clock.Now().UTC(),
+		ClientID:    clientID,
+		ClientState: clientState,
+		RedirectURL: redirectURL,
 	}
 
 	err := m.sessions.Set(s)

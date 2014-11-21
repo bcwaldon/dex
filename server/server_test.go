@@ -107,7 +107,7 @@ func TestServerNewSession(t *testing.T) {
 		},
 	}
 
-	key, err := srv.NewSession(ci, state)
+	key, err := srv.NewSession(ci.ID, state, ci.RedirectURL)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -122,8 +122,12 @@ func TestServerNewSession(t *testing.T) {
 		t.Fatalf("Unable to add Identity to Session: %v", err)
 	}
 
-	if !reflect.DeepEqual(ci, ses.ClientIdentity) {
-		t.Fatalf("Session created with incorrect ClientIdentity: want=%#v got=%#v", ci, ses.ClientIdentity)
+	if !reflect.DeepEqual(ci.RedirectURL, ses.RedirectURL) {
+		t.Fatalf("Session created with incorrect RedirectURL: want=%#v got=%#v", ci.RedirectURL, ses.RedirectURL)
+	}
+
+	if ci.ID != ses.ClientID {
+		t.Fatalf("Session created with incorrect ClientID: want=%q got=%q", ci.ID, ses.ClientID)
 	}
 
 	if state != ses.ClientState {
@@ -149,7 +153,7 @@ func TestServerLogin(t *testing.T) {
 
 	sm := session.NewSessionManager()
 	sm.GenerateCode = staticGenerateCodeFunc("fakecode")
-	sessionID, err := sm.NewSession(ci, "bogus")
+	sessionID, err := sm.NewSession(ci.ID, "bogus", ci.RedirectURL)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -219,7 +223,7 @@ func TestServerToken(t *testing.T) {
 		ClientIdentityRepo: ciRepo,
 	}
 
-	sessionID, err := sm.NewSession(ci, "bogus")
+	sessionID, err := sm.NewSession(ci.ID, "bogus", url.URL{})
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -233,7 +237,7 @@ func TestServerToken(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	jwt, err := srv.Token(ci, key)
+	jwt, err := srv.Token(ci.ID, ci.Secret, key)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -257,7 +261,7 @@ func TestServerTokenUnrecognizedKey(t *testing.T) {
 		ClientIdentityRepo: ciRepo,
 	}
 
-	sessionID, err := sm.NewSession(ci, "bogus")
+	sessionID, err := sm.NewSession(ci.ID, "bogus", url.URL{})
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -267,7 +271,7 @@ func TestServerTokenUnrecognizedKey(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	jwt, err := srv.Token(ci, "foo")
+	jwt, err := srv.Token(ci.ID, ci.Secret, "foo")
 	if err == nil {
 		t.Fatalf("Expected non-nil error")
 	}
@@ -324,7 +328,7 @@ func TestServerTokenFail(t *testing.T) {
 		sm := session.NewSessionManager()
 		sm.GenerateCode = func() string { return keyFixture }
 
-		sessionID, err := sm.NewSession(ciFixture, "bogus")
+		sessionID, err := sm.NewSession(ciFixture.ID, "bogus", ciFixture.RedirectURL)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -350,7 +354,7 @@ func TestServerTokenFail(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		jwt, err := srv.Token(tt.argCI, tt.argKey)
+		jwt, err := srv.Token(tt.argCI.ID, tt.argCI.Secret, tt.argKey)
 		if tt.err == "" {
 			if err != nil {
 				t.Errorf("case %d: got non-nil error: %v", i, err)

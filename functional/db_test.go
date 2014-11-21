@@ -27,12 +27,6 @@ func repo() (*session.DBSessionKeyRepo, error) {
 		return nil, err
 	}
 
-	r.TableName = fmt.Sprintf("sessionKey_%d", time.Now().UnixNano())
-
-	if err = r.Init(); err != nil {
-		return nil, err
-	}
-
 	return r, nil
 }
 

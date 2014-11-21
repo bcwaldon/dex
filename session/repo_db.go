@@ -7,12 +7,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lib/pq"
+	"github.com/coopernurse/gorp"
+	_ "github.com/lib/pq"
 )
 
 const (
 	sessionKeyTableName = "sessionKey"
 )
+
+type sessionKeyDBModel struct {
+	Key       string `db:"key"`
+	SessionID string `db:"sessionID"`
+}
 
 func NewDBSessionKeyRepo(dsn string) (*DBSessionKeyRepo, error) {
 	if !strings.HasPrefix(dsn, "postgres://") {
@@ -24,49 +30,52 @@ func NewDBSessionKeyRepo(dsn string) (*DBSessionKeyRepo, error) {
 		return nil, err
 	}
 
+	dbMap := &gorp.DbMap{
+		Db:      db,
+		Dialect: gorp.PostgresDialect{},
+	}
+
+	dbMap.AddTableWithName(sessionKeyDBModel{}, sessionKeyTableName).SetKeys(false, "key")
+
+	if err := dbMap.CreateTablesIfNotExists(); err != nil {
+		return nil, err
+	}
+
 	r := &DBSessionKeyRepo{
-		db:        db,
-		TableName: sessionKeyTableName,
+		dbMap: dbMap,
 	}
 	return r, nil
 }
 
 type DBSessionKeyRepo struct {
-	TableName string
-	db        *sql.DB
+	dbMap *gorp.DbMap
 }
 
 func (r *DBSessionKeyRepo) Push(sk SessionKey, exp time.Duration) error {
-	q := fmt.Sprintf("INSERT INTO %s (key, sessionID) VALUES ($1, $2)", pq.QuoteIdentifier(r.TableName))
-	_, err := r.db.Query(q, sk.Key, sk.SessionID)
-	return err
+	skm := &sessionKeyDBModel{
+		Key:       sk.Key,
+		SessionID: sk.SessionID,
+	}
+	return r.dbMap.Insert(skm)
 }
 
 func (r *DBSessionKeyRepo) Pop(key string) (string, error) {
-	var sessionID string
-	q := fmt.Sprintf("SELECT sessionID FROM %s WHERE key=$1", pq.QuoteIdentifier(r.TableName))
-	err := r.db.QueryRow(q, key).Scan(&sessionID)
+	m, err := r.dbMap.Get(sessionKeyDBModel{}, key)
 	if err != nil {
 		return "", err
 	}
 
-	q = fmt.Sprintf("DELETE FROM %s WHERE key=$1", pq.QuoteIdentifier(r.TableName))
-	res, err := r.db.Exec(q, key)
-	if err != nil {
-		return "", err
+	skm, ok := m.(*sessionKeyDBModel)
+	if !ok {
+		return "", errors.New("unrecognized model")
 	}
-	n, err := res.RowsAffected()
+
+	n, err := r.dbMap.Delete(skm)
 	if err != nil {
 		return "", err
 	} else if n != 1 {
 		return "", fmt.Errorf("DELETE affected %d rows", n)
 	}
 
-	return sessionID, nil
-}
-
-func (r *DBSessionKeyRepo) Init() error {
-	q := fmt.Sprintf("CREATE TABLE %s (key VARCHAR, sessionID VARCHAR)", pq.QuoteIdentifier(r.TableName))
-	_, err := r.db.Query(q)
-	return err
+	return skm.SessionID, nil
 }

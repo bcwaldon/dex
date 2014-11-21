@@ -20,6 +20,13 @@ import (
 	phttp "github.com/coreos-inc/auth/pkg/http"
 )
 
+const (
+	// five minutes
+	lastSeenMaxAge = 300
+	// 24 hours
+	discoveryMaxAge = 86400
+)
+
 var (
 	httpPathDiscovery = "/.well-known/openid-configuration"
 	httpPathToken     = "/token"
@@ -40,6 +47,7 @@ func handleDiscoveryFunc(cfg oidc.ProviderConfig) http.HandlerFunc {
 			log.Printf("Unable to marshal %#v to JSON: %v", cfg, err)
 		}
 
+		w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", discoveryMaxAge))
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(b)
 	}
@@ -354,9 +362,6 @@ func redirectAuthError(w http.ResponseWriter, err error, state string, redirectU
 	w.Header().Set("Location", redirectURL.String())
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
-
-// five minutes
-const lastSeenMaxAge = 300
 
 func createLastSeenCookie() *http.Cookie {
 	now := time.Now().UTC()

@@ -14,11 +14,11 @@ type sessionRepo interface {
 }
 
 type sessionKeyRepo interface {
-	Push(sessionKey, time.Duration) error
+	Push(SessionKey, time.Duration) error
 	Pop(string) (string, error)
 }
 
-func newSessionRepo() sessionRepo {
+func newMemSessionRepo() sessionRepo {
 	return &memSessionRepo{
 		store: make(map[string]Session),
 	}
@@ -42,11 +42,11 @@ func (m *memSessionRepo) Set(s Session) error {
 }
 
 type expiringSessionKey struct {
-	sessionKey
+	SessionKey
 	expiresAt time.Time
 }
 
-func newSessionKeyRepo() sessionKeyRepo {
+func newMemSessionKeyRepo() sessionKeyRepo {
 	return &memSessionKeyRepo{
 		store: make(map[string]expiringSessionKey),
 		clock: clockwork.NewRealClock(),
@@ -69,12 +69,12 @@ func (m *memSessionKeyRepo) Pop(key string) (string, error) {
 		return "", errors.New("expired key")
 	}
 
-	return esk.sessionKey.sessionID, nil
+	return esk.SessionKey.SessionID, nil
 }
 
-func (m *memSessionKeyRepo) Push(sk sessionKey, ttl time.Duration) error {
-	m.store[sk.key] = expiringSessionKey{
-		sessionKey: sk,
+func (m *memSessionKeyRepo) Push(sk SessionKey, ttl time.Duration) error {
+	m.store[sk.Key] = expiringSessionKey{
+		SessionKey: sk,
 		expiresAt:  m.clock.Now().UTC().Add(ttl),
 	}
 	return nil

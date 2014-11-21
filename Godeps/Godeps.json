@@ -8,6 +8,10 @@
 		{
 			"ImportPath": "github.com/jonboulle/clockwork",
 			"Rev": "b473f398c464f1988327f67c9e6aa7fba62f80d2"
+		},
+		{
+			"ImportPath": "github.com/lib/pq",
+			"Rev": "7175accbed18058468c07811f76440d6e8d7cf19"
 		}
 	]
 }

@@ -2,15 +2,15 @@ package session
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/jonboulle/clockwork"
 )
 
 type sessionRepo interface {
-	Set(Session) error
 	Get(string) (*Session, error)
+	Create(Session) error
+	Update(Session) error
 }
 
 type sessionKeyRepo interface {
@@ -31,12 +31,24 @@ type memSessionRepo struct {
 func (m *memSessionRepo) Get(sessionID string) (*Session, error) {
 	s, ok := m.store[sessionID]
 	if !ok {
-		return nil, fmt.Errorf("unrecognized ID")
+		return nil, errors.New("unrecognized ID")
 	}
 	return &s, nil
 }
 
-func (m *memSessionRepo) Set(s Session) error {
+func (m *memSessionRepo) Create(s Session) error {
+	if _, ok := m.store[s.ID]; ok {
+		return errors.New("ID exists")
+	}
+
+	m.store[s.ID] = s
+	return nil
+}
+
+func (m *memSessionRepo) Update(s Session) error {
+	if _, ok := m.store[s.ID]; !ok {
+		return errors.New("unrecognized ID")
+	}
 	m.store[s.ID] = s
 	return nil
 }

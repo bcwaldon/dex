@@ -46,7 +46,7 @@ func (m *SessionManager) NewSession(clientID, clientState string, redirectURL ur
 		RedirectURL: redirectURL,
 	}
 
-	err := m.sessions.Set(s)
+	err := m.sessions.Create(s)
 	if err != nil {
 		return "", err
 	}
@@ -91,7 +91,7 @@ func (m *SessionManager) Identify(sessionID string, ident oidc.Identity) (*Sessi
 	s.Identity = ident
 	s.State = sessionStateIdentified
 
-	if err = m.sessions.Set(*s); err != nil {
+	if err = m.sessions.Update(*s); err != nil {
 		return nil, err
 	}
 
@@ -106,7 +106,7 @@ func (m *SessionManager) Kill(sessionID string) (*Session, error) {
 
 	s.State = sessionStateDead
 
-	if err = m.sessions.Set(*s); err != nil {
+	if err = m.sessions.Update(*s); err != nil {
 		return nil, err
 	}
 

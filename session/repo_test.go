@@ -74,12 +74,12 @@ func TestMemSessionRepoGetNoExist(t *testing.T) {
 	}
 }
 
-func TestMemSessionRepoSetGet(t *testing.T) {
+func TestMemSessionRepoCreateGet(t *testing.T) {
 	r := &memSessionRepo{
 		store: make(map[string]Session),
 	}
 
-	r.Set(Session{ID: "123", ClientState: "blargh"})
+	r.Create(Session{ID: "123", ClientState: "blargh"})
 
 	ses, _ := r.Get("123")
 	if ses == nil {
@@ -91,13 +91,13 @@ func TestMemSessionRepoSetGet(t *testing.T) {
 	}
 }
 
-func TestMemSessionRepoSetTwice(t *testing.T) {
+func TestMemSessionRepoCreateUpdate(t *testing.T) {
 	r := &memSessionRepo{
 		store: make(map[string]Session),
 	}
 
-	r.Set(Session{ID: "123", ClientState: "blargh"})
-	r.Set(Session{ID: "123", ClientState: "boom"})
+	r.Create(Session{ID: "123", ClientState: "blargh"})
+	r.Update(Session{ID: "123", ClientState: "boom"})
 
 	ses, _ := r.Get("123")
 	if ses == nil {
@@ -106,5 +106,16 @@ func TestMemSessionRepoSetTwice(t *testing.T) {
 
 	if ses.ClientState != "boom" {
 		t.Fatalf("Session unrecognized")
+	}
+}
+
+func TestMemSessionRepoUpdateNoExist(t *testing.T) {
+	r := &memSessionRepo{
+		store: make(map[string]Session),
+	}
+
+	err := r.Update(Session{ID: "123", ClientState: "boom"})
+	if err == nil {
+		t.Fatalf("Expected non-nil error")
 	}
 }

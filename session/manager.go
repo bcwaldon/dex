@@ -39,7 +39,7 @@ type SessionManager struct {
 func (m *SessionManager) NewSession(clientID, clientState string, redirectURL url.URL) (string, error) {
 	s := Session{
 		ID:          m.GenerateCode(),
-		State:       sessionStateNew,
+		State:       SessionStateNew,
 		CreatedAt:   m.Clock.Now().UTC(),
 		ClientID:    clientID,
 		ClientState: clientState,
@@ -69,7 +69,7 @@ func (m *SessionManager) ExchangeKey(key string) (string, error) {
 	return m.keys.Pop(key)
 }
 
-func (m *SessionManager) getSessionInState(sessionID string, state sessionState) (*Session, error) {
+func (m *SessionManager) getSessionInState(sessionID string, state SessionState) (*Session, error) {
 	s, err := m.sessions.Get(sessionID)
 	if err != nil {
 		return nil, err
@@ -83,13 +83,13 @@ func (m *SessionManager) getSessionInState(sessionID string, state sessionState)
 }
 
 func (m *SessionManager) Identify(sessionID string, ident oidc.Identity) (*Session, error) {
-	s, err := m.getSessionInState(sessionID, sessionStateNew)
+	s, err := m.getSessionInState(sessionID, SessionStateNew)
 	if err != nil {
 		return nil, err
 	}
 
 	s.Identity = ident
-	s.State = sessionStateIdentified
+	s.State = SessionStateIdentified
 
 	if err = m.sessions.Update(*s); err != nil {
 		return nil, err
@@ -104,7 +104,7 @@ func (m *SessionManager) Kill(sessionID string) (*Session, error) {
 		return nil, err
 	}
 
-	s.State = sessionStateDead
+	s.State = SessionStateDead
 
 	if err = m.sessions.Update(*s); err != nil {
 		return nil, err

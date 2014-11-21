@@ -69,7 +69,7 @@ func TestSessionManagerExchangeKey(t *testing.T) {
 
 func TestSessionManagerGetSessionInStateNoExist(t *testing.T) {
 	sm := NewSessionManager()
-	ses, err := sm.getSessionInState("123", sessionStateNew)
+	ses, err := sm.getSessionInState("123", SessionStateNew)
 	if err == nil {
 		t.Errorf("Expected non-nil error")
 	}
@@ -84,7 +84,7 @@ func TestSessionManagerGetSessionInStateWrongState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
-	ses, err := sm.getSessionInState(sessionID, sessionStateDead)
+	ses, err := sm.getSessionInState(sessionID, SessionStateDead)
 	if err == nil {
 		t.Errorf("Expected non-nil error")
 	}

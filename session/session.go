@@ -16,12 +16,12 @@ const (
 	idTokenValidityWindow = time.Hour
 )
 
-type sessionState string
+type SessionState string
 
 const (
-	sessionStateNew        = sessionState("NEW")
-	sessionStateIdentified = sessionState("IDENTIFIED")
-	sessionStateDead       = sessionState("EXCHANGED")
+	SessionStateNew        = SessionState("NEW")
+	SessionStateIdentified = SessionState("IDENTIFIED")
+	SessionStateDead       = SessionState("EXCHANGED")
 )
 
 type SessionKey struct {
@@ -32,7 +32,7 @@ type SessionKey struct {
 
 type Session struct {
 	ID          string
-	State       sessionState
+	State       SessionState
 	CreatedAt   time.Time
 	ClientID    string
 	ClientState string

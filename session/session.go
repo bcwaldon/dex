@@ -31,14 +31,13 @@ type SessionKey struct {
 }
 
 type Session struct {
-	ID             string
-	State          sessionState
-	CreatedAt      time.Time
-	ClientID       string
-	ClientState    string
-	RedirectURL    url.URL
-	Identity       oidc.Identity
-	sessionManager *SessionManager
+	ID          string
+	State       sessionState
+	CreatedAt   time.Time
+	ClientID    string
+	ClientState string
+	RedirectURL url.URL
+	Identity    oidc.Identity
 }
 
 func (s *Session) Claims(issuerURL string) jose.Claims {

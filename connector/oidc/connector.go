@@ -39,7 +39,7 @@ func NewOIDCIDPConnectorFromFlags(ns url.URL, lf oidc.LoginFunc, fs *flag.FlagSe
 	cbURL := ns
 	cbURL.Path = path.Join(cbURL.Path, "/callback")
 	c := &oidc.Client{
-		ProviderConfig: *cfg,
+		ProviderConfig: cfg,
 		ClientIdentity: ci,
 		RedirectURL:    cbURL.String(),
 	}

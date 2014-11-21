@@ -54,7 +54,7 @@ func main() {
 		Secret: *clientSecret,
 	}
 
-	var cfg *oidc.ProviderConfig
+	var cfg oidc.ProviderConfig
 	for {
 		cfg, err = oidc.FetchProviderConfig(http.DefaultClient, *discovery)
 		if err == nil {
@@ -66,13 +66,15 @@ func main() {
 		time.Sleep(sleep)
 	}
 
-	log.Printf("Fetched provider config from %s: %#v", *discovery, *cfg)
+	log.Printf("Fetched provider config from %s: %#v", *discovery, cfg)
 
 	client := &oidc.Client{
-		ProviderConfig: *cfg,
+		ProviderConfig: cfg,
 		ClientIdentity: ci,
 		RedirectURL:    redirectURL.String(),
 	}
+
+	client.SyncProviderConfig()
 
 	client.SyncKeys()
 

@@ -21,10 +21,8 @@ import (
 )
 
 const (
-	// five minutes
-	lastSeenMaxAge = 300
-	// 24 hours
-	discoveryMaxAge = 86400
+	lastSeenMaxAge  = time.Minute * 5
+	discoveryMaxAge = time.Hour * 24
 )
 
 var (
@@ -47,7 +45,7 @@ func handleDiscoveryFunc(cfg oidc.ProviderConfig) http.HandlerFunc {
 			log.Printf("Unable to marshal %#v to JSON: %v", cfg, err)
 		}
 
-		w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", discoveryMaxAge))
+		w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", int(discoveryMaxAge.Seconds())))
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(b)
 	}
@@ -368,9 +366,9 @@ func createLastSeenCookie() *http.Cookie {
 	return &http.Cookie{
 		HttpOnly: true,
 		Name:     "LastSeen",
-		MaxAge:   lastSeenMaxAge,
+		MaxAge:   int(lastSeenMaxAge.Seconds()),
 		// For old IE, ignored by most browsers.
-		Expires: now.Add(time.Second * time.Duration(lastSeenMaxAge)),
+		Expires: now.Add(lastSeenMaxAge),
 	}
 }
 

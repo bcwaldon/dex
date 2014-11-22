@@ -13,7 +13,7 @@ import (
 	"github.com/coreos-inc/auth/jose"
 )
 
-func generatePrivateRSAKeyStatic(t *testing.T, idAndN int) *privateRSAKey {
+func generatePrivateRSAKeyStatic(t *testing.T, idAndN int) *PrivateRSAKey {
 	n := big.NewInt(int64(idAndN))
 	if n == nil {
 		t.Fatalf("Call to NewInt(%d) failed", idAndN)
@@ -23,9 +23,9 @@ func generatePrivateRSAKeyStatic(t *testing.T, idAndN int) *privateRSAKey {
 		PublicKey: rsa.PublicKey{N: n, E: 65537},
 	}
 
-	return &privateRSAKey{
-		id:         strconv.Itoa(idAndN),
-		privateKey: pk,
+	return &PrivateRSAKey{
+		KeyID:      strconv.Itoa(idAndN),
+		PrivateKey: pk,
 	}
 }
 
@@ -63,7 +63,7 @@ func TestPrivateKeyManagerJWKsRotate(t *testing.T) {
 	km := NewPrivateKeyManager()
 	err := km.Set(&PrivateKeySet{
 		keys:        []PrivateKey{k1, k2, k3},
-		activeKeyID: k1.id,
+		ActiveKeyID: k1.KeyID,
 		expiresAt:   time.Now().Add(time.Minute),
 	})
 	if err != nil {
@@ -86,7 +86,7 @@ func TestPrivateKeyManagerSigner(t *testing.T) {
 	km := NewPrivateKeyManager()
 	err := km.Set(&PrivateKeySet{
 		keys:        []PrivateKey{k},
-		activeKeyID: k.id,
+		ActiveKeyID: k.KeyID,
 		expiresAt:   time.Now().Add(time.Minute),
 	})
 	if err != nil {
@@ -165,7 +165,7 @@ func TestPrivateKeyManagerExpiresAt(t *testing.T) {
 
 	err := km.Set(&PrivateKeySet{
 		keys:        []PrivateKey{k},
-		activeKeyID: k.id,
+		ActiveKeyID: k.KeyID,
 		expiresAt:   now.Add(2 * time.Minute),
 	})
 	if err != nil {

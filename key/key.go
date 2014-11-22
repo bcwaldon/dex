@@ -34,27 +34,27 @@ type PrivateKey interface {
 	JWK() jose.JWK
 }
 
-type privateRSAKey struct {
-	id         string
-	privateKey *rsa.PrivateKey
+type PrivateRSAKey struct {
+	KeyID      string
+	PrivateKey *rsa.PrivateKey
 }
 
-func (k *privateRSAKey) ID() string {
-	return k.id
+func (k *PrivateRSAKey) ID() string {
+	return k.KeyID
 }
 
-func (k *privateRSAKey) Signer() josesig.Signer {
-	return josesig.NewSignerRSA(k.ID(), *k.privateKey)
+func (k *PrivateRSAKey) Signer() josesig.Signer {
+	return josesig.NewSignerRSA(k.ID(), *k.PrivateKey)
 }
 
-func (k *privateRSAKey) JWK() jose.JWK {
+func (k *PrivateRSAKey) JWK() jose.JWK {
 	return jose.JWK{
-		ID:       k.id,
+		ID:       k.KeyID,
 		Type:     "RSA",
 		Alg:      "RS256",
 		Use:      "sig",
-		Exponent: k.privateKey.PublicKey.E,
-		Modulus:  k.privateKey.PublicKey.N,
+		Exponent: k.PrivateKey.PublicKey.E,
+		Modulus:  k.PrivateKey.PublicKey.N,
 	}
 }
 
@@ -92,14 +92,14 @@ func (s *PublicKeySet) Keys() []PublicKey {
 
 type PrivateKeySet struct {
 	keys        []PrivateKey
-	activeKeyID string
+	ActiveKeyID string
 	expiresAt   time.Time
 }
 
 func NewPrivateKeySet(keys []PrivateKey, exp time.Time) *PrivateKeySet {
 	return &PrivateKeySet{
 		keys:        keys,
-		activeKeyID: keys[0].ID(),
+		ActiveKeyID: keys[0].ID(),
 		expiresAt:   exp,
 	}
 }
@@ -114,7 +114,7 @@ func (s *PrivateKeySet) ExpiresAt() time.Time {
 
 func (s *PrivateKeySet) Active() PrivateKey {
 	for i, k := range s.keys {
-		if k.ID() == s.activeKeyID {
+		if k.ID() == s.ActiveKeyID {
 			return PrivateKey(s.keys[i])
 		}
 	}
@@ -122,17 +122,17 @@ func (s *PrivateKeySet) Active() PrivateKey {
 	return nil
 }
 
-type GeneratePrivateRSAKeyFunc func() (*privateRSAKey, error)
+type GeneratePrivateRSAKeyFunc func() (*PrivateRSAKey, error)
 
-func GeneratePrivateRSAKey() (*privateRSAKey, error) {
+func GeneratePrivateRSAKey() (*PrivateRSAKey, error) {
 	pk, err := rsa.GenerateKey(rand.Reader, 1024)
 	if err != nil {
 		return nil, err
 	}
 
-	k := privateRSAKey{
-		id:         base64BigInt(pk.PublicKey.N),
-		privateKey: pk,
+	k := PrivateRSAKey{
+		KeyID:      base64BigInt(pk.PublicKey.N),
+		PrivateKey: pk,
 	}
 
 	return &k, nil

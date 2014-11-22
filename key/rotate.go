@@ -86,7 +86,7 @@ func rotatePrivateKeys(repo PrivateKeySetRepo, k PrivateKey, keep int, exp time.
 
 	nks := PrivateKeySet{
 		keys:        keys,
-		activeKeyID: k.ID(),
+		ActiveKeyID: k.ID(),
 		expiresAt:   exp,
 	}
 

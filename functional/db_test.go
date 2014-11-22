@@ -2,10 +2,13 @@ package functional
 
 import (
 	"fmt"
+	"net/url"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
+	"github.com/coreos-inc/auth/oidc"
 	"github.com/coreos-inc/auth/session"
 )
 
@@ -21,17 +24,8 @@ func init() {
 	}
 }
 
-func repo() (*session.DBSessionKeyRepo, error) {
-	r, err := session.NewDBSessionKeyRepo(dsn)
-	if err != nil {
-		return nil, err
-	}
-
-	return r, nil
-}
-
 func TestDBSessionKeyRepoPushPop(t *testing.T) {
-	r, err := repo()
+	r, err := session.NewDBSessionKeyRepo(dsn)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -52,5 +46,43 @@ func TestDBSessionKeyRepoPushPop(t *testing.T) {
 	// attempting to Pop a second time must fail
 	if _, err := r.Pop(key); err == nil {
 		t.Fatalf("Second call to Pop succeeded, expected non-nil error")
+	}
+}
+
+func TestDBSessionRepoCreateUpdate(t *testing.T) {
+	r, err := session.NewDBSessionRepo(dsn)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	ses := session.Session{
+		ID:          "AAA",
+		State:       session.SessionStateIdentified,
+		CreatedAt:   time.Date(2014, time.November, 21, 12, 14, 34, 0, time.UTC),
+		ClientID:    "ZZZ",
+		ClientState: "foo",
+		RedirectURL: url.URL{
+			Scheme: "http",
+			Host:   "example.com",
+			Path:   "/callback",
+		},
+		Identity: oidc.Identity{
+			ID:    "YYY",
+			Name:  "Elroy",
+			Email: "elroy@example.com",
+		},
+	}
+
+	if err := r.Create(ses); err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	got, err := r.Get(ses.ID)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v")
+	}
+
+	if !reflect.DeepEqual(ses, *got) {
+		t.Fatalf("Retrieved incorrect Session: want=%#v got=%#v", ses, *got)
 	}
 }

@@ -36,7 +36,7 @@ func TestHTTPExchangeToken(t *testing.T) {
 	cir := server.NewClientIdentityRepo([]oauth2.ClientIdentity{ci})
 
 	issuerURL := "http://server.example.com"
-	sm := session.NewSessionManager()
+	sm := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())
 
 	k, err := key.GeneratePrivateRSAKey()
 	if err != nil {

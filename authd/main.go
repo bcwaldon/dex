@@ -109,7 +109,7 @@ func newServerFromFlags(fs *flag.FlagSet, km key.PrivateKeyManager) (*server.Ser
 	}
 
 	issuer := fs.Lookup("issuer").Value.String()
-	sm := session.NewSessionManager()
+	sm := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())
 	srv := server.Server{
 		IssuerURL:          issuer,
 		KeyManager:         km,

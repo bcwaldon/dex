@@ -91,7 +91,7 @@ func TestServerProviderConfig(t *testing.T) {
 }
 
 func TestServerNewSession(t *testing.T) {
-	sm := session.NewSessionManager()
+	sm := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())
 	srv := &Server{
 		SessionManager: sm,
 	}
@@ -151,7 +151,7 @@ func TestServerLogin(t *testing.T) {
 		signer: &StaticSigner{sig: []byte("beer"), err: nil},
 	}
 
-	sm := session.NewSessionManager()
+	sm := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())
 	sm.GenerateCode = staticGenerateCodeFunc("fakecode")
 	sessionID, err := sm.NewSession(ci.ID, "bogus", ci.RedirectURL)
 	if err != nil {
@@ -189,7 +189,7 @@ func TestServerLoginUnrecognizedSessionKey(t *testing.T) {
 	km := &StaticKeyManager{
 		signer: &StaticSigner{sig: nil, err: errors.New("fail")},
 	}
-	sm := session.NewSessionManager()
+	sm := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())
 	srv := &Server{
 		IssuerURL:          "http://server.example.com",
 		KeyManager:         km,
@@ -214,7 +214,7 @@ func TestServerToken(t *testing.T) {
 	km := &StaticKeyManager{
 		signer: &StaticSigner{sig: []byte("beer"), err: nil},
 	}
-	sm := session.NewSessionManager()
+	sm := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())
 
 	srv := &Server{
 		IssuerURL:          "http://server.example.com",
@@ -252,7 +252,7 @@ func TestServerTokenUnrecognizedKey(t *testing.T) {
 	km := &StaticKeyManager{
 		signer: &StaticSigner{sig: []byte("beer"), err: nil},
 	}
-	sm := session.NewSessionManager()
+	sm := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())
 
 	srv := &Server{
 		IssuerURL:          "http://server.example.com",
@@ -325,7 +325,7 @@ func TestServerTokenFail(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		sm := session.NewSessionManager()
+		sm := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())
 		sm.GenerateCode = func() string { return keyFixture }
 
 		sessionID, err := sm.NewSession(ciFixture.ID, "bogus", ciFixture.RedirectURL)

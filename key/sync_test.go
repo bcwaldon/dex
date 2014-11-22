@@ -180,30 +180,22 @@ func TestSyncFail(t *testing.T) {
 	fc := clockwork.NewFakeClock()
 	now := fc.Now().UTC()
 
+	from := NewPrivateKeySetRepo()
+	to := NewPrivateKeySetRepo()
+
 	k1 := generatePrivateRSAKeyStatic(t, 1)
 	k2 := generatePrivateRSAKeyStatic(t, 2)
-
-	tests := []*PrivateKeySet{
-		nil,
-		&PrivateKeySet{
-			keys:        []PrivateKey{k2, k1},
-			ActiveKeyID: k2.KeyID,
-			expiresAt:   now.Add(-1 * time.Minute),
-		},
+	fixture := &PrivateKeySet{
+		keys:        []PrivateKey{k2, k1},
+		ActiveKeyID: k2.KeyID,
+		expiresAt:   now.Add(-1 * time.Minute),
 	}
-
-	for i, tt := range tests {
-		from := NewPrivateKeySetRepo()
-		to := NewPrivateKeySetRepo()
-
-		err := from.Set(tt)
-		if err != nil {
-			t.Errorf("case %d: unexpected error: %v", i, err)
-			continue
-		}
-		_, err = sync(from, to, fc)
-		if err == nil {
-			t.Errorf("case %d: expected non-nil error", i)
-		}
+	err := from.Set(fixture)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	_, err = sync(from, to, fc)
+	if err == nil {
+		t.Fatal("expected non-nil error")
 	}
 }

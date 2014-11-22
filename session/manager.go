@@ -20,12 +20,12 @@ func DefaultGenerateCode() string {
 	return base64.URLEncoding.EncodeToString(b)
 }
 
-func NewSessionManager() *SessionManager {
+func NewSessionManager(sRepo SessionRepo, skRepo SessionKeyRepo) *SessionManager {
 	return &SessionManager{
 		GenerateCode: DefaultGenerateCode,
 		Clock:        clockwork.NewRealClock(),
-		sessions:     newMemSessionRepo(),
-		keys:         newMemSessionKeyRepo(),
+		sessions:     sRepo,
+		keys:         skRepo,
 	}
 }
 

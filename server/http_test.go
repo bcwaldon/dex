@@ -60,7 +60,7 @@ func TestHandleAuthFuncResponses(t *testing.T) {
 	}
 	srv := &Server{
 		IssuerURL:      "http://server.example.com",
-		SessionManager: session.NewSessionManager(),
+		SessionManager: session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo()),
 		ClientIdentityRepo: NewClientIdentityRepo([]oauth2.ClientIdentity{
 			oauth2.ClientIdentity{
 				ID:     "XXX",

@@ -184,6 +184,7 @@ func TestSyncFail(t *testing.T) {
 	k2 := generatePrivateRSAKeyStatic(t, 2)
 
 	tests := []*PrivateKeySet{
+		nil,
 		&PrivateKeySet{
 			keys:        []PrivateKey{k2, k1},
 			ActiveKeyID: k2.KeyID,

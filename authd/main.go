@@ -13,12 +13,14 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/coreos-inc/auth/connector"
 	localconnector "github.com/coreos-inc/auth/connector/local"
 	oidcconnector "github.com/coreos-inc/auth/connector/oidc"
+	"github.com/coreos-inc/auth/db"
 	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
@@ -38,6 +40,8 @@ func main() {
 	fs.String("issuer", "http://127.0.0.1:5556", "")
 	fs.String("clients", "./authd/fixtures/clients.json", "json file containing set of clients")
 	fs.String("login-page-template", "./authd/fixtures/login.html", "html template file to present to user for login")
+	fs.String("db-url", "", "DSN-formatted database connection string")
+	fs.Bool("no-db", false, "manage entities in-process, used only for single-node testing")
 
 	fs.String("connector-type", "local", "IdP connector type to configure")
 	fs.String("connector-local-users", "./authd/fixtures/users.json", "json file containing set of users")
@@ -54,12 +58,6 @@ func main() {
 		log.Fatalf(err.Error())
 	}
 
-	km := key.NewPrivateKeyManager()
-	srv, err := newServerFromFlags(fs, km)
-	if err != nil {
-		log.Fatalf("Unable to build Server: %v", err)
-	}
-
 	listen := fs.Lookup("listen").Value.String()
 	lu, err := url.Parse(listen)
 	if err != nil {
@@ -68,6 +66,16 @@ func main() {
 
 	if lu.Scheme != "http" {
 		log.Fatalf("Unable to listen using scheme %s", lu.Scheme)
+	}
+
+	km, err := newKeyManagerFromFlags(fs)
+	if err != nil {
+		log.Fatalf("Unable to build KeyManager: %v", err)
+	}
+
+	srv, err := newServerFromFlags(fs, km)
+	if err != nil {
+		log.Fatalf("Unable to build Server: %v", err)
 	}
 
 	idpcs, err := newIDPConnectorsFromFlags(fs, srv.Login)
@@ -80,12 +88,6 @@ func main() {
 		log.Fatalf("Unable to parse login page template: %v", err)
 	}
 
-	kRepo := key.NewPrivateKeySetRepo()
-	key.NewKeySetSyncer(kRepo, km).Run()
-
-	krot := key.NewPrivateKeyRotator(kRepo, 60*time.Second)
-	krot.Run()
-
 	hdlr := srv.HTTPHandler(idpcs, tpl)
 	httpsrv := &http.Server{
 		Addr:    lu.Host,
@@ -94,6 +96,45 @@ func main() {
 
 	log.Printf("binding to %s...", httpsrv.Addr)
 	log.Fatal(httpsrv.ListenAndServe())
+}
+
+func getDBFlag(fs *flag.FlagSet) (string, bool, error) {
+	no, err := strconv.ParseBool(fs.Lookup("no-db").Value.String())
+	if err != nil {
+		return "", false, fmt.Errorf("failed parsing --no-db: %v", err)
+	}
+
+	dbURL := fs.Lookup("db-url").Value.String()
+	if !no && len(dbURL) == 0 {
+		return "", false, errors.New("--db-url unset")
+	}
+
+	return dbURL, !no, nil
+}
+
+func newKeyManagerFromFlags(fs *flag.FlagSet) (key.PrivateKeyManager, error) {
+	dbURL, ok, err := getDBFlag(fs)
+	if err != nil {
+		return nil, err
+	}
+
+	var kRepo key.PrivateKeySetRepo
+	if ok {
+		kRepo, err = db.NewPrivateKeySetRepo(dbURL)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		kRepo = key.NewPrivateKeySetRepo()
+	}
+
+	krot := key.NewPrivateKeyRotator(kRepo, 60*time.Second)
+	krot.Run()
+
+	km := key.NewPrivateKeyManager()
+	key.NewKeySetSyncer(kRepo, km).Run()
+
+	return km, nil
 }
 
 func newServerFromFlags(fs *flag.FlagSet, km key.PrivateKeyManager) (*server.Server, error) {
@@ -108,8 +149,29 @@ func newServerFromFlags(fs *flag.FlagSet, km key.PrivateKeyManager) (*server.Ser
 		return nil, fmt.Errorf("unable to read client identities from file %s: %v", cFile, err)
 	}
 
+	dbURL, ok, err := getDBFlag(fs)
+	if err != nil {
+		return nil, err
+	}
+
+	var sRepo session.SessionRepo
+	var skRepo session.SessionKeyRepo
+	if ok {
+		sRepo, err = db.NewSessionRepo(dbURL)
+		if err != nil {
+			log.Fatalf("Unable to create SessionRepo: %v", err)
+		}
+		skRepo, err = db.NewSessionKeyRepo(dbURL)
+		if err != nil {
+			log.Fatalf("Unable to create SessionKeyRepo: %v", err)
+		}
+	} else {
+		sRepo = session.NewSessionRepo()
+		skRepo = session.NewSessionKeyRepo()
+	}
+
+	sm := session.NewSessionManager(sRepo, skRepo)
 	issuer := fs.Lookup("issuer").Value.String()
-	sm := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())
 	srv := server.Server{
 		IssuerURL:          issuer,
 		KeyManager:         km,

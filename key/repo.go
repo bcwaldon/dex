@@ -29,7 +29,10 @@ func (r *memPrivateKeySetRepo) Set(ks KeySet) error {
 	pks, ok := ks.(*PrivateKeySet)
 	if !ok {
 		return errors.New("unable to cast to PrivateKeySet")
+	} else if pks == nil {
+		return errors.New("nil KeySet")
 	}
+
 	r.pks = *pks
 	return nil
 }

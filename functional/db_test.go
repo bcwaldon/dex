@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/coreos-inc/auth/db"
+	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oidc"
 	"github.com/coreos-inc/auth/session"
 )
@@ -85,5 +86,36 @@ func TestDBSessionRepoCreateUpdate(t *testing.T) {
 
 	if !reflect.DeepEqual(ses, *got) {
 		t.Fatalf("Retrieved incorrect Session: want=%#v got=%#v", ses, *got)
+	}
+}
+
+func TestPrivateKeySetRepoSetGet(t *testing.T) {
+	r, err := db.NewPrivateKeySetRepo(dsn)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	k1, err := key.GeneratePrivateRSAKey()
+	if err != nil {
+		t.Fatalf("Unable to generate RSA key: %v", err)
+	}
+
+	k2, err := key.GeneratePrivateRSAKey()
+	if err != nil {
+		t.Fatalf("Unable to generate RSA key: %v", err)
+	}
+
+	ks := key.NewPrivateKeySet([]key.PrivateKey{k1, k2}, time.Now().Add(time.Minute))
+	if err := r.Set(ks); err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	got, err := r.Get()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	if !reflect.DeepEqual(ks, got) {
+		t.Fatalf("Retrieved incorrect KeySet: want=%#v got=%#v", ks, got)
 	}
 }

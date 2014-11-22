@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos-inc/auth/db"
 	"github.com/coreos-inc/auth/oidc"
 	"github.com/coreos-inc/auth/session"
 )
@@ -25,7 +26,7 @@ func init() {
 }
 
 func TestDBSessionKeyRepoPushPop(t *testing.T) {
-	r, err := session.NewDBSessionKeyRepo(dsn)
+	r, err := db.NewSessionKeyRepo(dsn)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -50,7 +51,7 @@ func TestDBSessionKeyRepoPushPop(t *testing.T) {
 }
 
 func TestDBSessionRepoCreateUpdate(t *testing.T) {
-	r, err := session.NewDBSessionRepo(dsn)
+	r, err := db.NewSessionRepo(dsn)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}

@@ -7,18 +7,18 @@ import (
 	"github.com/jonboulle/clockwork"
 )
 
-type sessionRepo interface {
+type SessionRepo interface {
 	Get(string) (*Session, error)
 	Create(Session) error
 	Update(Session) error
 }
 
-type sessionKeyRepo interface {
+type SessionKeyRepo interface {
 	Push(SessionKey, time.Duration) error
 	Pop(string) (string, error)
 }
 
-func newMemSessionRepo() sessionRepo {
+func NewSessionRepo() SessionRepo {
 	return &memSessionRepo{
 		store: make(map[string]Session),
 	}
@@ -58,7 +58,7 @@ type expiringSessionKey struct {
 	expiresAt time.Time
 }
 
-func newMemSessionKeyRepo() sessionKeyRepo {
+func NewSessionKeyRepo() SessionKeyRepo {
 	return &memSessionKeyRepo{
 		store: make(map[string]expiringSessionKey),
 		clock: clockwork.NewRealClock(),

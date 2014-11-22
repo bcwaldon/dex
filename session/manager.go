@@ -32,8 +32,8 @@ func NewSessionManager() *SessionManager {
 type SessionManager struct {
 	GenerateCode GenerateCodeFunc
 	Clock        clockwork.Clock
-	sessions     sessionRepo
-	keys         sessionKeyRepo
+	sessions     SessionRepo
+	keys         SessionKeyRepo
 }
 
 func (m *SessionManager) NewSession(clientID, clientState string, redirectURL url.URL) (string, error) {

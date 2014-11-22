@@ -29,7 +29,19 @@ func TestRotate(t *testing.T) {
 		exp   time.Time
 		want  *PrivateKeySet
 	}{
-		// add first key
+		// start with nil keys
+		{
+			start: nil,
+			key:   k1,
+			keep:  2,
+			exp:   now.Add(time.Second),
+			want: &PrivateKeySet{
+				keys:        []PrivateKey{k1},
+				ActiveKeyID: k1.KeyID,
+				expiresAt:   now.Add(time.Second),
+			},
+		},
+		// start with zero keys
 		{
 			start: &PrivateKeySet{},
 			key:   k1,

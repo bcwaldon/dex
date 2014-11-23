@@ -41,7 +41,8 @@ func main() {
 	fs.String("clients", "./authd/fixtures/clients.json", "json file containing set of clients")
 	fs.String("login-page-template", "./authd/fixtures/login.html", "html template file to present to user for login")
 	fs.String("db-url", "", "DSN-formatted database connection string")
-	fs.Bool("no-db", false, "manage entities in-process, used only for single-node testing")
+	fs.Bool("no-db", false, "manage entities in-process w/o any encryption, used only for single-node testing")
+	fs.String("key-secret", "", "symmetric key used to encrypt/decrypt signing key data in DB")
 
 	fs.String("connector-type", "local", "IdP connector type to configure")
 	fs.String("connector-local-users", "./authd/fixtures/users.json", "json file containing set of users")
@@ -112,6 +113,14 @@ func getDBFlag(fs *flag.FlagSet) (string, bool, error) {
 	return dbURL, !no, nil
 }
 
+func getSecretFlag(fs *flag.FlagSet) (sec string, err error) {
+	sec = fs.Lookup("key-secret").Value.String()
+	if len(sec) == 0 {
+		err = errors.New("--key-secret unset")
+	}
+	return
+}
+
 func newKeyManagerFromFlags(fs *flag.FlagSet) (key.PrivateKeyManager, error) {
 	dbURL, ok, err := getDBFlag(fs)
 	if err != nil {
@@ -120,7 +129,12 @@ func newKeyManagerFromFlags(fs *flag.FlagSet) (key.PrivateKeyManager, error) {
 
 	var kRepo key.PrivateKeySetRepo
 	if ok {
-		kRepo, err = db.NewPrivateKeySetRepo(dbURL)
+		sec, err := getSecretFlag(fs)
+		if err != nil {
+			return nil, err
+		}
+
+		kRepo, err = db.NewPrivateKeySetRepo(dbURL, sec)
 		if err != nil {
 			return nil, err
 		}

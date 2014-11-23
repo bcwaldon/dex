@@ -9,13 +9,14 @@ import (
 	"github.com/coopernurse/gorp"
 
 	"github.com/coreos-inc/auth/key"
+	pcrypto "github.com/coreos-inc/auth/pkg/crypto"
 )
 
 const (
 	keyTableName = "key"
 )
 
-func newPrivateKeySetBlob(pks *key.PrivateKeySet) (*privateKeySetBlob, error) {
+func newPrivateKeySetModel(pks *key.PrivateKeySet) (*privateKeySetModel, error) {
 	pkeys := pks.Keys()
 	keys := make([]privateKeyModel, len(pkeys))
 	for i, pkey := range pkeys {
@@ -28,21 +29,13 @@ func newPrivateKeySetBlob(pks *key.PrivateKeySet) (*privateKeySetBlob, error) {
 			PKCS1: x509.MarshalPKCS1PrivateKey(rkey.PrivateKey),
 		}
 	}
+
 	m := privateKeySetModel{
 		Keys:      keys,
 		ExpiresAt: pks.ExpiresAt(),
 	}
 
-	b, err := json.Marshal(&m)
-	if err != nil {
-		return nil, err
-	}
-
-	mb := privateKeySetBlob{
-		Value: b,
-	}
-
-	return &mb, nil
+	return &m, nil
 }
 
 type privateKeyModel struct {
@@ -85,16 +78,12 @@ type privateKeySetBlob struct {
 	Value []byte `db:"value"`
 }
 
-func (b *privateKeySetBlob) PrivateKeySet() (*key.PrivateKeySet, error) {
-	var m privateKeySetModel
-	if err := json.Unmarshal(b.Value, &m); err != nil {
-		return nil, err
+func NewPrivateKeySetRepo(dsn, secret string) (*PrivateKeySetRepo, error) {
+	bsecret := []byte(secret)
+	if len(bsecret) != 32 {
+		return nil, errors.New("expected 32-byte secret")
 	}
 
-	return m.PrivateKeySet()
-}
-
-func NewPrivateKeySetRepo(dsn string) (*PrivateKeySetRepo, error) {
 	dbm, err := dbMap(dsn)
 	if err != nil {
 		return nil, err
@@ -106,14 +95,16 @@ func NewPrivateKeySetRepo(dsn string) (*PrivateKeySetRepo, error) {
 	}
 
 	r := &PrivateKeySetRepo{
-		dbMap: dbm,
+		dbMap:  dbm,
+		secret: []byte(secret),
 	}
 
 	return r, nil
 }
 
 type PrivateKeySetRepo struct {
-	dbMap *gorp.DbMap
+	dbMap  *gorp.DbMap
+	secret []byte
 }
 
 func (r *PrivateKeySetRepo) Set(ks key.KeySet) error {
@@ -127,11 +118,22 @@ func (r *PrivateKeySetRepo) Set(ks key.KeySet) error {
 		return errors.New("unable to cast to PrivateKeySet")
 	}
 
-	b, err := newPrivateKeySetBlob(pks)
+	m, err := newPrivateKeySetModel(pks)
 	if err != nil {
 		return err
 	}
 
+	j, err := json.Marshal(m)
+	if err != nil {
+		return err
+	}
+
+	v, err := pcrypto.AESEncrypt(j, r.secret)
+	if err != nil {
+		return err
+	}
+
+	b := &privateKeySetBlob{Value: v}
 	return r.dbMap.Insert(b)
 }
 
@@ -145,9 +147,19 @@ func (r *PrivateKeySetRepo) Get() (key.KeySet, error) {
 		return nil, nil
 	}
 
-	m, ok := objs[0].(*privateKeySetBlob)
+	b, ok := objs[0].(*privateKeySetBlob)
 	if !ok {
 		return nil, errors.New("unable to cast to KeySet")
+	}
+
+	j, err := pcrypto.AESDecrypt(b.Value, r.secret)
+	if err != nil {
+		return nil, errors.New("unable to decrypt key set")
+	}
+
+	var m privateKeySetModel
+	if err := json.Unmarshal(j, &m); err != nil {
+		return nil, err
 	}
 
 	pks, err := m.PrivateKeySet()

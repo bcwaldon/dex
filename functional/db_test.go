@@ -89,8 +89,8 @@ func TestDBSessionRepoCreateUpdate(t *testing.T) {
 	}
 }
 
-func TestPrivateKeySetRepoSetGet(t *testing.T) {
-	r, err := db.NewPrivateKeySetRepo(dsn)
+func TestDBPrivateKeySetRepoSetGet(t *testing.T) {
+	r, err := db.NewPrivateKeySetRepo(dsn, "super secret key")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}

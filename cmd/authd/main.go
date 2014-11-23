@@ -55,7 +55,7 @@ func main() {
 		log.Fatalf(err.Error())
 	}
 
-	if err := pflag.SetFlagsFromEnv(fs); err != nil {
+	if err := pflag.SetFlagsFromEnv(fs, "AUTHD"); err != nil {
 		log.Fatalf(err.Error())
 	}
 

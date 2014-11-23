@@ -38,7 +38,7 @@ func TestSetFlagsFromEnv(t *testing.T) {
 	}
 
 	// now read the env and verify flags were updated as expected
-	err := SetFlagsFromEnv(fs)
+	err := SetFlagsFromEnv(fs, "AUTHD")
 	if err != nil {
 		t.Errorf("err=%v, want nil", err)
 	}
@@ -58,7 +58,7 @@ func TestSetFlagsFromEnvBad(t *testing.T) {
 	fs := flag.NewFlagSet("testing", flag.ExitOnError)
 	fs.Int("x", 0, "")
 	os.Setenv("AUTHD_X", "not_a_number")
-	if err := SetFlagsFromEnv(fs); err == nil {
+	if err := SetFlagsFromEnv(fs, "AUTHD"); err == nil {
 		t.Errorf("err=nil, want != nil")
 	}
 }

@@ -140,10 +140,17 @@ func newKeyManagerFromFlags(fs *flag.FlagSet) (key.PrivateKeyManager, error) {
 		}
 	} else {
 		kRepo = key.NewPrivateKeySetRepo()
-	}
 
-	krot := key.NewPrivateKeyRotator(kRepo, 60*time.Second)
-	krot.Run()
+		// WARNING: the following behavior is just for testing - do not rely on this
+		k, err := key.GeneratePrivateRSAKey()
+		if err != nil {
+			return nil, err
+		}
+		ks := key.NewPrivateKeySet([]key.PrivateKey{k}, time.Now().Add(24*time.Hour))
+		if err = kRepo.Set(ks); err != nil {
+			return nil, err
+		}
+	}
 
 	km := key.NewPrivateKeyManager()
 	key.NewKeySetSyncer(kRepo, km).Run()

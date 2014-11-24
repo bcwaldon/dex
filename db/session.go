@@ -3,10 +3,13 @@ package db
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"log"
 	"net/url"
 	"time"
 
 	"github.com/coopernurse/gorp"
+	"github.com/lib/pq"
 
 	"github.com/coreos-inc/auth/oidc"
 	"github.com/coreos-inc/auth/session"
@@ -129,5 +132,21 @@ func (r *SessionRepo) Update(s session.Session) error {
 }
 
 func (r *SessionRepo) purge() error {
+	qt := pq.QuoteIdentifier(sessionTableName)
+	q := fmt.Sprintf("DELETE FROM %s WHERE state = $1", qt)
+	res, err := r.dbMap.Exec(q, string(session.SessionStateDead))
+	if err != nil {
+		return err
+	}
+
+	d := "unknown # of"
+	if n, err := res.RowsAffected(); err == nil {
+		if n == 0 {
+			return nil
+		}
+		d = fmt.Sprintf("%d", n)
+	}
+
+	log.Printf("Deleted %s stale row(s) from %s table", d, sessionTableName)
 	return nil
 }

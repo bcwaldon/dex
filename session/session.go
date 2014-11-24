@@ -27,7 +27,6 @@ const (
 type SessionKey struct {
 	Key       string
 	SessionID string
-	ExpiresAt time.Time
 }
 
 type Session struct {

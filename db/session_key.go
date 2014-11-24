@@ -64,3 +64,7 @@ func (r *SessionKeyRepo) Pop(key string) (string, error) {
 
 	return skm.SessionID, nil
 }
+
+func (r *SessionKeyRepo) purge() error {
+	return nil
+}

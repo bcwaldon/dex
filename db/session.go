@@ -128,3 +128,7 @@ func (r *SessionRepo) Update(s session.Session) error {
 	}
 	return nil
 }
+
+func (r *SessionRepo) purge() error {
+	return nil
+}

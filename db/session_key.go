@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	sessionKeyTableName = "sessionKey"
+	sessionKeyTableName = "sessionkey"
 )
 
 type sessionKeyModel struct {

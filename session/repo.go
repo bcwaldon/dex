@@ -21,16 +21,18 @@ type SessionKeyRepo interface {
 func NewSessionRepo() SessionRepo {
 	return &memSessionRepo{
 		store: make(map[string]Session),
+		clock: clockwork.NewRealClock(),
 	}
 }
 
 type memSessionRepo struct {
 	store map[string]Session
+	clock clockwork.Clock
 }
 
 func (m *memSessionRepo) Get(sessionID string) (*Session, error) {
 	s, ok := m.store[sessionID]
-	if !ok {
+	if !ok || s.ExpiresAt.Before(m.clock.Now().UTC()) {
 		return nil, errors.New("unrecognized ID")
 	}
 	return &s, nil

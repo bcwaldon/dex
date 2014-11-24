@@ -14,6 +14,7 @@ func TestSessionIDToken(t *testing.T) {
 	now := time.Now().UTC()
 	ses := &Session{
 		CreatedAt: now,
+		ExpiresAt: now.Add(time.Hour),
 		ClientID:  "XXX",
 		Identity: oidc.Identity{
 			ID:    "YYY",

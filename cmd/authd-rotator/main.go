@@ -1,0 +1,38 @@
+package main
+
+import (
+	"flag"
+	"log"
+	"os"
+	"time"
+
+	"github.com/coreos-inc/auth/db"
+	"github.com/coreos-inc/auth/key"
+	pflag "github.com/coreos-inc/auth/pkg/flag"
+)
+
+func main() {
+	fs := flag.NewFlagSet("authd-rotator", flag.ExitOnError)
+	secret := fs.String("key-secret", "", "symmetric key used to encrypt/decrypt signing key data in DB")
+	dbURL := fs.String("db-url", "", "DSN-formatted database connection string")
+	period := fs.Duration("period", 24*time.Hour, "length of time for-which a given key will be valid")
+
+	if err := fs.Parse(os.Args[1:]); err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	if err := pflag.SetFlagsFromEnv(fs, "AUTHD_ROTATOR"); err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	if len(*secret) == 0 {
+		log.Fatalf("--key-secret unset")
+	}
+
+	kRepo, err := db.NewPrivateKeySetRepo(*dbURL, *secret)
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	<-key.NewPrivateKeyRotator(kRepo, *period).Run()
+}

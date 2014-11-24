@@ -26,13 +26,13 @@ func TestKeySyncerSync(t *testing.T) {
 		{
 			from: &PrivateKeySet{
 				keys:        []PrivateKey{k1},
-				activeKeyID: k1.id,
+				ActiveKeyID: k1.KeyID,
 				expiresAt:   now.Add(10 * time.Second),
 			},
 			advance: time.Second,
 			want: &PrivateKeySet{
 				keys:        []PrivateKey{k1},
-				activeKeyID: k1.id,
+				ActiveKeyID: k1.KeyID,
 				expiresAt:   now.Add(10 * time.Second),
 			},
 		},
@@ -40,13 +40,13 @@ func TestKeySyncerSync(t *testing.T) {
 		{
 			from: &PrivateKeySet{
 				keys:        []PrivateKey{k2, k1},
-				activeKeyID: k2.id,
+				ActiveKeyID: k2.KeyID,
 				expiresAt:   now.Add(15 * time.Second),
 			},
 			advance: 5 * time.Second,
 			want: &PrivateKeySet{
 				keys:        []PrivateKey{k2, k1},
-				activeKeyID: k2.id,
+				ActiveKeyID: k2.KeyID,
 				expiresAt:   now.Add(15 * time.Second),
 			},
 		},
@@ -55,13 +55,13 @@ func TestKeySyncerSync(t *testing.T) {
 		{
 			from: &PrivateKeySet{
 				keys:        []PrivateKey{k3, k2, k1},
-				activeKeyID: k3.id,
+				ActiveKeyID: k3.KeyID,
 				expiresAt:   now.Add(10 * time.Second),
 			},
 			advance: 10 * time.Second,
 			want: &PrivateKeySet{
 				keys:        []PrivateKey{k2, k1},
-				activeKeyID: k2.id,
+				ActiveKeyID: k2.KeyID,
 				expiresAt:   now.Add(15 * time.Second),
 			},
 		},
@@ -70,13 +70,13 @@ func TestKeySyncerSync(t *testing.T) {
 		{
 			from: &PrivateKeySet{
 				keys:        []PrivateKey{k4, k2, k1},
-				activeKeyID: k4.id,
+				ActiveKeyID: k4.KeyID,
 				expiresAt:   now.Add(25 * time.Second),
 			},
 			advance: 3 * time.Second,
 			want: &PrivateKeySet{
 				keys:        []PrivateKey{k4, k2, k1},
-				activeKeyID: k4.id,
+				ActiveKeyID: k4.KeyID,
 				expiresAt:   now.Add(25 * time.Second),
 			},
 		},
@@ -124,7 +124,7 @@ func TestSync(t *testing.T) {
 		{
 			keySet: &PrivateKeySet{
 				keys:        []PrivateKey{k1},
-				activeKeyID: k1.id,
+				ActiveKeyID: k1.KeyID,
 				expiresAt:   now.Add(time.Minute),
 			},
 			want: time.Minute,
@@ -132,7 +132,7 @@ func TestSync(t *testing.T) {
 		{
 			keySet: &PrivateKeySet{
 				keys:        []PrivateKey{k2, k1},
-				activeKeyID: k2.id,
+				ActiveKeyID: k2.KeyID,
 				expiresAt:   now.Add(time.Minute),
 			},
 			want: time.Minute,
@@ -140,7 +140,7 @@ func TestSync(t *testing.T) {
 		{
 			keySet: &PrivateKeySet{
 				keys:        []PrivateKey{k3, k2, k1},
-				activeKeyID: k2.id,
+				ActiveKeyID: k2.KeyID,
 				expiresAt:   now.Add(time.Minute),
 			},
 			want: time.Minute,
@@ -148,7 +148,7 @@ func TestSync(t *testing.T) {
 		{
 			keySet: &PrivateKeySet{
 				keys:        []PrivateKey{k2, k1},
-				activeKeyID: k2.id,
+				ActiveKeyID: k2.KeyID,
 				expiresAt:   now.Add(time.Hour),
 			},
 			want: time.Hour,
@@ -180,29 +180,22 @@ func TestSyncFail(t *testing.T) {
 	fc := clockwork.NewFakeClock()
 	now := fc.Now().UTC()
 
+	from := NewPrivateKeySetRepo()
+	to := NewPrivateKeySetRepo()
+
 	k1 := generatePrivateRSAKeyStatic(t, 1)
 	k2 := generatePrivateRSAKeyStatic(t, 2)
-
-	tests := []*PrivateKeySet{
-		&PrivateKeySet{
-			keys:        []PrivateKey{k2, k1},
-			activeKeyID: k2.id,
-			expiresAt:   now.Add(-1 * time.Minute),
-		},
+	fixture := &PrivateKeySet{
+		keys:        []PrivateKey{k2, k1},
+		ActiveKeyID: k2.KeyID,
+		expiresAt:   now.Add(-1 * time.Minute),
 	}
-
-	for i, tt := range tests {
-		from := NewPrivateKeySetRepo()
-		to := NewPrivateKeySetRepo()
-
-		err := from.Set(tt)
-		if err != nil {
-			t.Errorf("case %d: unexpected error: %v", i, err)
-			continue
-		}
-		_, err = sync(from, to, fc)
-		if err == nil {
-			t.Errorf("case %d: expected non-nil error", i)
-		}
+	err := from.Set(fixture)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	_, err = sync(from, to, fc)
+	if err == nil {
+		t.Fatal("expected non-nil error")
 	}
 }

@@ -10,7 +10,7 @@ import (
 
 func generatePrivateRSAKeySerialFunc(t *testing.T) GeneratePrivateRSAKeyFunc {
 	var n int
-	return func() (*privateRSAKey, error) {
+	return func() (*PrivateRSAKey, error) {
 		n++
 		return generatePrivateRSAKeyStatic(t, n), nil
 	}
@@ -29,7 +29,19 @@ func TestRotate(t *testing.T) {
 		exp   time.Time
 		want  *PrivateKeySet
 	}{
-		// add first key
+		// start with nil keys
+		{
+			start: nil,
+			key:   k1,
+			keep:  2,
+			exp:   now.Add(time.Second),
+			want: &PrivateKeySet{
+				keys:        []PrivateKey{k1},
+				ActiveKeyID: k1.KeyID,
+				expiresAt:   now.Add(time.Second),
+			},
+		},
+		// start with zero keys
 		{
 			start: &PrivateKeySet{},
 			key:   k1,
@@ -37,7 +49,7 @@ func TestRotate(t *testing.T) {
 			exp:   now.Add(time.Second),
 			want: &PrivateKeySet{
 				keys:        []PrivateKey{k1},
-				activeKeyID: k1.id,
+				ActiveKeyID: k1.KeyID,
 				expiresAt:   now.Add(time.Second),
 			},
 		},
@@ -45,7 +57,7 @@ func TestRotate(t *testing.T) {
 		{
 			start: &PrivateKeySet{
 				keys:        []PrivateKey{k1},
-				activeKeyID: k1.id,
+				ActiveKeyID: k1.KeyID,
 				expiresAt:   now,
 			},
 			key:  k2,
@@ -53,7 +65,7 @@ func TestRotate(t *testing.T) {
 			exp:  now.Add(time.Second),
 			want: &PrivateKeySet{
 				keys:        []PrivateKey{k2, k1},
-				activeKeyID: k2.id,
+				ActiveKeyID: k2.KeyID,
 				expiresAt:   now.Add(time.Second),
 			},
 		},
@@ -61,7 +73,7 @@ func TestRotate(t *testing.T) {
 		{
 			start: &PrivateKeySet{
 				keys:        []PrivateKey{k2, k1},
-				activeKeyID: k2.id,
+				ActiveKeyID: k2.KeyID,
 				expiresAt:   now,
 			},
 			key:  k3,
@@ -69,7 +81,7 @@ func TestRotate(t *testing.T) {
 			exp:  now.Add(time.Second),
 			want: &PrivateKeySet{
 				keys:        []PrivateKey{k3, k2},
-				activeKeyID: k3.id,
+				ActiveKeyID: k3.KeyID,
 				expiresAt:   now.Add(time.Second),
 			},
 		},
@@ -107,22 +119,22 @@ func TestPrivateKeyRotatorRun(t *testing.T) {
 	steps := []*PrivateKeySet{
 		&PrivateKeySet{
 			keys:        []PrivateKey{k1},
-			activeKeyID: k1.id,
+			ActiveKeyID: k1.KeyID,
 			expiresAt:   now.Add(4 * time.Second),
 		},
 		&PrivateKeySet{
 			keys:        []PrivateKey{k2, k1},
-			activeKeyID: k2.id,
+			ActiveKeyID: k2.KeyID,
 			expiresAt:   now.Add(6 * time.Second),
 		},
 		&PrivateKeySet{
 			keys:        []PrivateKey{k3, k2},
-			activeKeyID: k3.id,
+			ActiveKeyID: k3.KeyID,
 			expiresAt:   now.Add(8 * time.Second),
 		},
 		&PrivateKeySet{
 			keys:        []PrivateKey{k4, k3},
-			activeKeyID: k4.id,
+			ActiveKeyID: k4.KeyID,
 			expiresAt:   now.Add(10 * time.Second),
 		},
 	}

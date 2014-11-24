@@ -20,7 +20,7 @@ const (
 	LocalIDPConnectorType = "local"
 
 	// TODO(sym3tri): get from config once config is available
-	loginPagePath = "./authd/fixtures/local-login.html"
+	loginPagePath = "./cmd/authd/fixtures/local-login.html"
 )
 
 func init() {

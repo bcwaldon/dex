@@ -1,66 +1,85 @@
 package session
 
 import (
+	"crypto/rand"
 	"encoding/base64"
-	"encoding/binary"
+	"errors"
 	"fmt"
-	"math/rand"
+	"net/url"
 
 	"github.com/jonboulle/clockwork"
 
-	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 )
 
-type GenerateCodeFunc func() string
+type GenerateCodeFunc func() (string, error)
 
-func DefaultGenerateCode() string {
+func DefaultGenerateCode() (string, error) {
 	b := make([]byte, 8)
-	binary.BigEndian.PutUint64(b, uint64(rand.Int63()))
-	return base64.URLEncoding.EncodeToString(b)
+	n, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	} else if n != 8 {
+		return "", errors.New("unable to read enough random bytes")
+	}
+	return base64.URLEncoding.EncodeToString(b), nil
 }
 
-func NewSessionManager() *SessionManager {
+func NewSessionManager(sRepo SessionRepo, skRepo SessionKeyRepo) *SessionManager {
 	return &SessionManager{
 		GenerateCode: DefaultGenerateCode,
 		Clock:        clockwork.NewRealClock(),
-		sessions:     newMemSessionRepo(),
-		keys:         newMemSessionKeyRepo(),
+		sessions:     sRepo,
+		keys:         skRepo,
 	}
 }
 
 type SessionManager struct {
 	GenerateCode GenerateCodeFunc
 	Clock        clockwork.Clock
-	sessions     sessionRepo
-	keys         sessionKeyRepo
+	sessions     SessionRepo
+	keys         SessionKeyRepo
 }
 
-func (m *SessionManager) NewSession(ci oauth2.ClientIdentity, cs string) (string, error) {
-	s := Session{
-		ID:             m.GenerateCode(),
-		State:          sessionStateNew,
-		CreatedAt:      m.Clock.Now().UTC(),
-		ClientIdentity: ci,
-		ClientState:    cs,
-	}
-
-	err := m.sessions.Set(s)
+func (m *SessionManager) NewSession(clientID, clientState string, redirectURL url.URL) (string, error) {
+	sID, err := m.GenerateCode()
 	if err != nil {
 		return "", err
 	}
-	return s.ID, nil
+
+	s := Session{
+		ID:          sID,
+		State:       SessionStateNew,
+		CreatedAt:   m.Clock.Now().UTC(),
+		ClientID:    clientID,
+		ClientState: clientState,
+		RedirectURL: redirectURL,
+	}
+
+	err = m.sessions.Create(s)
+	if err != nil {
+		return "", err
+	}
+
+	return sID, nil
 }
 
 func (m *SessionManager) NewSessionKey(sessionID string) (string, error) {
-	k := SessionKey{
-		Key:       m.GenerateCode(),
-		SessionID: sessionID,
-	}
-	err := m.keys.Push(k, sessionKeyValidityWindow)
+	key, err := m.GenerateCode()
 	if err != nil {
 		return "", err
 	}
+
+	k := SessionKey{
+		Key:       key,
+		SessionID: sessionID,
+	}
+
+	err = m.keys.Push(k, sessionKeyValidityWindow)
+	if err != nil {
+		return "", err
+	}
+
 	return k.Key, nil
 }
 
@@ -68,7 +87,7 @@ func (m *SessionManager) ExchangeKey(key string) (string, error) {
 	return m.keys.Pop(key)
 }
 
-func (m *SessionManager) getSessionInState(sessionID string, state sessionState) (*Session, error) {
+func (m *SessionManager) getSessionInState(sessionID string, state SessionState) (*Session, error) {
 	s, err := m.sessions.Get(sessionID)
 	if err != nil {
 		return nil, err
@@ -82,15 +101,15 @@ func (m *SessionManager) getSessionInState(sessionID string, state sessionState)
 }
 
 func (m *SessionManager) Identify(sessionID string, ident oidc.Identity) (*Session, error) {
-	s, err := m.getSessionInState(sessionID, sessionStateNew)
+	s, err := m.getSessionInState(sessionID, SessionStateNew)
 	if err != nil {
 		return nil, err
 	}
 
 	s.Identity = ident
-	s.State = sessionStateIdentified
+	s.State = SessionStateIdentified
 
-	if err = m.sessions.Set(*s); err != nil {
+	if err = m.sessions.Update(*s); err != nil {
 		return nil, err
 	}
 
@@ -103,9 +122,9 @@ func (m *SessionManager) Kill(sessionID string) (*Session, error) {
 		return nil, err
 	}
 
-	s.State = sessionStateDead
+	s.State = SessionStateDead
 
-	if err = m.sessions.Set(*s); err != nil {
+	if err = m.sessions.Update(*s); err != nil {
 		return nil, err
 	}
 

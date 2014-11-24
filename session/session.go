@@ -1,10 +1,10 @@
 package session
 
 import (
+	"net/url"
 	"time"
 
 	"github.com/coreos-inc/auth/jose"
-	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 )
 
@@ -16,12 +16,12 @@ const (
 	idTokenValidityWindow = time.Hour
 )
 
-type sessionState string
+type SessionState string
 
 const (
-	sessionStateNew        = sessionState("NEW")
-	sessionStateIdentified = sessionState("IDENTIFIED")
-	sessionStateDead       = sessionState("EXCHANGED")
+	SessionStateNew        = SessionState("NEW")
+	SessionStateIdentified = SessionState("IDENTIFIED")
+	SessionStateDead       = SessionState("EXCHANGED")
 )
 
 type SessionKey struct {
@@ -31,13 +31,13 @@ type SessionKey struct {
 }
 
 type Session struct {
-	ID             string
-	State          sessionState
-	CreatedAt      time.Time
-	ClientIdentity oauth2.ClientIdentity
-	ClientState    string
-	Identity       oidc.Identity
-	sessionManager *SessionManager
+	ID          string
+	State       SessionState
+	CreatedAt   time.Time
+	ClientID    string
+	ClientState string
+	RedirectURL url.URL
+	Identity    oidc.Identity
 }
 
 func (s *Session) Claims(issuerURL string) jose.Claims {
@@ -45,7 +45,7 @@ func (s *Session) Claims(issuerURL string) jose.Claims {
 		// required
 		"iss": issuerURL,
 		"sub": s.Identity.ID,
-		"aud": s.ClientIdentity.ID,
+		"aud": s.ClientID,
 		// explicitly cast to float64 for consistent JSON (de)serialization
 		"iat": float64(s.CreatedAt.Unix()),
 		"exp": float64(s.CreatedAt.Add(idTokenValidityWindow).Unix()),

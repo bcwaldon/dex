@@ -13,18 +13,25 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/coreos-inc/auth/connector"
 	localconnector "github.com/coreos-inc/auth/connector/local"
 	oidcconnector "github.com/coreos-inc/auth/connector/oidc"
+	"github.com/coreos-inc/auth/db"
 	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 	pflag "github.com/coreos-inc/auth/pkg/flag"
 	"github.com/coreos-inc/auth/server"
 	"github.com/coreos-inc/auth/session"
+)
+
+var (
+	dbURLFlag string
+	useDB bool
 )
 
 func init() {
@@ -36,11 +43,14 @@ func main() {
 	fs := flag.NewFlagSet("authd", flag.ExitOnError)
 	fs.String("listen", "http://0.0.0.0:5556", "")
 	fs.String("issuer", "http://127.0.0.1:5556", "")
-	fs.String("clients", "./authd/fixtures/clients.json", "json file containing set of clients")
-	fs.String("login-page-template", "./authd/fixtures/login.html", "html template file to present to user for login")
+	fs.String("clients", "./cmd/authd/fixtures/clients.json", "json file containing set of clients")
+	fs.String("login-page-template", "./cmd/authd/fixtures/login.html", "html template file to present to user for login")
+	fs.String("db-url", "", "DSN-formatted database connection string")
+	fs.Bool("no-db", false, "manage entities in-process w/o any encryption, used only for single-node testing")
+	fs.String("key-secret", "", "symmetric key used to encrypt/decrypt signing key data in DB")
 
 	fs.String("connector-type", "local", "IdP connector type to configure")
-	fs.String("connector-local-users", "./authd/fixtures/users.json", "json file containing set of users")
+	fs.String("connector-local-users", "./cmd/authd/fixtures/users.json", "json file containing set of users")
 	fs.String("connector-id", "id", "unique id of the connector")
 	fs.String("connector-oidc-issuer-url", "https://accounts.google.com", "")
 	fs.String("connector-oidc-client-id", "", "")
@@ -50,14 +60,8 @@ func main() {
 		log.Fatalf(err.Error())
 	}
 
-	if err := pflag.SetFlagsFromEnv(fs); err != nil {
+	if err := pflag.SetFlagsFromEnv(fs, "AUTHD"); err != nil {
 		log.Fatalf(err.Error())
-	}
-
-	km := key.NewPrivateKeyManager()
-	srv, err := newServerFromFlags(fs, km)
-	if err != nil {
-		log.Fatalf("Unable to build Server: %v", err)
 	}
 
 	listen := fs.Lookup("listen").Value.String()
@@ -70,6 +74,21 @@ func main() {
 		log.Fatalf("Unable to listen using scheme %s", lu.Scheme)
 	}
 
+	dbURLFlag, useDB, err = parseDBFlags(fs)
+	if err != nil {
+		log.Fatalf("Unable to parse DB flags: %v", err)
+	}
+
+	km, err := newKeyManagerFromFlags(fs)
+	if err != nil {
+		log.Fatalf("Unable to build KeyManager: %v", err)
+	}
+
+	srv, err := newServerFromFlags(fs, km)
+	if err != nil {
+		log.Fatalf("Unable to build Server: %v", err)
+	}
+
 	idpcs, err := newIDPConnectorsFromFlags(fs, srv.Login)
 	if err != nil {
 		log.Fatalf("Unable to build IDPConnector: %v", err)
@@ -80,12 +99,6 @@ func main() {
 		log.Fatalf("Unable to parse login page template: %v", err)
 	}
 
-	kRepo := key.NewPrivateKeySetRepo()
-	key.NewKeySetSyncer(kRepo, km).Run()
-
-	krot := key.NewPrivateKeyRotator(kRepo, 60*time.Second)
-	krot.Run()
-
 	hdlr := srv.HTTPHandler(idpcs, tpl)
 	httpsrv := &http.Server{
 		Addr:    lu.Host,
@@ -94,6 +107,64 @@ func main() {
 
 	log.Printf("binding to %s...", httpsrv.Addr)
 	log.Fatal(httpsrv.ListenAndServe())
+}
+
+func parseDBFlags(fs *flag.FlagSet) (string, bool, error) {
+	no, err := strconv.ParseBool(fs.Lookup("no-db").Value.String())
+	if err != nil {
+		return "", false, fmt.Errorf("failed parsing --no-db: %v", err)
+	}
+
+	dbURL := fs.Lookup("db-url").Value.String()
+	if !no && len(dbURL) == 0 {
+		return "", false, errors.New("--db-url unset")
+	}
+
+	if no {
+		log.Printf("WARNING: running in-process withour external database or key rotation")
+	}
+
+	return dbURL, !no, nil
+}
+
+func getSecretFlag(fs *flag.FlagSet) (sec string, err error) {
+	sec = fs.Lookup("key-secret").Value.String()
+	if len(sec) == 0 {
+		err = errors.New("--key-secret unset")
+	}
+	return
+}
+
+func newKeyManagerFromFlags(fs *flag.FlagSet) (key.PrivateKeyManager, error) {
+	var kRepo key.PrivateKeySetRepo
+	if useDB {
+		sec, err := getSecretFlag(fs)
+		if err != nil {
+			return nil, err
+		}
+
+		kRepo, err = db.NewPrivateKeySetRepo(dbURLFlag, sec)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		kRepo = key.NewPrivateKeySetRepo()
+
+		// WARNING: the following behavior is just for testing - do not rely on this
+		k, err := key.GeneratePrivateRSAKey()
+		if err != nil {
+			return nil, err
+		}
+		ks := key.NewPrivateKeySet([]key.PrivateKey{k}, time.Now().Add(24*time.Hour))
+		if err = kRepo.Set(ks); err != nil {
+			return nil, err
+		}
+	}
+
+	km := key.NewPrivateKeyManager()
+	key.NewKeySetSyncer(kRepo, km).Run()
+
+	return km, nil
 }
 
 func newServerFromFlags(fs *flag.FlagSet, km key.PrivateKeyManager) (*server.Server, error) {
@@ -108,8 +179,24 @@ func newServerFromFlags(fs *flag.FlagSet, km key.PrivateKeyManager) (*server.Ser
 		return nil, fmt.Errorf("unable to read client identities from file %s: %v", cFile, err)
 	}
 
+	var sRepo session.SessionRepo
+	var skRepo session.SessionKeyRepo
+	if useDB {
+		sRepo, err = db.NewSessionRepo(dbURLFlag)
+		if err != nil {
+			log.Fatalf("Unable to create SessionRepo: %v", err)
+		}
+		skRepo, err = db.NewSessionKeyRepo(dbURLFlag)
+		if err != nil {
+			log.Fatalf("Unable to create SessionKeyRepo: %v", err)
+		}
+	} else {
+		sRepo = session.NewSessionRepo()
+		skRepo = session.NewSessionKeyRepo()
+	}
+
+	sm := session.NewSessionManager(sRepo, skRepo)
 	issuer := fs.Lookup("issuer").Value.String()
-	sm := session.NewSessionManager()
 	srv := server.Server{
 		IssuerURL:          issuer,
 		KeyManager:         km,

@@ -64,6 +64,11 @@ func sync(r ReadableKeySetRepo, w WritableKeySetRepo, clock clockwork.Clock) (ex
 		return
 	}
 
+	if ks == nil {
+		err = errors.New("no source KeySet")
+		return
+	}
+
 	diff := ks.ExpiresAt().Sub(clock.Now().UTC())
 	if diff <= 0 {
 		err = errors.New("key set expired")

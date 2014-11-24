@@ -10,9 +10,10 @@ import (
 // SetFlagsFromEnv parses all registered flags in the given flagset,
 // and if they are not already set it attempts to set their values from
 // environment variables. Environment variables take the name of the flag but
-// are UPPERCASE, have the prefix "AUTHD_", and any dashes are replaced by
-// underscores - for example: some-flag => AUTHD_SOME_FLAG
-func SetFlagsFromEnv(fs *flag.FlagSet) error {
+// are UPPERCASE, and any dashes are replaced by underscores. Environment
+// variables additionally are prefixed by the given string followed by
+// and underscore. For example, if prefix=PREFIX: some-flag => PREFIX_SOME_FLAG
+func SetFlagsFromEnv(fs *flag.FlagSet, prefix string) error {
 	var err error
 	alreadySet := make(map[string]bool)
 	fs.Visit(func(f *flag.Flag) {
@@ -20,7 +21,7 @@ func SetFlagsFromEnv(fs *flag.FlagSet) error {
 	})
 	fs.VisitAll(func(f *flag.Flag) {
 		if !alreadySet[f.Name] {
-			key := "AUTHD_" + strings.ToUpper(strings.Replace(f.Name, "-", "_", -1))
+			key := prefix + "_" + strings.ToUpper(strings.Replace(f.Name, "-", "_", -1))
 			val := os.Getenv(key)
 			if val != "" {
 				if serr := fs.Set(f.Name, val); serr != nil {

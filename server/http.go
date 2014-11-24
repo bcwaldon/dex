@@ -204,7 +204,7 @@ func handleAuthFunc(srv OIDCServer, idpcs map[string]connector.IDPConnector, tpl
 			return
 		}
 
-		key, err := srv.NewSession(*ci, acr.State)
+		key, err := srv.NewSession(ci.ID, acr.State, ci.RedirectURL)
 		if err != nil {
 			redirectAuthError(w, err, acr.State, ci.RedirectURL)
 			return
@@ -262,8 +262,7 @@ func handleTokenFunc(srv OIDCServer) http.HandlerFunc {
 			return
 		}
 
-		ci := oauth2.ClientIdentity{ID: user, Secret: password}
-		jwt, err := srv.Token(ci, code)
+		jwt, err := srv.Token(user, password, code)
 		if err != nil {
 			writeTokenError(w, err, state)
 			return

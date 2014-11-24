@@ -20,9 +20,9 @@ import (
 
 type OIDCServer interface {
 	Client(string) *oauth2.ClientIdentity
-	NewSession(oauth2.ClientIdentity, string) (string, error)
+	NewSession(clientID, clientState string, redirectURL url.URL) (string, error)
 	Login(oidc.Identity, string) (string, error)
-	Token(oauth2.ClientIdentity, string) (*jose.JWT, error)
+	Token(clientID, clientState, code string) (*jose.JWT, error)
 	KillSession(string) error
 }
 
@@ -85,13 +85,13 @@ func (s *Server) Client(clientID string) *oauth2.ClientIdentity {
 	return s.ClientIdentityRepo.ClientIdentity(clientID)
 }
 
-func (s *Server) NewSession(ci oauth2.ClientIdentity, state string) (string, error) {
-	sessionID, err := s.SessionManager.NewSession(ci, state)
+func (s *Server) NewSession(clientID, clientState string, redirectURL url.URL) (string, error) {
+	sessionID, err := s.SessionManager.NewSession(clientID, clientState, redirectURL)
 	if err != nil {
 		return "", err
 	}
 
-	log.Printf("Session %s created: clientID=%s state=%s", sessionID, ci.ID, state)
+	log.Printf("Session %s created: clientID=%s clientState=%s", sessionID, clientID, clientState)
 	return s.SessionManager.NewSessionKey(sessionID)
 }
 
@@ -106,14 +106,14 @@ func (s *Server) Login(ident oidc.Identity, key string) (string, error) {
 		return "", err
 	}
 
-	log.Printf("Session %s identified: clientID=%s identity=%#v", sessionID, ses.ClientIdentity.ID, ident)
+	log.Printf("Session %s identified: clientID=%s identity=%#v", sessionID, ses.ClientID, ident)
 
 	code, err := s.SessionManager.NewSessionKey(sessionID)
 	if err != nil {
 		return "", err
 	}
 
-	ru := ses.ClientIdentity.RedirectURL
+	ru := ses.RedirectURL
 	q := ru.Query()
 	q.Set("code", code)
 	q.Set("state", ses.ClientState)
@@ -122,9 +122,9 @@ func (s *Server) Login(ident oidc.Identity, key string) (string, error) {
 	return ru.String(), nil
 }
 
-func (s *Server) Token(ci oauth2.ClientIdentity, key string) (*jose.JWT, error) {
-	exist := s.ClientIdentityRepo.ClientIdentity(ci.ID)
-	if exist == nil || exist.Secret != ci.Secret {
+func (s *Server) Token(clientID, clientSecret, key string) (*jose.JWT, error) {
+	ci := s.ClientIdentityRepo.ClientIdentity(clientID)
+	if ci == nil || ci.Secret != clientSecret {
 		return nil, oauth2.NewError(oauth2.ErrorInvalidClient)
 	}
 
@@ -138,7 +138,7 @@ func (s *Server) Token(ci oauth2.ClientIdentity, key string) (*jose.JWT, error) 
 		return nil, oauth2.NewError(oauth2.ErrorInvalidRequest)
 	}
 
-	if !ses.ClientIdentity.Match(ci) {
+	if ses.ClientID != ci.ID {
 		return nil, oauth2.NewError(oauth2.ErrorInvalidGrant)
 	}
 
@@ -154,7 +154,7 @@ func (s *Server) Token(ci oauth2.ClientIdentity, key string) (*jose.JWT, error) 
 		return nil, oauth2.NewError(oauth2.ErrorServerError)
 	}
 
-	log.Printf("Session %s token sent: clientID=%s", sessionID, ci.ID)
+	log.Printf("Session %s token sent: clientID=%s", sessionID, clientID)
 
 	return jwt, nil
 }

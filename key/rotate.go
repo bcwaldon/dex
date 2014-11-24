@@ -74,19 +74,23 @@ func rotatePrivateKeys(repo PrivateKeySetRepo, k PrivateKey, keep int, exp time.
 		return err
 	}
 
-	pks, ok := ks.(*PrivateKeySet)
-	if !ok {
-		return errors.New("unable to cast to PrivateKeySet")
+	var keys []PrivateKey
+	if ks != nil {
+		pks, ok := ks.(*PrivateKeySet)
+		if !ok {
+			return errors.New("unable to cast to PrivateKeySet")
+		}
+		keys = pks.Keys()
 	}
 
-	keys := append([]PrivateKey{k}, pks.Keys()...)
+	keys = append([]PrivateKey{k}, keys...)
 	if l := len(keys); l > keep {
 		keys = keys[0:keep]
 	}
 
 	nks := PrivateKeySet{
 		keys:        keys,
-		activeKeyID: k.ID(),
+		ActiveKeyID: k.ID(),
 		expiresAt:   exp,
 	}
 

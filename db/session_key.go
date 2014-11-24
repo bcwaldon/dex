@@ -10,6 +10,10 @@ import (
 	"github.com/coreos-inc/auth/session"
 )
 
+const (
+	sessionKeyTableName = "sessionKey"
+)
+
 type sessionKeyModel struct {
 	Key       string `db:"key"`
 	SessionID string `db:"sessionID"`

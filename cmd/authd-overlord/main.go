@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	fs := flag.NewFlagSet("authd-rotator", flag.ExitOnError)
+	fs := flag.NewFlagSet("authd-overlord", flag.ExitOnError)
 	secret := fs.String("key-secret", "", "symmetric key used to encrypt/decrypt signing key data in DB")
 	dbURL := fs.String("db-url", "", "DSN-formatted database connection string")
 	period := fs.Duration("period", 24*time.Hour, "length of time for-which a given key will be valid")

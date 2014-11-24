@@ -17,9 +17,10 @@ const (
 )
 
 type sessionKeyModel struct {
-	Key       string `db:"key"`
-	SessionID string `db:"sessionID"`
-	Stale     bool   `db:"stale"`
+	Key       string    `db:"key"`
+	SessionID string    `db:"sessionID"`
+	ExpiresAt time.Time `db:"expiresAt"`
+	Stale     bool      `db:"stale"`
 }
 
 func NewSessionKeyRepo(dsn string) (*SessionKeyRepo, error) {
@@ -47,6 +48,7 @@ func (r *SessionKeyRepo) Push(sk session.SessionKey, exp time.Duration) error {
 	skm := &sessionKeyModel{
 		Key:       sk.Key,
 		SessionID: sk.SessionID,
+		ExpiresAt: time.Now().UTC().Add(exp),
 		Stale:     false,
 	}
 	return r.dbMap.Insert(skm)
@@ -63,7 +65,7 @@ func (r *SessionKeyRepo) Pop(key string) (string, error) {
 		return "", errors.New("unrecognized model")
 	}
 
-	if skm.Stale {
+	if skm.Stale || skm.ExpiresAt.Before(time.Now().UTC()) {
 		return "", errors.New("invalid session key")
 	}
 
@@ -86,8 +88,8 @@ func (r *SessionKeyRepo) Pop(key string) (string, error) {
 
 func (r *SessionKeyRepo) purge() error {
 	qt := pq.QuoteIdentifier(sessionKeyTableName)
-	q := fmt.Sprintf("DELETE FROM %s WHERE stale = $1", qt)
-	res, err := r.dbMap.Exec(q, true)
+	q := fmt.Sprintf("DELETE FROM %s WHERE stale = $1 OR expiresAt < $2", qt)
+	res, err := r.dbMap.Exec(q, true, time.Now().UTC())
 	if err != nil {
 		return err
 	}

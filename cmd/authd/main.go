@@ -31,7 +31,7 @@ import (
 
 var (
 	dbURLFlag string
-	useDB bool
+	useDB     bool
 )
 
 func init() {

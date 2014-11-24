@@ -3,9 +3,11 @@ package db
 import (
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/coopernurse/gorp"
+	"github.com/lib/pq"
 
 	"github.com/coreos-inc/auth/session"
 )
@@ -17,6 +19,7 @@ const (
 type sessionKeyModel struct {
 	Key       string `db:"key"`
 	SessionID string `db:"sessionID"`
+	Stale     bool   `db:"stale"`
 }
 
 func NewSessionKeyRepo(dsn string) (*SessionKeyRepo, error) {
@@ -44,6 +47,7 @@ func (r *SessionKeyRepo) Push(sk session.SessionKey, exp time.Duration) error {
 	skm := &sessionKeyModel{
 		Key:       sk.Key,
 		SessionID: sk.SessionID,
+		Stale:     false,
 	}
 	return r.dbMap.Insert(skm)
 }
@@ -59,11 +63,22 @@ func (r *SessionKeyRepo) Pop(key string) (string, error) {
 		return "", errors.New("unrecognized model")
 	}
 
-	n, err := r.dbMap.Delete(skm)
+	if skm.Stale {
+		return "", errors.New("invalid session key")
+	}
+
+	qt := pq.QuoteIdentifier(sessionKeyTableName)
+	q := fmt.Sprintf("UPDATE %s SET stale=$1 WHERE key=$2 AND stale=$3", qt)
+	res, err := r.dbMap.Exec(q, true, key, false)
 	if err != nil {
 		return "", err
-	} else if n != 1 {
-		return "", fmt.Errorf("DELETE affected %d rows", n)
+	}
+
+	if n, err := res.RowsAffected(); n != 1 {
+		if err != nil {
+			log.Printf("Failed determining rows affected by UPDATE sessionKey query: %v", err)
+		}
+		return "", fmt.Errorf("failed to pop entity")
 	}
 
 	return skm.SessionID, nil

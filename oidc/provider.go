@@ -9,6 +9,7 @@ import (
 	"time"
 
 	phttp "github.com/coreos-inc/auth/pkg/http"
+	pnet "github.com/coreos-inc/auth/pkg/net"
 	ptime "github.com/coreos-inc/auth/pkg/time"
 
 	"github.com/jonboulle/clockwork"
@@ -138,8 +139,12 @@ func (r *httpProviderConfigGetter) Get() (cfg ProviderConfig, err error) {
 	maxAge := time.Duration(ttl) * time.Second
 	cfg.ExpiresAt = time.Now().UTC().Add(maxAge)
 
-	// TODO: error if issuer is not the same as the original issuer url
+	// The issuer value returned MUST be identical to the Issuer URL that was directly used to retrieve the configuration information.
 	// http://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfigurationValidation
+	if !pnet.URLEqual(cfg.Issuer, r.discovery) {
+		err = errors.New("issuer URL does not match discovery URL")
+		return
+	}
 
 	return
 }

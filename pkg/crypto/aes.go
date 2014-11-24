@@ -5,7 +5,6 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"errors"
-	"io"
 )
 
 // pad uses the PKCS#7 padding scheme to align the a payload to a specific block size
@@ -52,7 +51,7 @@ func AESEncrypt(plaintext, key []byte) ([]byte, error) {
 
 	ciphertext := make([]byte, aes.BlockSize+len(plaintext))
 	iv := ciphertext[:aes.BlockSize]
-	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
+	if _, err := rand.Read(iv); err != nil {
 		return nil, err
 	}
 

@@ -29,6 +29,11 @@ import (
 	"github.com/coreos-inc/auth/session"
 )
 
+var (
+	dbURLFlag string
+	useDB bool
+)
+
 func init() {
 	connector.Register(localconnector.LocalIDPConnectorType, localconnector.NewLocalIDPConnectorFromFlags)
 	connector.Register(oidcconnector.OIDCIDPConnectorType, oidcconnector.NewOIDCIDPConnectorFromFlags)
@@ -69,6 +74,11 @@ func main() {
 		log.Fatalf("Unable to listen using scheme %s", lu.Scheme)
 	}
 
+	dbURLFlag, useDB, err = parseDBFlags(fs)
+	if err != nil {
+		log.Fatalf("Unable to parse DB flags: %v", err)
+	}
+
 	km, err := newKeyManagerFromFlags(fs)
 	if err != nil {
 		log.Fatalf("Unable to build KeyManager: %v", err)
@@ -99,7 +109,7 @@ func main() {
 	log.Fatal(httpsrv.ListenAndServe())
 }
 
-func getDBFlag(fs *flag.FlagSet) (string, bool, error) {
+func parseDBFlags(fs *flag.FlagSet) (string, bool, error) {
 	no, err := strconv.ParseBool(fs.Lookup("no-db").Value.String())
 	if err != nil {
 		return "", false, fmt.Errorf("failed parsing --no-db: %v", err)
@@ -108,6 +118,10 @@ func getDBFlag(fs *flag.FlagSet) (string, bool, error) {
 	dbURL := fs.Lookup("db-url").Value.String()
 	if !no && len(dbURL) == 0 {
 		return "", false, errors.New("--db-url unset")
+	}
+
+	if no {
+		log.Printf("WARNING: running in-process withour external database or key rotation")
 	}
 
 	return dbURL, !no, nil
@@ -122,19 +136,14 @@ func getSecretFlag(fs *flag.FlagSet) (sec string, err error) {
 }
 
 func newKeyManagerFromFlags(fs *flag.FlagSet) (key.PrivateKeyManager, error) {
-	dbURL, ok, err := getDBFlag(fs)
-	if err != nil {
-		return nil, err
-	}
-
 	var kRepo key.PrivateKeySetRepo
-	if ok {
+	if useDB {
 		sec, err := getSecretFlag(fs)
 		if err != nil {
 			return nil, err
 		}
 
-		kRepo, err = db.NewPrivateKeySetRepo(dbURL, sec)
+		kRepo, err = db.NewPrivateKeySetRepo(dbURLFlag, sec)
 		if err != nil {
 			return nil, err
 		}
@@ -170,19 +179,14 @@ func newServerFromFlags(fs *flag.FlagSet, km key.PrivateKeyManager) (*server.Ser
 		return nil, fmt.Errorf("unable to read client identities from file %s: %v", cFile, err)
 	}
 
-	dbURL, ok, err := getDBFlag(fs)
-	if err != nil {
-		return nil, err
-	}
-
 	var sRepo session.SessionRepo
 	var skRepo session.SessionKeyRepo
-	if ok {
-		sRepo, err = db.NewSessionRepo(dbURL)
+	if useDB {
+		sRepo, err = db.NewSessionRepo(dbURLFlag)
 		if err != nil {
 			log.Fatalf("Unable to create SessionRepo: %v", err)
 		}
-		skRepo, err = db.NewSessionKeyRepo(dbURL)
+		skRepo, err = db.NewSessionKeyRepo(dbURLFlag)
 		if err != nil {
 			log.Fatalf("Unable to create SessionKeyRepo: %v", err)
 		}

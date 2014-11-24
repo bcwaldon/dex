@@ -85,5 +85,21 @@ func (r *SessionKeyRepo) Pop(key string) (string, error) {
 }
 
 func (r *SessionKeyRepo) purge() error {
+	qt := pq.QuoteIdentifier(sessionKeyTableName)
+	q := fmt.Sprintf("DELETE FROM %s WHERE stale = $1", qt)
+	res, err := r.dbMap.Exec(q, true)
+	if err != nil {
+		return err
+	}
+
+	d := "unknown # of"
+	if n, err := res.RowsAffected(); err == nil {
+		if n == 0 {
+			return nil
+		}
+		d = fmt.Sprintf("%d", n)
+	}
+
+	log.Printf("Deleted %s stale row(s) from %s table", d, sessionKeyTableName)
 	return nil
 }

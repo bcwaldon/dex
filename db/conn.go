@@ -3,7 +3,6 @@ package db
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/coopernurse/gorp"

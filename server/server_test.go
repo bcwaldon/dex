@@ -64,8 +64,8 @@ func (ss *StaticSigner) JWK() jose.JWK {
 }
 
 func staticGenerateCodeFunc(code string) session.GenerateCodeFunc {
-	return func() string {
-		return code
+	return func() (string, error) {
+		return code, nil
 	}
 }
 
@@ -326,7 +326,7 @@ func TestServerTokenFail(t *testing.T) {
 
 	for i, tt := range tests {
 		sm := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())
-		sm.GenerateCode = func() string { return keyFixture }
+		sm.GenerateCode = func() (string, error) { return keyFixture, nil }
 
 		sessionID, err := sm.NewSession(ciFixture.ID, "bogus", ciFixture.RedirectURL)
 		if err != nil {

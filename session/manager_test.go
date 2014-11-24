@@ -8,8 +8,8 @@ import (
 )
 
 func staticGenerateCodeFunc(code string) GenerateCodeFunc {
-	return func() string {
-		return code
+	return func() (string, error) {
+		return code, nil
 	}
 }
 

@@ -1,10 +1,10 @@
 package session
 
 import (
+	"crypto/rand"
 	"encoding/base64"
-	"encoding/binary"
+	"errors"
 	"fmt"
-	"math/rand"
 	"net/url"
 
 	"github.com/jonboulle/clockwork"
@@ -12,12 +12,17 @@ import (
 	"github.com/coreos-inc/auth/oidc"
 )
 
-type GenerateCodeFunc func() string
+type GenerateCodeFunc func() (string, error)
 
-func DefaultGenerateCode() string {
+func DefaultGenerateCode() (string, error) {
 	b := make([]byte, 8)
-	binary.BigEndian.PutUint64(b, uint64(rand.Int63()))
-	return base64.URLEncoding.EncodeToString(b)
+	n, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	} else if n != 8 {
+		return "", errors.New("unable to read enough random bytes")
+	}
+	return base64.URLEncoding.EncodeToString(b), nil
 }
 
 func NewSessionManager(sRepo SessionRepo, skRepo SessionKeyRepo) *SessionManager {
@@ -37,8 +42,13 @@ type SessionManager struct {
 }
 
 func (m *SessionManager) NewSession(clientID, clientState string, redirectURL url.URL) (string, error) {
+	sID, err := m.GenerateCode()
+	if err != nil {
+		return "", err
+	}
+
 	s := Session{
-		ID:          m.GenerateCode(),
+		ID:          sID,
 		State:       SessionStateNew,
 		CreatedAt:   m.Clock.Now().UTC(),
 		ClientID:    clientID,
@@ -46,22 +56,30 @@ func (m *SessionManager) NewSession(clientID, clientState string, redirectURL ur
 		RedirectURL: redirectURL,
 	}
 
-	err := m.sessions.Create(s)
+	err = m.sessions.Create(s)
 	if err != nil {
 		return "", err
 	}
-	return s.ID, nil
+
+	return sID, nil
 }
 
 func (m *SessionManager) NewSessionKey(sessionID string) (string, error) {
-	k := SessionKey{
-		Key:       m.GenerateCode(),
-		SessionID: sessionID,
-	}
-	err := m.keys.Push(k, sessionKeyValidityWindow)
+	key, err := m.GenerateCode()
 	if err != nil {
 		return "", err
 	}
+
+	k := SessionKey{
+		Key:       key,
+		SessionID: sessionID,
+	}
+
+	err = m.keys.Push(k, sessionKeyValidityWindow)
+	if err != nil {
+		return "", err
+	}
+
 	return k.Key, nil
 }
 

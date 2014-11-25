@@ -17,6 +17,7 @@ import (
 	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
+	"github.com/coreos-inc/auth/pkg/health"
 	phttp "github.com/coreos-inc/auth/pkg/http"
 )
 
@@ -30,6 +31,7 @@ var (
 	httpPathToken     = "/token"
 	httpPathKeys      = "/keys"
 	HttpPathAuth      = "/auth"
+	httpPathHealth    = "/health"
 )
 
 func handleDiscoveryFunc(cfg oidc.ProviderConfig) http.HandlerFunc {
@@ -289,6 +291,42 @@ func handleTokenFunc(srv OIDCServer) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
+		w.Write(b)
+	}
+}
+
+func handleHealthFunc(checks []health.Checkable) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			w.Header().Set("Allow", "GET")
+			phttp.WriteError(w, http.StatusMethodNotAllowed, "GET only acceptable method")
+			return
+		}
+
+		h := struct {
+			Message string `json:"message"`
+		}{}
+
+		var status int
+		if err := health.Check(checks); err != nil {
+			h.Message = "fail"
+			status = http.StatusInternalServerError
+			log.Printf("Health check failed: %v", err)
+		} else {
+			h.Message = "ok"
+			status = http.StatusOK
+			log.Println("Health check ok")
+		}
+
+		b, err := json.Marshal(h)
+		if err != nil {
+			log.Printf("Health check failed to marshal response: %v", err)
+			phttp.WriteError(w, http.StatusInternalServerError, "error executing health check")
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
 		w.Write(b)
 	}
 }

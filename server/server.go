@@ -15,6 +15,7 @@ import (
 	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
+	"github.com/coreos-inc/auth/pkg/health"
 	"github.com/coreos-inc/auth/session"
 )
 
@@ -31,6 +32,10 @@ type Server struct {
 	KeyManager         key.PrivateKeyManager
 	SessionManager     *session.SessionManager
 	ClientIdentityRepo ClientIdentityRepo
+}
+
+func (s *Server) Healthy() error {
+	return health.Check([]health.Checkable{s.KeyManager, s.SessionManager, s.ClientIdentityRepo})
 }
 
 func (s *Server) KillSession(sessionKey string) error {
@@ -69,6 +74,8 @@ func (s *Server) HTTPHandler(idpcs map[string]connector.IDPConnector, tpl *templ
 	mux.HandleFunc(httpPathToken, handleTokenFunc(s))
 	mux.HandleFunc(httpPathKeys, handleKeysFunc(s.KeyManager, clock))
 
+	// Register all idpcs, and add to the health check
+	checks := []health.Checkable{s}
 	pcfg := s.ProviderConfig()
 	for id, idpc := range idpcs {
 		errorURL, err := url.Parse(fmt.Sprintf("%s?idpc_id=%s", pcfg.AuthEndpoint, id))
@@ -76,7 +83,10 @@ func (s *Server) HTTPHandler(idpcs map[string]connector.IDPConnector, tpl *templ
 			log.Fatal(err)
 		}
 		idpc.Register(mux, *errorURL)
+		checks = append(checks, idpc)
 	}
+
+	mux.HandleFunc(httpPathHealth, handleHealthFunc(checks))
 
 	return mux
 }

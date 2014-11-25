@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oauth2"
 	phttp "github.com/coreos-inc/auth/pkg/http"
+	pnet "github.com/coreos-inc/auth/pkg/net"
 )
 
 var (
@@ -154,7 +154,7 @@ func VerifyClaims(jwt jose.JWT, issuer, clientID string) error {
 	// The iss value is a case sensitive URL using the https scheme that contains scheme, host, and optionally, port number and path components and no query or fragment components.
 	if iss, exists := claims["iss"].(string); exists {
 		// TODO: clean & canonicalize strings
-		if !URLEqual(iss, issuer) {
+		if !pnet.URLEqual(iss, issuer) {
 			return fmt.Errorf("invalid claim value: 'iss'. expected=%s, found=%s.", issuer, iss)
 		}
 	} else {
@@ -203,17 +203,4 @@ func VerifyClaims(jwt jose.JWT, issuer, clientID string) error {
 	// auth_time, nonce, at_hash, acr, amr, azp
 
 	return nil
-}
-
-func URLEqual(url1, url2 string) bool {
-	u1, err := url.Parse(url1)
-	if err != nil {
-		return false
-	}
-	u2, err := url.Parse(url2)
-	if err != nil {
-		return false
-	}
-
-	return (u1.Host + u1.Path) == (u2.Host + u2.Path)
 }

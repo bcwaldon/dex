@@ -27,13 +27,13 @@ const (
 type SessionKey struct {
 	Key       string
 	SessionID string
-	ExpiresAt time.Time
 }
 
 type Session struct {
 	ID          string
 	State       SessionState
 	CreatedAt   time.Time
+	ExpiresAt   time.Time
 	ClientID    string
 	ClientState string
 	RedirectURL url.URL
@@ -48,7 +48,7 @@ func (s *Session) Claims(issuerURL string) jose.Claims {
 		"aud": s.ClientID,
 		// explicitly cast to float64 for consistent JSON (de)serialization
 		"iat": float64(s.CreatedAt.Unix()),
-		"exp": float64(s.CreatedAt.Add(idTokenValidityWindow).Unix()),
+		"exp": float64(s.ExpiresAt.Unix()),
 
 		// conventional
 		"name":  s.Identity.Name,

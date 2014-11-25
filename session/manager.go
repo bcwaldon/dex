@@ -47,10 +47,12 @@ func (m *SessionManager) NewSession(clientID, clientState string, redirectURL ur
 		return "", err
 	}
 
+	now := m.Clock.Now().UTC()
 	s := Session{
 		ID:          sID,
 		State:       SessionStateNew,
-		CreatedAt:   m.Clock.Now().UTC(),
+		CreatedAt:   now,
+		ExpiresAt:   now.Add(idTokenValidityWindow),
 		ClientID:    clientID,
 		ClientState: clientState,
 		RedirectURL: redirectURL,

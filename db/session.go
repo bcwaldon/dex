@@ -3,24 +3,27 @@ package db
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"log"
 	"net/url"
 	"time"
 
 	"github.com/coopernurse/gorp"
+	"github.com/lib/pq"
 
 	"github.com/coreos-inc/auth/oidc"
 	"github.com/coreos-inc/auth/session"
 )
 
 const (
-	sessionTableName    = "session"
-	sessionKeyTableName = "sessionKey"
+	sessionTableName = "session"
 )
 
 type sessionModel struct {
 	ID          string    `db:"id"`
 	State       string    `db:"state"`
 	CreatedAt   time.Time `db:"createdAt"`
+	ExpiresAt   time.Time `db:"expiresAt"`
 	ClientID    string    `db:"clientID"`
 	ClientState string    `db:"clientState"`
 	RedirectURL string    `db:"RedirectURL"`
@@ -42,6 +45,7 @@ func (s *sessionModel) session() (*session.Session, error) {
 		ID:          s.ID,
 		State:       session.SessionState(s.State),
 		CreatedAt:   s.CreatedAt.UTC(),
+		ExpiresAt:   s.ExpiresAt.UTC(),
 		ClientID:    s.ClientID,
 		ClientState: s.ClientState,
 		RedirectURL: *ru,
@@ -61,6 +65,7 @@ func newSessionModel(s *session.Session) (*sessionModel, error) {
 		ID:          s.ID,
 		State:       string(s.State),
 		CreatedAt:   s.CreatedAt,
+		ExpiresAt:   s.ExpiresAt,
 		ClientID:    s.ClientID,
 		ClientState: s.ClientState,
 		RedirectURL: s.RedirectURL.String(),
@@ -103,6 +108,10 @@ func (r *SessionRepo) Get(sessionID string) (*session.Session, error) {
 		return nil, errors.New("unrecognized model")
 	}
 
+	if sm.ExpiresAt.Before(time.Now().UTC()) {
+		return nil, errors.New("session does not exist")
+	}
+
 	return sm.session()
 }
 
@@ -126,5 +135,25 @@ func (r *SessionRepo) Update(s session.Session) error {
 	if n != 1 {
 		return errors.New("update affected unexpected number of rows")
 	}
+	return nil
+}
+
+func (r *SessionRepo) purge() error {
+	qt := pq.QuoteIdentifier(sessionTableName)
+	q := fmt.Sprintf("DELETE FROM %s WHERE expiresAt < $1 OR state = $2", qt)
+	res, err := r.dbMap.Exec(q, time.Now().UTC(), string(session.SessionStateDead))
+	if err != nil {
+		return err
+	}
+
+	d := "unknown # of"
+	if n, err := res.RowsAffected(); err == nil {
+		if n == 0 {
+			return nil
+		}
+		d = fmt.Sprintf("%d", n)
+	}
+
+	log.Printf("Deleted %s stale row(s) from %s table", d, sessionTableName)
 	return nil
 }

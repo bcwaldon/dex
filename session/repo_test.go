@@ -75,11 +75,17 @@ func TestMemSessionRepoGetNoExist(t *testing.T) {
 }
 
 func TestMemSessionRepoCreateGet(t *testing.T) {
+	fc := clockwork.NewFakeClock()
 	r := &memSessionRepo{
 		store: make(map[string]Session),
+		clock: fc,
 	}
 
-	r.Create(Session{ID: "123", ClientState: "blargh"})
+	r.Create(Session{
+		ID:          "123",
+		ClientState: "blargh",
+		ExpiresAt:   fc.Now().UTC().Add(time.Minute),
+	})
 
 	ses, _ := r.Get("123")
 	if ses == nil {
@@ -92,12 +98,22 @@ func TestMemSessionRepoCreateGet(t *testing.T) {
 }
 
 func TestMemSessionRepoCreateUpdate(t *testing.T) {
+	fc := clockwork.NewFakeClock()
 	r := &memSessionRepo{
 		store: make(map[string]Session),
+		clock: fc,
 	}
 
-	r.Create(Session{ID: "123", ClientState: "blargh"})
-	r.Update(Session{ID: "123", ClientState: "boom"})
+	r.Create(Session{
+		ID:          "123",
+		ClientState: "blargh",
+		ExpiresAt:   fc.Now().UTC().Add(time.Minute),
+	})
+	r.Update(Session{
+		ID:          "123",
+		ClientState: "boom",
+		ExpiresAt:   fc.Now().UTC().Add(time.Minute),
+	})
 
 	ses, _ := r.Get("123")
 	if ses == nil {

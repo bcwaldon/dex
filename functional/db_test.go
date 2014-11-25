@@ -57,10 +57,16 @@ func TestDBSessionRepoCreateUpdate(t *testing.T) {
 		t.Fatalf(err.Error())
 	}
 
+	// postgres stores its time type with a lower precision
+	// than we generate here. Stripping off nanoseconds gives
+	// us a predictable value to use in comparisions.
+	now := time.Unix(time.Now().Unix(), 0).UTC()
+
 	ses := session.Session{
 		ID:          "AAA",
 		State:       session.SessionStateIdentified,
-		CreatedAt:   time.Date(2014, time.November, 21, 12, 14, 34, 0, time.UTC),
+		CreatedAt:   now,
+		ExpiresAt:   now.Add(time.Minute),
 		ClientID:    "ZZZ",
 		ClientState: "foo",
 		RedirectURL: url.URL{
@@ -81,7 +87,7 @@ func TestDBSessionRepoCreateUpdate(t *testing.T) {
 
 	got, err := r.Get(ses.ID)
 	if err != nil {
-		t.Fatalf("Unexpected error: %v")
+		t.Fatalf("Unexpected error: %v", err)
 	}
 
 	if !reflect.DeepEqual(ses, *got) {
@@ -90,7 +96,7 @@ func TestDBSessionRepoCreateUpdate(t *testing.T) {
 }
 
 func TestDBPrivateKeySetRepoSetGet(t *testing.T) {
-	r, err := db.NewPrivateKeySetRepo(dsn, "super secret key")
+	r, err := db.NewPrivateKeySetRepo(dsn, "roflroflroflroflroflroflroflrofl")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}

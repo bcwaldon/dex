@@ -71,7 +71,7 @@ func TestHTTPExchangeToken(t *testing.T) {
 
 	cl := &oidc.Client{
 		HTTPClient:     sClient,
-		ProviderConfig: *cfg,
+		ProviderConfig: cfg,
 		ClientIdentity: ci,
 		RedirectURL:    "http://client.example.com",
 		Keys: []key.PublicKey{

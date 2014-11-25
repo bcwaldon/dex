@@ -17,6 +17,7 @@ import (
 	"github.com/coreos-inc/auth/jose"
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
+	phttp "github.com/coreos-inc/auth/pkg/http"
 	"github.com/coreos-inc/auth/session"
 )
 
@@ -226,8 +227,15 @@ func TestHandleDiscoveryFunc(t *testing.T) {
 		t.Fatalf("Incorrect status code: want=200 got=%d", w.Code)
 	}
 
-	if ct := w.Header().Get("Content-Type"); ct != "application/json" {
+	h := w.Header()
+
+	if ct := h.Get("Content-Type"); ct != "application/json" {
 		t.Fatalf("Incorrect Content-Type: want=application/json, got %s", ct)
+	}
+
+	ttl, ok, err := phttp.CacheControlMaxAge(h.Get("Cache-Control"))
+	if err != nil || !ok || ttl <= 0 {
+		t.Fatalf("Incorrect Cache-Control: want=existing non-zero, got=%s, error=%v", ttl, err)
 	}
 
 	wantBody := `{"issuer":"http://server.example.com","authorization_endpoint":"http://server.example.com/auth","token_endpoint":"http://server.example.com/token","jwks_uri":"http://server.example.com/keys","response_types_supported":["code"],"grant_types_supported":["authorization_code"],"subject_types_supported":["public"],"id_token_alg_values_supported":["RS256"],"token_endpoint_auth_methods_supported":["client_secret_basic"]}`

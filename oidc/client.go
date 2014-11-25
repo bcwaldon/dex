@@ -1,7 +1,6 @@
 package oidc
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -15,39 +14,10 @@ import (
 	phttp "github.com/coreos-inc/auth/pkg/http"
 )
 
-const (
-	discoveryConfigPath = "/.well-known/openid-configuration"
-)
-
 var (
 	TimeFunc     = time.Now
 	DefaultScope = []string{"openid", "email", "profile"}
 )
-
-func FetchProviderConfig(hc phttp.Client, discovery string) (*ProviderConfig, error) {
-	req, err := http.NewRequest("GET", discovery+discoveryConfigPath, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := hc.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	// TODO: store cache headers
-
-	var cfg ProviderConfig
-	if err := json.NewDecoder(resp.Body).Decode(&cfg); err != nil {
-		return nil, err
-	}
-
-	// TODO: error if issuer is not the same as the original issuer url
-	// http://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfigurationValidation
-
-	return &cfg, nil
-}
 
 func ParseTokenFromRequest(r *http.Request) (token jose.JWT, err error) {
 	ah := r.Header.Get("Authorization")
@@ -100,10 +70,25 @@ func (c *Client) OAuthClient() (*oauth2.Client, error) {
 	return oauth2.NewClient(c.getHTTPClient(), ocfg)
 }
 
+func (c *Client) SyncProviderConfig() chan struct{} {
+	rp := &providerConfigRepo{c}
+	r := NewHTTPProviderConfigGetter(c.getHTTPClient(), c.ProviderConfig.Issuer)
+	return NewProviderConfigSyncer(r, rp).Run()
+}
+
 func (c *Client) SyncKeys() chan struct{} {
 	r := newRemotePublicKeyRepo(c.getHTTPClient(), c.ProviderConfig.KeysEndpoint)
 	w := &clientKeyRepo{client: c}
 	return key.NewKeySetSyncer(r, w).Run()
+}
+
+type providerConfigRepo struct {
+	client *Client
+}
+
+func (r *providerConfigRepo) Set(cfg ProviderConfig) error {
+	r.client.ProviderConfig = cfg
+	return nil
 }
 
 type clientKeyRepo struct {

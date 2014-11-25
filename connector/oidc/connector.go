@@ -118,6 +118,7 @@ func handleCallbackFunc(lf oidc.LoginFunc, c *oidc.Client, errorURL url.URL) htt
 
 		ident, err := oidc.IdentityFromClaims(claims)
 		if err != nil {
+			log.Printf("Failed parsing claims from remote provider: %v", err)
 			q.Set("error", oauth2.ErrorUnsupportedResponseType)
 			q.Set("error_description", "unable to convert claims to identity")
 			redirectError(w, errorURL, q)

@@ -4,6 +4,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/coopernurse/gorp"
@@ -168,4 +169,11 @@ func (r *PrivateKeySetRepo) Get() (key.KeySet, error) {
 	}
 
 	return key.KeySet(pks), nil
+}
+
+func (r *PrivateKeySetRepo) Healthy() (err error) {
+	if err = r.dbMap.Db.Ping(); err != nil {
+		err = fmt.Errorf("private keyset repo connection error: %v", err)
+	}
+	return
 }

@@ -7,6 +7,7 @@ import (
 	"net/url"
 
 	"github.com/coreos-inc/auth/oidc"
+	"github.com/coreos-inc/auth/pkg/health"
 )
 
 var (
@@ -24,6 +25,7 @@ func Register(ct string, fn NewIDPConnectorFunc) {
 }
 
 type IDPConnector interface {
+	health.Checkable
 	DisplayType() string
 	LoginURL(sessionKey, prompt string) (string, error)
 	Register(mux *http.ServeMux, errorURL url.URL)

@@ -157,3 +157,10 @@ func (r *SessionRepo) purge() error {
 	log.Printf("Deleted %s stale row(s) from %s table", d, sessionTableName)
 	return nil
 }
+
+func (r *SessionRepo) Healthy() (err error) {
+	if err = r.dbMap.Db.Ping(); err != nil {
+		err = fmt.Errorf("session repo connection error: %v", err)
+	}
+	return
+}

@@ -2,9 +2,11 @@ package server
 
 import (
 	"github.com/coreos-inc/auth/oauth2"
+	"github.com/coreos-inc/auth/pkg/health"
 )
 
 type ClientIdentityRepo interface {
+	health.Checkable
 	ClientIdentity(clientID string) *oauth2.ClientIdentity
 }
 
@@ -31,4 +33,8 @@ func (cr *memClientIdentityRepo) ClientIdentity(clientID string) *oauth2.ClientI
 		return nil
 	}
 	return &ci
+}
+
+func (cr *memClientIdentityRepo) Healthy() error {
+	return nil
 }

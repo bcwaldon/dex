@@ -77,6 +77,10 @@ func (c *LocalIDPConnector) DisplayType() string {
 	return "Local"
 }
 
+func (c *LocalIDPConnector) Healthy() error {
+	return nil
+}
+
 func (c *LocalIDPConnector) LoginURL(sessionKey, prompt string) (string, error) {
 	q := url.Values{}
 	q.Set("session_key", sessionKey)

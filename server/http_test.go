@@ -25,6 +25,10 @@ type fakeIDPConnector struct {
 	loginURL string
 }
 
+func (f *fakeIDPConnector) Healthy() error {
+	return nil
+}
+
 func (f *fakeIDPConnector) DisplayType() string {
 	return "Fake"
 }

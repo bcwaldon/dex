@@ -13,7 +13,7 @@ const (
 	sessionKeyValidityWindow = 10 * time.Minute
 
 	//TODO(bcwaldon): make configurable
-	idTokenValidityWindow = time.Hour
+	sessionValidityWindow = time.Hour
 )
 
 type SessionState string

@@ -105,12 +105,14 @@ func (s *ProviderConfigSyncer) Run() chan struct{} {
 type httpProviderConfigGetter struct {
 	hc        phttp.Client
 	discovery string
+	clock     clockwork.Clock
 }
 
 func NewHTTPProviderConfigGetter(hc phttp.Client, discovery string) *httpProviderConfigGetter {
 	return &httpProviderConfigGetter{
 		hc:        hc,
 		discovery: discovery,
+		clock:     clockwork.NewRealClock(),
 	}
 }
 
@@ -137,7 +139,7 @@ func (r *httpProviderConfigGetter) Get() (cfg ProviderConfig, err error) {
 		return
 	}
 	maxAge := time.Duration(ttl) * time.Second
-	cfg.ExpiresAt = time.Now().UTC().Add(maxAge)
+	cfg.ExpiresAt = r.clock.Now().UTC().Add(maxAge)
 
 	// The issuer value returned MUST be identical to the Issuer URL that was directly used to retrieve the configuration information.
 	// http://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfigurationValidation
@@ -154,9 +156,6 @@ func FetchProviderConfig(hc phttp.Client, discovery string) (ProviderConfig, err
 		hc = http.DefaultClient
 	}
 
-	g := &httpProviderConfigGetter{
-		hc:        hc,
-		discovery: discovery,
-	}
+	g := NewHTTPProviderConfigGetter(hc, discovery)
 	return g.Get()
 }

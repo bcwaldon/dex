@@ -1,10 +1,15 @@
 package oidc
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
+	"net/http"
 	"reflect"
 	"testing"
 	"time"
+
+	phttp "github.com/coreos-inc/auth/pkg/http"
 
 	"github.com/jonboulle/clockwork"
 )
@@ -36,6 +41,98 @@ func (g *fakeProviderConfigGetterSetter) Set(cfg ProviderConfig) error {
 	g.cfg = &cfg
 	g.setCount++
 	return nil
+}
+
+type fakeServer struct {
+	cfg    ProviderConfig
+	maxAge time.Duration
+}
+
+func (s *fakeServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	b, _ := json.Marshal(s.cfg)
+	if s.maxAge.Seconds() >= 0 {
+		w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", int(s.maxAge.Seconds())))
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
+}
+
+func TestHTTPProviderConfigGet(t *testing.T) {
+	svr := &fakeServer{}
+	hc := &phttp.HandlerClient{Handler: svr}
+	fc := clockwork.NewFakeClock()
+	now := fc.Now().UTC()
+
+	tests := []struct {
+		dsc string
+		age time.Duration
+		cfg ProviderConfig
+		ok  bool
+	}{
+		// everything is good
+		{
+			dsc: "https://example.com",
+			age: time.Minute,
+			cfg: ProviderConfig{
+				Issuer:    "https://example.com",
+				ExpiresAt: now.Add(time.Minute),
+			},
+			ok: true,
+		},
+		// iss and disco url differ by scheme only (how google works)
+		{
+			dsc: "https://example.com",
+			age: time.Minute,
+			cfg: ProviderConfig{
+				Issuer:    "example.com",
+				ExpiresAt: now.Add(time.Minute),
+			},
+			ok: true,
+		},
+		// issuer and discovery URL mismatch
+		{
+			dsc: "https://foo.com",
+			age: time.Minute,
+			cfg: ProviderConfig{
+				Issuer:    "https://example.com",
+				ExpiresAt: now.Add(time.Minute),
+			},
+			ok: false,
+		},
+		// missing cache header
+		{
+			dsc: "https://example.com",
+			age: -1,
+			cfg: ProviderConfig{
+				Issuer: "https://example.com",
+			},
+			ok: false,
+		},
+	}
+
+	for i, tt := range tests {
+		svr.cfg = tt.cfg
+		svr.maxAge = tt.age
+		getter := NewHTTPProviderConfigGetter(hc, tt.dsc)
+		getter.clock = fc
+
+		got, err := getter.Get()
+		if err != nil {
+			if tt.ok {
+				t.Fatalf("test %d: unexpected error: %v", i, err)
+			}
+			continue
+		}
+
+		if !tt.ok {
+			t.Fatalf("test %d: expected error", i)
+			continue
+		}
+
+		if !reflect.DeepEqual(tt.cfg, got) {
+			t.Fatalf("test %d: want: %#v, got: %#v", i, tt.cfg, got)
+		}
+	}
 }
 
 func TestSyncerRun(t *testing.T) {

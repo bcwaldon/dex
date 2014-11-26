@@ -9,11 +9,8 @@ import (
 )
 
 const (
-	// 10min recommended by RFC6749
-	sessionKeyValidityWindow = 10 * time.Minute
-
-	//TODO(bcwaldon): make configurable
-	sessionValidityWindow = time.Hour
+	sessionKeyValidityWindow = 10 * time.Minute //RFC6749
+	sessionValidityWindow    = time.Hour
 )
 
 type SessionState string

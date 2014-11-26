@@ -140,7 +140,6 @@ func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idp
 	}
 
 	// Render error message if client id is invalid.
-	// TODO(sym3tri): remove this check once we support logging into authd.
 	clientID := q.Get("client_id")
 	ci, err := srv.Client(clientID)
 	if err != nil {

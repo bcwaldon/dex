@@ -15,7 +15,6 @@ import (
 )
 
 var (
-	TimeFunc     = time.Now
 	DefaultScope = []string{"openid", "email", "profile"}
 )
 
@@ -155,7 +154,7 @@ func (c *Client) ExchangeAuthCode(code string) (jose.JWT, error) {
 // Verify claims in accordance with OIDC spec
 // http://openid.net/specs/openid-connect-basic-1_0.html#IDTokenValidation
 func VerifyClaims(jwt jose.JWT, issuer, clientID string) error {
-	now := TimeFunc().Unix()
+	now := time.Now().Unix()
 
 	claims, err := jwt.Claims()
 	if err != nil {

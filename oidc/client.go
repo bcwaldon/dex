@@ -144,7 +144,6 @@ func (c *Client) ExchangeAuthCode(code string) (jose.JWT, error) {
 		return jose.JWT{}, err
 	}
 
-	// TODO(sym3tri): stuff access token into claims here?
 	jwt, err := jose.ParseJWT(t.IDToken)
 	if err != nil {
 		return jose.JWT{}, err

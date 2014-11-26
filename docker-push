@@ -1,0 +1,25 @@
+#!/bin/sh -e
+
+function usage {
+    echo "usage: $0 <docker-image-id>"
+    exit 1
+}
+
+if [ -z $1 ]; then
+    usage
+fi
+
+if [ -v $QUAY_USER ] || [ -v $QUAY_PASSWORD ]; then
+    echo "environment variables not set: QUAY_USER and QUAY_PASSWORD"
+    exit 1
+fi
+
+IMAGE_ID=$1
+GIT_SHA=$(git rev-parse HEAD)
+
+echo "pushing private image to coreosinc/authd:$GIT_SHA"
+docker login --username="$QUAY_USER" --password="$QUAY_PASSWORD" --email="docker.login@coreos.com" quay.io
+docker tag $IMAGE_ID quay.io/coreosinc/authd:$GIT_SHA
+docker tag $IMAGE_ID quay.io/coreosinc/authd:latest
+docker push quay.io/coreosinc/authd:$GIT_SHA
+docker push quay.io/coreosinc/authd:latest

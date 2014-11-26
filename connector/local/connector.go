@@ -98,8 +98,6 @@ func redirectPostError(w http.ResponseWriter, errorURL url.URL, q url.Values) {
 
 func handleLoginFunc(lf oidc.LoginFunc, idp *LocalIdentityProvider, localErrorPath string, errorURL url.URL) http.HandlerFunc {
 	handleGET := func(w http.ResponseWriter, r *http.Request, errMsg string) {
-		// TODO(sym3tri): skip login page if valid cookie and "prompt" param is not "force"
-
 		p := &Page{PostURL: r.URL.String(), Name: "Local"}
 		if errMsg != "" {
 			p.Error = true

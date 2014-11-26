@@ -10,6 +10,7 @@ import (
 
 	"github.com/coreos-inc/auth/db"
 	"github.com/coreos-inc/auth/key"
+	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 	"github.com/coreos-inc/auth/session"
 )
@@ -60,7 +61,7 @@ func TestDBSessionRepoCreateUpdate(t *testing.T) {
 	// postgres stores its time type with a lower precision
 	// than we generate here. Stripping off nanoseconds gives
 	// us a predictable value to use in comparisions.
-	now := time.Unix(time.Now().Unix(), 0).UTC()
+	now := time.Now().Round(time.Second).UTC()
 
 	ses := session.Session{
 		ID:          "AAA",
@@ -75,9 +76,10 @@ func TestDBSessionRepoCreateUpdate(t *testing.T) {
 			Path:   "/callback",
 		},
 		Identity: oidc.Identity{
-			ID:    "YYY",
-			Name:  "Elroy",
-			Email: "elroy@example.com",
+			ID:        "YYY",
+			Name:      "Elroy",
+			Email:     "elroy@example.com",
+			ExpiresAt: now.Add(time.Minute),
 		},
 	}
 
@@ -123,5 +125,38 @@ func TestDBPrivateKeySetRepoSetGet(t *testing.T) {
 
 	if !reflect.DeepEqual(ks, got) {
 		t.Fatalf("Retrieved incorrect KeySet: want=%#v got=%#v", ks, got)
+	}
+}
+
+func TestDBClientIdentityRepoFind(t *testing.T) {
+	r, err := db.NewClientIdentityRepo(dsn)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	ci := oauth2.ClientIdentity{
+		ID:          "XXX",
+		Secret:      "secrete",
+		RedirectURL: url.URL{Scheme: "http", Host: "127.0.0.1:5556", Path: "/cb"},
+	}
+
+	if err := r.Create(ci); err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	got, err := r.Find(ci.ID)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	if !reflect.DeepEqual(ci, *got) {
+		t.Fatalf("Retrieved incorrect ClientIdentity: want=%#v got=%#v", ci, *got)
+	}
+
+	got, err = r.Find("noexist")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	if got != nil {
+		t.Fatalf("Retrieved incorrect ClientIdentity: want=nil got=%#v", got)
 	}
 }

@@ -181,15 +181,24 @@ func newKeyManagerFromFlags(fs *flag.FlagSet) (key.PrivateKeyManager, error) {
 }
 
 func newServerFromFlags(fs *flag.FlagSet, km key.PrivateKeyManager) (*server.Server, error) {
-	cFile := fs.Lookup("clients").Value.String()
-	cf, err := os.Open(cFile)
-	if err != nil {
-		return nil, fmt.Errorf("unable to read clients from file %s: %v", cFile, err)
-	}
-	defer cf.Close()
-	ciRepo, err := newClientIdentityRepoFromReader(cf)
-	if err != nil {
-		return nil, fmt.Errorf("unable to read client identities from file %s: %v", cFile, err)
+	var err error
+	var ciRepo server.ClientIdentityRepo
+	if useDB {
+		ciRepo, err = db.NewClientIdentityRepo(dbURLFlag)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		cFile := fs.Lookup("clients").Value.String()
+		cf, err := os.Open(cFile)
+		if err != nil {
+			return nil, fmt.Errorf("unable to read clients from file %s: %v", cFile, err)
+		}
+		defer cf.Close()
+		ciRepo, err = newClientIdentityRepoFromReader(cf)
+		if err != nil {
+			return nil, fmt.Errorf("unable to read client identities from file %s: %v", cFile, err)
+		}
 	}
 
 	var sRepo session.SessionRepo

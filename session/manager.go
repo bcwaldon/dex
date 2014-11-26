@@ -52,7 +52,7 @@ func (m *SessionManager) NewSession(clientID, clientState string, redirectURL ur
 		ID:          sID,
 		State:       SessionStateNew,
 		CreatedAt:   now,
-		ExpiresAt:   now.Add(idTokenValidityWindow),
+		ExpiresAt:   now.Add(sessionValidityWindow),
 		ClientID:    clientID,
 		ClientState: clientState,
 		RedirectURL: redirectURL,

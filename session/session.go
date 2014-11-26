@@ -13,7 +13,7 @@ const (
 	sessionKeyValidityWindow = 10 * time.Minute
 
 	//TODO(bcwaldon): make configurable
-	idTokenValidityWindow = time.Hour
+	sessionValidityWindow = time.Hour
 )
 
 type SessionState string
@@ -41,14 +41,18 @@ type Session struct {
 }
 
 func (s *Session) Claims(issuerURL string) jose.Claims {
+	exp := s.Identity.ExpiresAt
+	if exp.IsZero() {
+		exp = s.ExpiresAt
+	}
+
 	return jose.Claims{
 		// required
 		"iss": issuerURL,
 		"sub": s.Identity.ID,
 		"aud": s.ClientID,
-		// explicitly cast to float64 for consistent JSON (de)serialization
 		"iat": float64(s.CreatedAt.Unix()),
-		"exp": float64(s.ExpiresAt.Unix()),
+		"exp": float64(exp.Unix()),
 
 		// conventional
 		"name":  s.Identity.Name,

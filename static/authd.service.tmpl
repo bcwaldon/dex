@@ -1,0 +1,22 @@
+[Unit]
+
+[Service]
+ExecStartPre=-/usr/bin/docker rm %n
+ExecStart=/usr/bin/docker run \
+--name=%n \
+-v /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt \
+quay.io/coreosinc/authd /opt/authd/bin/authd \
+--connector-type=oidc \
+--connector-id=Google \
+--connector-oidc-client-id=${AUTHD_OAUTH_CLIENT_ID} \
+--connector-oidc-client-secret=${AUTHD_OAUTH_CLIENT_SECRET} \
+--connector-oidc-issuer-url=https://accounts.google.com \
+--issuer=https://auth.update.core-os.net \
+--db-url=${AUTHD_DB_URL} \
+--key-secret=${AUTHD_KEY_SECRET} \
+--login-page-template=/opt/authd/html/login.html
+
+ExecStop=/usr/bin/docker kill %n
+
+[X-Fleet]
+Global=true

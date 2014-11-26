@@ -84,7 +84,7 @@ func (s *Server) HTTPHandler(idpcs map[string]connector.IDPConnector, tpl *templ
 }
 
 func (s *Server) Client(clientID string) (*oauth2.ClientIdentity, error) {
-	return s.ClientIdentityRepo.ClientIdentity(clientID)
+	return s.ClientIdentityRepo.Find(clientID)
 }
 
 func (s *Server) NewSession(clientID, clientState string, redirectURL url.URL) (string, error) {
@@ -125,7 +125,7 @@ func (s *Server) Login(ident oidc.Identity, key string) (string, error) {
 }
 
 func (s *Server) Token(clientID, clientSecret, key string) (*jose.JWT, error) {
-	ci, err := s.ClientIdentityRepo.ClientIdentity(clientID)
+	ci, err := s.Client(clientID)
 	if err != nil {
 		log.Printf("Failed fetching client %s from repo: %v", clientID, err)
 		return nil, oauth2.NewError(oauth2.ErrorServerError)

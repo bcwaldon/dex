@@ -13,6 +13,14 @@ const (
 	clientIdentityTableName = "clientidentity"
 )
 
+func newClientIdentityModel(ci *oauth2.ClientIdentity) *clientIdentityModel {
+	return &clientIdentityModel{
+		ID:          ci.ID,
+		Secret:      ci.Secret,
+		RedirectURL: ci.RedirectURL.String(),
+	}
+}
+
 type clientIdentityModel struct {
 	ID          string `db:"id"`
 	Secret      string `db:"secret"`
@@ -67,4 +75,8 @@ func (r *clientIdentityRepo) Find(clientID string) (*oauth2.ClientIdentity, erro
 	}
 
 	return cim.ClientIdentity()
+}
+
+func (r *clientIdentityRepo) Create(ci oauth2.ClientIdentity) error {
+	return r.dbMap.Insert(newClientIdentityModel(&ci))
 }

@@ -61,7 +61,7 @@ func TestDBSessionRepoCreateUpdate(t *testing.T) {
 	// postgres stores its time type with a lower precision
 	// than we generate here. Stripping off nanoseconds gives
 	// us a predictable value to use in comparisions.
-	now := time.Unix(time.Now().Unix(), 0).UTC()
+	now := time.Now().Round(time.Second).UTC()
 
 	ses := session.Session{
 		ID:          "AAA",
@@ -76,9 +76,10 @@ func TestDBSessionRepoCreateUpdate(t *testing.T) {
 			Path:   "/callback",
 		},
 		Identity: oidc.Identity{
-			ID:    "YYY",
-			Name:  "Elroy",
-			Email: "elroy@example.com",
+			ID:        "YYY",
+			Name:      "Elroy",
+			Email:     "elroy@example.com",
+			ExpiresAt: now.Add(time.Minute),
 		},
 	}
 

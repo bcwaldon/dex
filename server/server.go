@@ -34,10 +34,6 @@ type Server struct {
 	ClientIdentityRepo ClientIdentityRepo
 }
 
-func (s *Server) Healthy() error {
-	return health.Check([]health.Checkable{s.KeyManager, s.SessionManager, s.ClientIdentityRepo})
-}
-
 func (s *Server) KillSession(sessionKey string) error {
 	sessionID, err := s.SessionManager.ExchangeKey(sessionKey)
 	if err != nil {
@@ -66,16 +62,15 @@ func (s *Server) ProviderConfig() oidc.ProviderConfig {
 	return cfg
 }
 
-func (s *Server) HTTPHandler(idpcs map[string]connector.IDPConnector, tpl *template.Template) http.Handler {
+func (s *Server) HTTPHandler(idpcs map[string]connector.IDPConnector, tpl *template.Template, checks []health.Checkable) http.Handler {
 	clock := clockwork.NewRealClock()
 	mux := http.NewServeMux()
 	mux.HandleFunc(httpPathDiscovery, handleDiscoveryFunc(s.ProviderConfig()))
 	mux.HandleFunc(HttpPathAuth, handleAuthFunc(s, idpcs, tpl))
 	mux.HandleFunc(httpPathToken, handleTokenFunc(s))
 	mux.HandleFunc(httpPathKeys, handleKeysFunc(s.KeyManager, clock))
+	mux.HandleFunc(httpPathHealth, handleHealthFunc(checks))
 
-	// Register all idpcs, and add to the health check
-	checks := []health.Checkable{s}
 	pcfg := s.ProviderConfig()
 	for id, idpc := range idpcs {
 		errorURL, err := url.Parse(fmt.Sprintf("%s?idpc_id=%s", pcfg.AuthEndpoint, id))
@@ -83,10 +78,7 @@ func (s *Server) HTTPHandler(idpcs map[string]connector.IDPConnector, tpl *templ
 			log.Fatal(err)
 		}
 		idpc.Register(mux, *errorURL)
-		checks = append(checks, idpc)
 	}
-
-	mux.HandleFunc(httpPathHealth, handleHealthFunc(checks))
 
 	return mux
 }

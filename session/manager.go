@@ -10,7 +10,6 @@ import (
 	"github.com/jonboulle/clockwork"
 
 	"github.com/coreos-inc/auth/oidc"
-	"github.com/coreos-inc/auth/pkg/health"
 )
 
 type GenerateCodeFunc func() (string, error)
@@ -132,8 +131,4 @@ func (m *SessionManager) Kill(sessionID string) (*Session, error) {
 	}
 
 	return s, nil
-}
-
-func (m *SessionManager) Healthy() error {
-	return health.Check([]health.Checkable{m.sessions, m.keys})
 }

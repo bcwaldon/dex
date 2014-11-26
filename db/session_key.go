@@ -105,3 +105,10 @@ func (r *SessionKeyRepo) purge() error {
 	log.Printf("Deleted %s stale row(s) from %s table", d, sessionKeyTableName)
 	return nil
 }
+
+func (r *SessionKeyRepo) Healthy() (err error) {
+	if err = r.dbMap.Db.Ping(); err != nil {
+		err = fmt.Errorf("session key repo connection error: %v", err)
+	}
+	return
+}

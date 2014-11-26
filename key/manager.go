@@ -8,6 +8,7 @@ import (
 
 	"github.com/coreos-inc/auth/jose"
 	josesig "github.com/coreos-inc/auth/jose/sig"
+	"github.com/coreos-inc/auth/pkg/health"
 )
 
 type PrivateKeyManager interface {
@@ -16,6 +17,7 @@ type PrivateKeyManager interface {
 	JWKs() ([]jose.JWK, error)
 
 	WritableKeySetRepo
+	health.Checkable
 }
 
 func NewPrivateKeyManager() PrivateKeyManager {
@@ -60,15 +62,15 @@ func (m *privateKeyManager) JWKs() ([]jose.JWK, error) {
 
 func (m *privateKeyManager) Healthy() error {
 	if m.keySet == nil {
-		return errors.New("uninitialized")
+		return errors.New("private key manager uninitialized")
 	}
 
 	if len(m.keySet.Keys()) == 0 {
-		return errors.New("zero keys")
+		return errors.New("private key manager zero keys")
 	}
 
 	if m.keySet.ExpiresAt().Before(m.clock.Now().UTC()) {
-		return errors.New("keys expired")
+		return errors.New("private key manager keys expired")
 	}
 
 	return nil

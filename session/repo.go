@@ -5,15 +5,19 @@ import (
 	"time"
 
 	"github.com/jonboulle/clockwork"
+
+	"github.com/coreos-inc/auth/pkg/health"
 )
 
 type SessionRepo interface {
+	health.Checkable
 	Get(string) (*Session, error)
 	Create(Session) error
 	Update(Session) error
 }
 
 type SessionKeyRepo interface {
+	health.Checkable
 	Push(SessionKey, time.Duration) error
 	Pop(string) (string, error)
 }
@@ -28,6 +32,10 @@ func NewSessionRepo() SessionRepo {
 type memSessionRepo struct {
 	store map[string]Session
 	clock clockwork.Clock
+}
+
+func (m *memSessionRepo) Healthy() error {
+	return nil
 }
 
 func (m *memSessionRepo) Get(sessionID string) (*Session, error) {
@@ -70,6 +78,10 @@ func NewSessionKeyRepo() SessionKeyRepo {
 type memSessionKeyRepo struct {
 	store map[string]expiringSessionKey
 	clock clockwork.Clock
+}
+
+func (m *memSessionKeyRepo) Healthy() error {
+	return nil
 }
 
 func (m *memSessionKeyRepo) Pop(key string) (string, error) {

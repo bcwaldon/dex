@@ -61,6 +61,10 @@ func (c *OIDCIDPConnector) DisplayType() string {
 	return "OIDC"
 }
 
+func (c *OIDCIDPConnector) Healthy() error {
+	return c.client.Healthy()
+}
+
 func (c *OIDCIDPConnector) LoginURL(sessionKey, prompt string) (string, error) {
 	oac, err := c.client.OAuthClient()
 	if err != nil {

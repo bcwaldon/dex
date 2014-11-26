@@ -43,6 +43,19 @@ type Client struct {
 	Keys           []key.PublicKey
 }
 
+func (c *Client) Healthy() error {
+	if c.ProviderConfig.ExpiresAt.Before(time.Now().UTC()) {
+		return errors.New("oidc client provider config expired")
+	}
+
+	// TODO(sym3tri): consider using keyset to track key expiration
+	if len(c.Keys) == 0 {
+		return errors.New("oidc client missing public keys")
+	}
+
+	return nil
+}
+
 func (c *Client) getHTTPClient() phttp.Client {
 	if c.HTTPClient != nil {
 		return c.HTTPClient

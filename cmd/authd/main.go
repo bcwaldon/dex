@@ -56,6 +56,7 @@ func main() {
 	fs.String("connector-oidc-issuer-url", "https://accounts.google.com", "")
 	fs.String("connector-oidc-client-id", "", "")
 	fs.String("connector-oidc-client-secret", "", "")
+	fs.String("connector-local-login-template", "./static/html/local-login.html", "")
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		log.Fatalf(err.Error())

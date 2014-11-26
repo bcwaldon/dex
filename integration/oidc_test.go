@@ -13,6 +13,7 @@ import (
 	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
+	"github.com/coreos-inc/auth/pkg/health"
 	phttp "github.com/coreos-inc/auth/pkg/http"
 	"github.com/coreos-inc/auth/server"
 	"github.com/coreos-inc/auth/session"
@@ -62,7 +63,8 @@ func TestHTTPExchangeToken(t *testing.T) {
 	idpcs := make(map[string]connector.IDPConnector)
 	idpcs["fake"] = idpc
 
-	sClient := &phttp.HandlerClient{Handler: srv.HTTPHandler(idpcs, nil)}
+	hdlr := srv.HTTPHandler(idpcs, nil, []health.Checkable{})
+	sClient := &phttp.HandlerClient{Handler: hdlr}
 
 	cfg, err := oidc.FetchProviderConfig(sClient, issuerURL)
 	if err != nil {

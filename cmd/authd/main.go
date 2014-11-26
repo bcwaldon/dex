@@ -25,6 +25,7 @@ import (
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 	pflag "github.com/coreos-inc/auth/pkg/flag"
+	"github.com/coreos-inc/auth/pkg/health"
 	"github.com/coreos-inc/auth/server"
 	"github.com/coreos-inc/auth/session"
 )
@@ -99,7 +100,19 @@ func main() {
 		log.Fatalf("Unable to parse login page template: %v", err)
 	}
 
-	hdlr := srv.HTTPHandler(idpcs, tpl)
+	checks := []health.Checkable{km}
+	for _, idpc := range idpcs {
+		checks = append(checks, health.Checkable(idpc))
+	}
+	if useDB {
+		dbc, err := db.NewHealthChecker(dbURLFlag)
+		if err != nil {
+			log.Fatalf("Unable to build DB health checker: %v", err)
+		}
+		checks = append(checks, dbc)
+	}
+
+	hdlr := srv.HTTPHandler(idpcs, tpl, checks)
 	httpsrv := &http.Server{
 		Addr:    lu.Host,
 		Handler: hdlr,

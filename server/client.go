@@ -5,7 +5,7 @@ import (
 )
 
 type ClientIdentityRepo interface {
-	ClientIdentity(clientID string) *oauth2.ClientIdentity
+	ClientIdentity(clientID string) (*oauth2.ClientIdentity, error)
 }
 
 func NewClientIdentityRepo(cs []oauth2.ClientIdentity) ClientIdentityRepo {
@@ -25,10 +25,10 @@ type memClientIdentityRepo struct {
 	idents map[string]oauth2.ClientIdentity
 }
 
-func (cr *memClientIdentityRepo) ClientIdentity(clientID string) *oauth2.ClientIdentity {
+func (cr *memClientIdentityRepo) ClientIdentity(clientID string) (*oauth2.ClientIdentity, error) {
 	ci, ok := cr.idents[clientID]
 	if !ok {
-		return nil
+		return nil, nil
 	}
-	return &ci
+	return &ci, nil
 }

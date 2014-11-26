@@ -141,8 +141,15 @@ func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idp
 
 	// Render error message if client id is invalid.
 	// TODO(sym3tri): remove this check once we support logging into authd.
-	ci := srv.Client(q.Get("client_id"))
-	if ci == nil {
+	clientID := q.Get("client_id")
+	ci, err := srv.Client(clientID)
+	if err != nil {
+		log.Printf("Failed fetching client %s from repo: %v", clientID, err)
+		td.Error = true
+		td.Message = "Internal server error."
+		execTemplate(w, tpl, td)
+		return
+	} else if ci == nil {
 		td.Error = true
 		td.Message = "Invalid client ID."
 		execTemplate(w, tpl, td)
@@ -201,7 +208,12 @@ func handleAuthFunc(srv OIDCServer, idpcs map[string]connector.IDPConnector, tpl
 			return
 		}
 
-		ci := srv.Client(acr.ClientID)
+		ci, err := srv.Client(acr.ClientID)
+		if err != nil {
+			log.Printf("Failed fetching client %s from repo: %v", acr.ClientID, err)
+			writeAuthError(w, oauth2.NewError(oauth2.ErrorServerError), acr.State)
+			return
+		}
 		if ci == nil || (acr.RedirectURL != nil && !reflect.DeepEqual(ci.RedirectURL, *acr.RedirectURL)) {
 			writeAuthError(w, oauth2.NewError(oauth2.ErrorInvalidRequest), acr.State)
 			return

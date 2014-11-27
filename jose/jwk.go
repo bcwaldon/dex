@@ -91,10 +91,15 @@ func decodeExponent(e string) (int, error) {
 }
 
 func encodeExponent(e int) string {
-	//TODO(bcwaldon): don't really need a full uint64 here
 	b := make([]byte, 8)
 	binary.BigEndian.PutUint64(b, uint64(e))
-	return base64.URLEncoding.EncodeToString(b)
+	var idx int
+	for ; idx < 8; idx++ {
+		if b[idx] != 0x0 {
+			break
+		}
+	}
+	return base64.URLEncoding.EncodeToString(b[idx:])
 }
 
 // Turns a URL encoded modulus of a key into a big int.

@@ -121,8 +121,6 @@ func (c *Client) Exchange(code string) (result TokenResponse, err error) {
 	v := c.commonURLValues()
 	v.Set("grant_type", "authorization_code")
 	v.Set("code", code)
-
-	// TODO(sym3tri): only pass this in url if provider doesnt use basic auth
 	v.Set("client_secret", c.identity.Secret)
 
 	req, err := http.NewRequest("POST", c.tokenURL.String(), strings.NewReader(v.Encode()))

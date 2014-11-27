@@ -132,7 +132,6 @@ func (r *httpProviderConfigGetter) Get() (cfg ProviderConfig, err error) {
 		return
 	}
 
-	// TODO(sym3tri): more robust logic around checking expires headers or lack thereof.
 	ttl, ok, err := phttp.CacheControlMaxAge(resp.Header.Get("Cache-Control"))
 	if err != nil || !ok {
 		err = errors.New("provider config missing cache headers")

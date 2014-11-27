@@ -86,10 +86,7 @@ func TestAESDecryptWrongKey(t *testing.T) {
 	}
 
 	wrongKey := append([]byte("sheep"), make([]byte, 27)...)
-	decrypted, err := AESDecrypt(ciphertext, wrongKey)
-	if err == nil {
-		t.Fatalf("Expected non-nil error")
-	}
+	decrypted, _ := AESDecrypt(ciphertext, wrongKey)
 	if reflect.DeepEqual(message, decrypted) {
 		t.Fatalf("Data decrypted with different key matches original payload")
 	}

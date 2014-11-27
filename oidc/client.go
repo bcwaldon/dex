@@ -154,11 +154,20 @@ func (c *Client) ExchangeAuthCode(code string) (jose.JWT, error) {
 // Verify claims in accordance with OIDC spec
 // http://openid.net/specs/openid-connect-basic-1_0.html#IDTokenValidation
 func VerifyClaims(jwt jose.JWT, issuer, clientID string) error {
-	now := time.Now().Unix()
+	now := time.Now().UTC()
 
 	claims, err := jwt.Claims()
 	if err != nil {
 		return err
+	}
+
+	ident, err := IdentityFromClaims(claims)
+	if err != nil {
+		return err
+	}
+
+	if ident.ExpiresAt.Before(now) {
+		return errors.New("token is expired")
 	}
 
 	// iss REQUIRED. Issuer Identifier for the Issuer of the response.
@@ -170,27 +179,6 @@ func VerifyClaims(jwt jose.JWT, issuer, clientID string) error {
 		}
 	} else {
 		return errors.New("missing claim: 'iss'")
-	}
-
-	// exp REQUIRED. Expiration time on or after which the ID Token MUST NOT be accepted for processing.
-	// The processing of this parameter requires that the current date/time MUST be before the expiration date/time listed in the value.
-	// Implementers MAY provide for some small leeway, usually no more than a few minutes, to account for clock skew.
-	// Its value is a JSON number representing the number of seconds from 1970-01-01T0:0:0Z as measured in UTC until the date/time.
-	// See RFC 3339 [RFC3339] for details regarding date/times in general and UTC in particular.
-	// TODO: is this method of type conversion safe?
-	if exp, exists := claims["exp"].(float64); exists {
-		if now > int64(exp) {
-			return errors.New("token is expired")
-		}
-	} else {
-		return errors.New("missing claim: 'exp'")
-	}
-
-	// sub REQUIRED. Subject Identifier.
-	// Locally unique and never reassigned identifier within the Issuer for the End-User, which is intended to be consumed by the Client, e.g., 24400320 or AItOawmwtWwcT0k51BayewNvutrJUqsvl6qs7A4.
-	// It MUST NOT exceed 255 ASCII characters in length. The sub value is a case sensitive string.
-	if _, exists := claims["sub"].(string); !exists {
-		return errors.New("missing claim: 'sub'")
 	}
 
 	// iat REQUIRED. Time at which the JWT was issued.

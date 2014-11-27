@@ -172,7 +172,6 @@ func VerifyClaims(jwt jose.JWT, issuer, clientID string) error {
 	// iss REQUIRED. Issuer Identifier for the Issuer of the response.
 	// The iss value is a case sensitive URL using the https scheme that contains scheme, host, and optionally, port number and path components and no query or fragment components.
 	if iss, exists := claims["iss"].(string); exists {
-		// TODO: clean & canonicalize strings
 		if !pnet.URLEqual(iss, issuer) {
 			return fmt.Errorf("invalid claim value: 'iss'. expected=%s, found=%s.", issuer, iss)
 		}
@@ -189,7 +188,6 @@ func VerifyClaims(jwt jose.JWT, issuer, clientID string) error {
 	// aud REQUIRED. Audience(s) that this ID Token is intended for.
 	// It MUST contain the OAuth 2.0 client_id of the Relying Party as an audience value. It MAY also contain identifiers for other audiences. In the general case, the aud value is an array of case sensitive strings. In the common special case when there is one audience, the aud value MAY be a single case sensitive string.
 	if aud, exists := claims["aud"].(string); exists {
-		// TODO: clean & canonicalize strings
 		if aud != clientID {
 			return errors.New("invalid claim value: 'aud'")
 		}

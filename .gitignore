@@ -27,3 +27,4 @@ bin/
 coverage/
 deploy/
 Godeps/_workspace/src/github.com/coreos-inc/auth
+static/fixtures/env.txt

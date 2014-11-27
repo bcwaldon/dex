@@ -197,8 +197,5 @@ func VerifyClaims(jwt jose.JWT, issuer, clientID string) error {
 		return errors.New("missing claim: 'aud'")
 	}
 
-	// TODO: optional claims from OIDC spec
-	// auth_time, nonce, at_hash, acr, amr, azp
-
 	return nil
 }

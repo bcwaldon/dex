@@ -54,7 +54,7 @@ func NewLocalIDPConnectorFromFlags(ns url.URL, lf oidc.LoginFunc, fs *flag.FlagS
 	loginPage := fs.Lookup("connector-local-login-template").Value.String()
 	templates, err = template.ParseFiles(loginPage)
 	if err != nil {
-		log.Printf("no login page template: %s", err)
+		return nil, fmt.Errorf("error loading local login page template: %s", err)
 	}
 
 	return NewLocalIDPConnector(ns, lf, idp), nil

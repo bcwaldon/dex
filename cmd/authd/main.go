@@ -44,8 +44,8 @@ func main() {
 	fs := flag.NewFlagSet("authd", flag.ExitOnError)
 	fs.String("listen", "http://0.0.0.0:5556", "")
 	fs.String("issuer", "http://127.0.0.1:5556", "")
-	fs.String("clients", "./cmd/authd/fixtures/clients.json", "json file containing set of clients")
-	fs.String("login-page-template", "./cmd/authd/fixtures/login.html", "html template file to present to user for login")
+	fs.String("clients", "./static/fixtures/clients.json", "json file containing set of clients")
+	fs.String("login-page-template", "./static/html/login.html", "html template file to present to user for login")
 	fs.String("db-url", "", "DSN-formatted database connection string")
 	fs.Bool("no-db", false, "manage entities in-process w/o any encryption, used only for single-node testing")
 	fs.String("key-secret", "", "symmetric key used to encrypt/decrypt signing key data in DB")
@@ -56,6 +56,7 @@ func main() {
 	fs.String("connector-oidc-issuer-url", "https://accounts.google.com", "")
 	fs.String("connector-oidc-client-id", "", "")
 	fs.String("connector-oidc-client-secret", "", "")
+	fs.String("connector-local-login-template", "./static/html/local-login.html", "")
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		log.Fatalf(err.Error())

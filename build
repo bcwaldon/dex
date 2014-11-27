@@ -1,5 +1,14 @@
 #!/bin/bash -e
 
-godep go build -o bin/authd github.com/coreos-inc/auth/cmd/authd
-godep go build -o bin/authd-overlord github.com/coreos-inc/auth/cmd/authd-overlord
-godep go build -o bin/oidc-app github.com/coreos-inc/auth/examples/app
+export GOPATH=${PWD}/Godeps/_workspace
+export GOBIN=${PWD}/bin
+
+rm $GOPATH/src/github.com/coreos-inc/auth 2> /dev/null || true
+mkdir -p $GOPATH/src/github.com/coreos-inc/
+ln -s ${PWD} $GOPATH/src/github.com/coreos-inc/auth
+
+eval $(go env)
+
+go build -o bin/authd github.com/coreos-inc/auth/cmd/authd
+go build -o bin/authd-overlord github.com/coreos-inc/auth/cmd/authd-overlord
+go build -o bin/oidc-app github.com/coreos-inc/auth/examples/app

@@ -18,9 +18,6 @@ import (
 
 const (
 	LocalIDPConnectorType = "local"
-
-	// TODO(sym3tri): get from config once config is available
-	loginPagePath = "./cmd/authd/fixtures/local-login.html"
 )
 
 func init() {
@@ -42,14 +39,6 @@ type Page struct {
 
 var templates *template.Template
 
-func init() {
-	var err error
-	templates, err = template.ParseFiles(loginPagePath)
-	if err != nil {
-		log.Printf("no login page template: %s", err)
-	}
-}
-
 func NewLocalIDPConnectorFromFlags(ns url.URL, lf oidc.LoginFunc, fs *flag.FlagSet) (connector.IDPConnector, error) {
 	uFile := fs.Lookup("connector-local-users").Value.String()
 	uf, err := os.Open(uFile)
@@ -60,6 +49,12 @@ func NewLocalIDPConnectorFromFlags(ns url.URL, lf oidc.LoginFunc, fs *flag.FlagS
 	idp, err := NewLocalIdentityProviderFromReader(uf)
 	if err != nil {
 		return nil, fmt.Errorf("unable to build local identity provider from file %q: %v", uFile, err)
+	}
+
+	loginPage := fs.Lookup("connector-local-login-template").Value.String()
+	templates, err = template.ParseFiles(loginPage)
+	if err != nil {
+		return nil, fmt.Errorf("error loading local login page template: %s", err)
 	}
 
 	return NewLocalIDPConnector(ns, lf, idp), nil

@@ -34,6 +34,37 @@ OpenID Connect (OIDC) is broken up into several specifications. The following (a
 - https://accounts.google.com/.well-known/openid-configuration
 - https://login.salesforce.com/.well-known/openid-configuration
 
+## Building
+
+### Local build
+`./build`
+
+### Compile binaries with Docker
+`./docker-build`
+
+### Docker Build and Push
+Compile binaries, build docker image, push to quay repo.
+Tags the image with the git sha and 'latest'.
+
+```
+./docker-build
+docker build .
+QUAY_USER=xxx QUAY_PASSWORD=yyy ./docker-push <image-id-from-prev>
+```
+
+## Systemd Unit Files
+Injects secrets into the unit file templates located in: `./static/...`.
+Output goes to `./deploy`
+
+```
+source <path-to-secure>/prod/authd.env.txt
+./build-units
+```
+
+## Run Tests
+`./test`
+
+
 # Authorization (Auth-Z)
 
 ## Components

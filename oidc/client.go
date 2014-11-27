@@ -47,7 +47,6 @@ func (c *Client) Healthy() error {
 		return errors.New("oidc client provider config expired")
 	}
 
-	// TODO(sym3tri): consider using keyset to track key expiration
 	if len(c.Keys) == 0 {
 		return errors.New("oidc client missing public keys")
 	}

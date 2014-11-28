@@ -5,6 +5,7 @@ ExecStartPre=-/usr/bin/docker rm %n
 ExecStart=/usr/bin/docker run \
 --name=%n \
 -v /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt \
+-p 5556:5556 \
 quay.io/coreosinc/authd /opt/authd/bin/authd \
 --connector-type=oidc \
 --connector-id=Google \

@@ -9,8 +9,9 @@ import (
 	ptime "github.com/coreos-inc/auth/pkg/time"
 )
 
-type purgeable interface {
-	purge() error
+type purgeable struct {
+	name      string
+	purgeFunc func() error
 }
 
 func NewGarbageCollector(dsn string, ival time.Duration) (*GarbageCollector, error) {
@@ -23,8 +24,19 @@ func NewGarbageCollector(dsn string, ival time.Duration) (*GarbageCollector, err
 		return nil, err
 	}
 
+	repos := []purgeable{
+		purgeable{
+			name:      "session",
+			purgeFunc: sRepo.purge,
+		},
+		purgeable{
+			name:      "sessionkey",
+			purgeFunc: skRepo.purge,
+		},
+	}
+
 	gc := GarbageCollector{
-		repos:    map[string]purgeable{"session": sRepo, "sessionkey": skRepo},
+		repos:    repos,
 		interval: ival,
 		clock:    clockwork.NewRealClock(),
 	}
@@ -33,7 +45,7 @@ func NewGarbageCollector(dsn string, ival time.Duration) (*GarbageCollector, err
 }
 
 type GarbageCollector struct {
-	repos    map[string]purgeable
+	repos    []purgeable
 	interval time.Duration
 	clock    clockwork.Clock
 }
@@ -82,12 +94,12 @@ func anyPurgeErrors(errchan <-chan purgeError) (found bool) {
 	return
 }
 
-func purge(repos map[string]purgeable) <-chan purgeError {
+func purge(repos []purgeable) <-chan purgeError {
 	errchan := make(chan purgeError)
 	go func() {
-		for n, r := range repos {
-			if err := r.purge(); err != nil {
-				errchan <- purgeError{name: n, err: err}
+		for _, p := range repos {
+			if err := p.purgeFunc(); err != nil {
+				errchan <- purgeError{name: p.name, err: err}
 			}
 		}
 		close(errchan)

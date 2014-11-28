@@ -6,28 +6,32 @@ import (
 	"testing"
 )
 
-type staticPurgeable struct {
-	err error
-}
-
-func (p *staticPurgeable) purge() error {
-	return p.err
+func pf(err error) func() error {
+	return func() error {
+		return err
+	}
 }
 
 func TestPurge(t *testing.T) {
 	tests := []struct {
-		pm   map[string]purgeable
+		pm   []purgeable
 		want []purgeError
 	}{
 		{
-			pm: map[string]purgeable{
-				"foo": &staticPurgeable{err: nil},
+			pm: []purgeable{
+				purgeable{
+					name:      "foo",
+					purgeFunc: pf(nil),
+				},
 			},
 			want: []purgeError{},
 		},
 		{
-			pm: map[string]purgeable{
-				"foo": &staticPurgeable{err: errors.New("foo fail")},
+			pm: []purgeable{
+				purgeable{
+					name:      "foo",
+					purgeFunc: pf(errors.New("foo fail")),
+				},
 			},
 			want: []purgeError{
 				purgeError{name: "foo", err: errors.New("foo fail")},
@@ -35,11 +39,23 @@ func TestPurge(t *testing.T) {
 		},
 
 		{
-			pm: map[string]purgeable{
-				"foo": &staticPurgeable{err: nil},
-				"bar": &staticPurgeable{err: errors.New("bar fail")},
-				"baz": &staticPurgeable{err: nil},
-				"fum": &staticPurgeable{err: errors.New("fum fail")},
+			pm: []purgeable{
+				purgeable{
+					name:      "foo",
+					purgeFunc: pf(nil),
+				},
+				purgeable{
+					name:      "bar",
+					purgeFunc: pf(errors.New("bar fail")),
+				},
+				purgeable{
+					name:      "baz",
+					purgeFunc: pf(nil),
+				},
+				purgeable{
+					name:      "fum",
+					purgeFunc: pf(errors.New("fum fail")),
+				},
 			},
 			want: []purgeError{
 				purgeError{name: "bar", err: errors.New("bar fail")},

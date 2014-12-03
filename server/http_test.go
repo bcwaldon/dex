@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -182,6 +183,33 @@ func TestHandleTokenFuncMethodNotAllowed(t *testing.T) {
 		if want != got {
 			t.Errorf("case %s: expected HTTP %d, got %d", m, want, got)
 		}
+	}
+}
+
+func TestHandleTokenFuncState(t *testing.T) {
+	want := "test-state"
+	v := url.Values{
+		"state": {want},
+	}
+	hdlr := handleTokenFunc(nil)
+	req, err := http.NewRequest("POST", "http://example.com", strings.NewReader(v.Encode()))
+	if err != nil {
+		t.Errorf("unable to create HTTP request, error=%v", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	w := httptest.NewRecorder()
+	hdlr.ServeHTTP(w, req)
+
+	// should have errored and returned state in the response body
+	var resp map[string]string
+	if err = json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Errorf("error unmarshaling response, error=%v", err)
+	}
+
+	got := resp["state"]
+	if want != got {
+		t.Errorf("unexpected state, want=%v, got=%v", want, got)
 	}
 }
 

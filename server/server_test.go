@@ -77,7 +77,7 @@ func TestServerProviderConfig(t *testing.T) {
 		AuthEndpoint:                      "http://server.example.com/auth",
 		TokenEndpoint:                     "http://server.example.com/token",
 		KeysEndpoint:                      "http://server.example.com/keys",
-		GrantTypesSupported:               []string{"authorization_code"},
+		GrantTypesSupported:               []string{oauth2.GrantTypeAuthCode, oauth2.GrantTypeClientCreds},
 		ResponseTypesSupported:            []string{"code"},
 		SubjectTypesSupported:             []string{"public"},
 		IDTokenAlgValuesSupported:         []string{"RS256"},

@@ -261,19 +261,7 @@ func handleTokenFunc(srv OIDCServer) http.HandlerFunc {
 			return
 		}
 
-		state := r.PostForm.Get("code")
-
-		grantType := r.PostForm.Get("grant_type")
-		if grantType != "authorization_code" {
-			writeTokenError(w, oauth2.NewError(oauth2.ErrorUnsupportedGrantType), state)
-			return
-		}
-
-		code := r.PostForm.Get("code")
-		if code == "" {
-			writeTokenError(w, oauth2.NewError(oauth2.ErrorInvalidRequest), state)
-			return
-		}
+		state := r.PostForm.Get("state")
 
 		user, password, ok := phttp.BasicAuth(r)
 		if !ok {
@@ -281,9 +269,30 @@ func handleTokenFunc(srv OIDCServer) http.HandlerFunc {
 			return
 		}
 
-		jwt, err := srv.Token(user, password, code)
-		if err != nil {
-			writeTokenError(w, err, state)
+		var jwt *jose.JWT
+		grantType := r.PostForm.Get("grant_type")
+
+		switch grantType {
+		case "authorization_code":
+			code := r.PostForm.Get("code")
+			if code == "" {
+				writeTokenError(w, oauth2.NewError(oauth2.ErrorInvalidRequest), state)
+				return
+			}
+
+			jwt, err = srv.Token(user, password, code)
+			if err != nil {
+				writeTokenError(w, err, state)
+				return
+			}
+		case "client_credentials":
+			jwt, err = srv.ClientToken(user, password)
+			if err != nil {
+				writeTokenError(w, err, state)
+				return
+			}
+		default:
+			writeTokenError(w, oauth2.NewError(oauth2.ErrorUnsupportedGrantType), state)
 			return
 		}
 

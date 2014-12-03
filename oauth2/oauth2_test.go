@@ -3,7 +3,10 @@ package oauth2
 import (
 	"net/url"
 	"reflect"
+	"strings"
 	"testing"
+
+	phttp "github.com/coreos-inc/auth/pkg/http"
 )
 
 func TestParseAuthCodeRequest(t *testing.T) {
@@ -158,5 +161,63 @@ func TestClientIdentityMatch(t *testing.T) {
 		if tt.w != btoa {
 			t.Errorf("case %d: b.Match(a): want=%t, got=%t", i, tt.w, btoa)
 		}
+	}
+}
+
+func TestClientToken(t *testing.T) {
+	hc := &phttp.RequestRecorder{}
+	cfg := Config{
+		ClientID:     "cid",
+		ClientSecret: "csecret",
+		Scope:        []string{"foo-scope", "bar-scope"},
+		TokenURL:     "http://example.com/token",
+	}
+
+	c, err := NewClient(hc, cfg)
+	if err != nil {
+		t.Errorf("unexpected error %v", err)
+	}
+
+	c.ClientToken()
+	if hc.Request == nil {
+		t.Error("request is empty")
+	}
+
+	tu := hc.Request.URL.String()
+	if cfg.TokenURL != tu {
+		t.Errorf("wrong token url, want=%v, got=%v", cfg.TokenURL, tu)
+	}
+
+	ct := hc.Request.Header.Get("Content-Type")
+	if ct != "application/x-www-form-urlencoded" {
+		t.Errorf("wrong content-type, want=application/x-www-form-urlencoded, got=%v", ct)
+	}
+
+	cid, secret, ok := phttp.BasicAuth(hc.Request)
+	if !ok {
+		t.Error("unexpected error parsing basic auth")
+	}
+
+	if cfg.ClientID != cid {
+		t.Errorf("wrong client ID, want=%v, got=%v", cfg.ClientID, cid)
+	}
+
+	if cfg.ClientSecret != secret {
+		t.Errorf("wrong client secret, want=%v, got=%v", cfg.ClientSecret, secret)
+	}
+
+	err = hc.Request.ParseForm()
+	if err != nil {
+		t.Error("unexpected error parsing form")
+	}
+
+	gt := hc.Request.PostForm.Get("grant_type")
+	if gt != GrantTypeClientCreds {
+		t.Errorf("wrong grant_type, want=client_credentials, got=%v", gt)
+	}
+
+	sc := strings.Split(hc.Request.PostForm.Get("scope"), " ")
+	if !reflect.DeepEqual(cfg.Scope, sc) {
+		t.Errorf("wrong scope, want=%v, got=%v", cfg.Scope, sc)
 	}
 }

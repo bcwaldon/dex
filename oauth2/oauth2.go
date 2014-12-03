@@ -17,6 +17,11 @@ const (
 	ResponseTypeCode = "code"
 )
 
+const (
+	GrantTypeAuthCode    = "authorization_code"
+	GrantTypeClientCreds = "client_credentials"
+)
+
 type Config struct {
 	ClientID     string
 	ClientSecret string
@@ -116,10 +121,34 @@ func (c *Client) commonURLValues() url.Values {
 	}
 }
 
+// ClientToken posts the client id and secret to obtain a token scoped to the OAuth2 client via the "client_credentials" grant type.
+// May not be supported by all OAuth2 servers.
+func (c *Client) ClientToken(scope []string) (result TokenResponse, err error) {
+	v := url.Values{
+		"scope":      {strings.Join(scope, " ")},
+		"grant_type": {GrantTypeClientCreds},
+	}
+
+	req, err := http.NewRequest("POST", c.tokenURL.String(), strings.NewReader(v.Encode()))
+	if err != nil {
+		return
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.SetBasicAuth(c.identity.ID, c.identity.Secret)
+
+	resp, err := c.hc.Do(req)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	return parseTokenResponse(resp)
+}
+
 // Exchange auth code for series of tokens.
 func (c *Client) Exchange(code string) (result TokenResponse, err error) {
 	v := c.commonURLValues()
-	v.Set("grant_type", "authorization_code")
+	v.Set("grant_type", GrantTypeAuthCode)
 	v.Set("code", code)
 	v.Set("client_secret", c.identity.Secret)
 
@@ -136,6 +165,10 @@ func (c *Client) Exchange(code string) (result TokenResponse, err error) {
 	}
 	defer resp.Body.Close()
 
+	return parseTokenResponse(resp)
+}
+
+func parseTokenResponse(resp *http.Response) (result TokenResponse, err error) {
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return

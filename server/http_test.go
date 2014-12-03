@@ -241,7 +241,7 @@ func TestHandleDiscoveryFunc(t *testing.T) {
 		TokenEndpoint: u + httpPathToken,
 		KeysEndpoint:  u + httpPathKeys,
 
-		GrantTypesSupported:               []string{"authorization_code"},
+		GrantTypesSupported:               []string{oauth2.GrantTypeAuthCode},
 		ResponseTypesSupported:            []string{"code"},
 		SubjectTypesSupported:             []string{"public"},
 		IDTokenAlgValuesSupported:         []string{"RS256"},

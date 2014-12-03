@@ -273,7 +273,7 @@ func handleTokenFunc(srv OIDCServer) http.HandlerFunc {
 		grantType := r.PostForm.Get("grant_type")
 
 		switch grantType {
-		case "authorization_code":
+		case oauth2.GrantTypeAuthCode:
 			code := r.PostForm.Get("code")
 			if code == "" {
 				writeTokenError(w, oauth2.NewError(oauth2.ErrorInvalidRequest), state)
@@ -285,7 +285,7 @@ func handleTokenFunc(srv OIDCServer) http.HandlerFunc {
 				writeTokenError(w, err, state)
 				return
 			}
-		case "client_credentials":
+		case oauth2.GrantTypeClientCreds:
 			jwt, err = srv.ClientToken(user, password)
 			if err != nil {
 				writeTokenError(w, err, state)

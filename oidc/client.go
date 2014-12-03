@@ -130,6 +130,29 @@ func (c *Client) Verify(jwt jose.JWT) error {
 	return errors.New("could not verify JWT signature")
 }
 
+func (c *Client) ClientToken(scope []string) (jose.JWT, error) {
+	if !c.ProviderConfig.SupportsGrantType(oauth2.GrantTypeClientCreds) {
+		return jose.JWT{}, fmt.Errorf("%v grant type is not supported", oauth2.GrantTypeClientCreds)
+	}
+
+	oac, err := c.OAuthClient()
+	if err != nil {
+		return jose.JWT{}, err
+	}
+
+	t, err := oac.ClientToken()
+	if err != nil {
+		return jose.JWT{}, err
+	}
+
+	jwt, err := jose.ParseJWT(t.IDToken)
+	if err != nil {
+		return jose.JWT{}, err
+	}
+
+	return jwt, c.Verify(jwt)
+}
+
 // Exchange an OAauth2 auth code for an OIDC JWT
 func (c *Client) ExchangeAuthCode(code string) (jose.JWT, error) {
 	oac, err := c.OAuthClient()

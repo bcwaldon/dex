@@ -20,25 +20,28 @@ func IdentityFromClaims(claims jose.Claims) (*Identity, error) {
 		return nil, errors.New("nil claim set")
 	}
 
-	claim := func(k string) (string, error) {
+	claim := func(k string, required bool) (v string, err error) {
 		vi, ok := claims[k]
 		if !ok {
-			return "", fmt.Errorf("missing %s claim", k)
+			if required {
+				err = fmt.Errorf("missing %s claim", k)
+			}
+			return
 		}
-		v, ok := vi.(string)
+		v, ok = vi.(string)
 		if !ok {
-			return "", fmt.Errorf("unparseable %s claim: %v", k, vi)
+			err = fmt.Errorf("unparseable %s claim: %v", k, vi)
 		}
-		return v, nil
+		return
 	}
 
 	var ident Identity
 	var err error
 
-	if ident.ID, err = claim("sub"); err != nil {
+	if ident.ID, err = claim("sub", true); err != nil {
 		return nil, err
 	}
-	if ident.Email, err = claim("email"); err != nil {
+	if ident.Email, err = claim("email", false); err != nil {
 		return nil, err
 	}
 

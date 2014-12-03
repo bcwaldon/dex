@@ -155,8 +155,7 @@ func (s *Server) ClientToken(clientID, clientSecret string) (*jose.JWT, error) {
 		"exp": float64(exp.Unix()),
 
 		// conventional
-		"name":  clientID,
-		"email": "",
+		"name": clientID,
 	}
 
 	jwt, err := josesig.NewSignedJWT(claims, signer)

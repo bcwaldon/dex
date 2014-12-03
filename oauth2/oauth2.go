@@ -20,6 +20,7 @@ const (
 const (
 	GrantTypeAuthCode    = "authorization_code"
 	GrantTypeClientCreds = "client_credentials"
+	GrantTypeImplicit    = "implicit"
 )
 
 type Config struct {

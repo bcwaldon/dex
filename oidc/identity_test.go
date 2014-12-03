@@ -29,6 +29,19 @@ func TestIdentityFromClaims(t *testing.T) {
 		},
 		{
 			claims: jose.Claims{
+				"sub":  "123850281",
+				"name": "Elroy",
+				"exp":  float64(1.416935146e+09),
+			},
+			want: Identity{
+				ID:        "123850281",
+				Name:      "",
+				Email:     "",
+				ExpiresAt: time.Date(2014, time.November, 25, 17, 05, 46, 0, time.UTC),
+			},
+		},
+		{
+			claims: jose.Claims{
 				"sub":   "123850281",
 				"name":  "Elroy",
 				"email": "elroy@example.com",

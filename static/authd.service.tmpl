@@ -12,7 +12,6 @@ ExecStart=/usr/bin/docker run \
 --env AUTHD_ISSUER=https://auth.update.core-os.net \
 --env AUTHD_DB_URL=${AUTHD_DB_URL} \
 --env AUTHD_KEY_SECRET=${AUTHD_KEY_SECRET} \
---env AUTHD_LOGIN_PAGE_TEMPLATE=/opt/authd/html/login.html \
 quay.io/coreosinc/authd /opt/authd/bin/authd
 
 ExecStop=/usr/bin/docker kill %n

@@ -32,6 +32,7 @@ type Server struct {
 	KeyManager         key.PrivateKeyManager
 	SessionManager     *session.SessionManager
 	ClientIdentityRepo ClientIdentityRepo
+	LoginTemplate      *template.Template
 }
 
 func (s *Server) KillSession(sessionKey string) error {
@@ -62,11 +63,11 @@ func (s *Server) ProviderConfig() oidc.ProviderConfig {
 	return cfg
 }
 
-func (s *Server) HTTPHandler(idpcs map[string]connector.IDPConnector, tpl *template.Template, checks []health.Checkable) http.Handler {
+func (s *Server) HTTPHandler(idpcs map[string]connector.IDPConnector, checks []health.Checkable) http.Handler {
 	clock := clockwork.NewRealClock()
 	mux := http.NewServeMux()
 	mux.HandleFunc(httpPathDiscovery, handleDiscoveryFunc(s.ProviderConfig()))
-	mux.HandleFunc(HttpPathAuth, handleAuthFunc(s, idpcs, tpl))
+	mux.HandleFunc(HttpPathAuth, handleAuthFunc(s, idpcs, s.LoginTemplate))
 	mux.HandleFunc(httpPathToken, handleTokenFunc(s))
 	mux.HandleFunc(httpPathKeys, handleKeysFunc(s.KeyManager, clock))
 	mux.HandleFunc(httpPathHealth, handleHealthFunc(checks))

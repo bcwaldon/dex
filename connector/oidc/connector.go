@@ -3,6 +3,7 @@ package oidc
 import (
 	"flag"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"net/url"
@@ -24,7 +25,7 @@ type OIDCIDPConnector struct {
 	loginFunc oidc.LoginFunc
 }
 
-func NewOIDCIDPConnectorFromFlags(ns url.URL, lf oidc.LoginFunc, fs *flag.FlagSet) (connector.IDPConnector, error) {
+func NewOIDCIDPConnectorFromFlags(ns url.URL, lf oidc.LoginFunc, tpls *template.Template, fs *flag.FlagSet) (connector.IDPConnector, error) {
 	issuerURL := fs.Lookup("connector-oidc-issuer-url").Value.String()
 	ci := oauth2.ClientIdentity{
 		ID:     fs.Lookup("connector-oidc-client-id").Value.String(),

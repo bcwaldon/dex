@@ -59,11 +59,11 @@ func TestHTTPExchangeToken(t *testing.T) {
 
 	ns, _ := url.Parse(issuerURL)
 	ns.Path = path.Join(ns.Path, server.HttpPathAuth)
-	idpc := localconnector.NewLocalIDPConnector(*ns, srv.Login, idp)
+	idpc := localconnector.NewLocalIDPConnector(*ns, srv.Login, idp, nil)
 	idpcs := make(map[string]connector.IDPConnector)
 	idpcs["fake"] = idpc
 
-	hdlr := srv.HTTPHandler(idpcs, nil, []health.Checkable{})
+	hdlr := srv.HTTPHandler(idpcs, []health.Checkable{})
 	sClient := &phttp.HandlerClient{Handler: hdlr}
 
 	cfg, err := oidc.FetchProviderConfig(sClient, issuerURL)

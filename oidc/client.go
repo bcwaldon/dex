@@ -140,7 +140,7 @@ func (c *Client) ClientToken(scope []string) (jose.JWT, error) {
 		return jose.JWT{}, err
 	}
 
-	t, err := oac.ClientToken()
+	t, err := oac.ClientToken(scope)
 	if err != nil {
 		return jose.JWT{}, err
 	}

@@ -178,7 +178,8 @@ func TestClientToken(t *testing.T) {
 		t.Errorf("unexpected error %v", err)
 	}
 
-	c.ClientToken()
+	scope := []string{"openid"}
+	c.ClientToken(scope)
 	if hc.Request == nil {
 		t.Error("request is empty")
 	}
@@ -217,7 +218,7 @@ func TestClientToken(t *testing.T) {
 	}
 
 	sc := strings.Split(hc.Request.PostForm.Get("scope"), " ")
-	if !reflect.DeepEqual(cfg.Scope, sc) {
-		t.Errorf("wrong scope, want=%v, got=%v", cfg.Scope, sc)
+	if !reflect.DeepEqual(scope, sc) {
+		t.Errorf("wrong scope, want=%v, got=%v", scope, sc)
 	}
 }

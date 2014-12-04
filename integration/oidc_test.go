@@ -168,7 +168,7 @@ func TestHTTPClientToken(t *testing.T) {
 		},
 	}
 
-	tok, err := cl.ClientToken()
+	tok, err := cl.ClientToken([]string{"openid"})
 	if err != nil {
 		t.Fatalf("Failed getting client token: %v", err)
 	}

@@ -1,6 +1,7 @@
 package http
 
 import (
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -25,4 +26,13 @@ func (hc *HandlerClient) Do(r *http.Request) (*http.Response, error) {
 	}
 
 	return &resp, nil
+}
+
+type RequestRecorder struct {
+	Request *http.Request
+}
+
+func (r *RequestRecorder) Do(req *http.Request) (*http.Response, error) {
+	r.Request = req
+	return nil, errors.New("error")
 }

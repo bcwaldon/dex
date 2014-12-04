@@ -2,6 +2,7 @@ package integration
 
 import (
 	"fmt"
+	"html/template"
 	"net/http"
 	"net/url"
 	"path"
@@ -9,7 +10,7 @@ import (
 	"time"
 
 	"github.com/coreos-inc/auth/connector"
-	localconnector "github.com/coreos-inc/auth/connector/local"
+	connectorlocal "github.com/coreos-inc/auth/connector/local"
 	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
@@ -20,19 +21,21 @@ import (
 )
 
 func TestHTTPExchangeToken(t *testing.T) {
-	user := localconnector.User{
+	user := connectorlocal.User{
 		ID:       "elroy77",
 		Name:     "Elroy",
 		Email:    "elroy@example.com",
 		Password: "bones",
 	}
 
+	cfg := connectorlocal.LocalIDPConnectorConfig{
+		Users: []connectorlocal.User{user},
+	}
+
 	ci := oauth2.ClientIdentity{
 		ID:     "72de74a9",
 		Secret: "XXX",
 	}
-
-	idp := localconnector.NewLocalIdentityProvider([]localconnector.User{user})
 
 	cir := server.NewClientIdentityRepo([]oauth2.ClientIdentity{ci})
 
@@ -59,21 +62,26 @@ func TestHTTPExchangeToken(t *testing.T) {
 
 	ns, _ := url.Parse(issuerURL)
 	ns.Path = path.Join(ns.Path, server.HttpPathAuth)
-	idpc := localconnector.NewLocalIDPConnector(*ns, srv.Login, idp, nil)
-	idpcs := make(map[string]connector.IDPConnector)
-	idpcs["fake"] = idpc
+	idpc, err := cfg.Connector(*ns, srv.Login, template.New(connectorlocal.LoginPageTemplateName))
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	idpcs := map[string]connector.IDPConnector{
+		"fake": idpc,
+	}
 
 	hdlr := srv.HTTPHandler(idpcs, []health.Checkable{})
 	sClient := &phttp.HandlerClient{Handler: hdlr}
 
-	cfg, err := oidc.FetchProviderConfig(sClient, issuerURL)
+	pcfg, err := oidc.FetchProviderConfig(sClient, issuerURL)
 	if err != nil {
 		t.Fatalf("Failed to fetch provider config: %v", err)
 	}
 
 	cl := &oidc.Client{
 		HTTPClient:     sClient,
-		ProviderConfig: cfg,
+		ProviderConfig: pcfg,
 		ClientIdentity: ci,
 		RedirectURL:    "http://client.example.com",
 		Keys: []key.PublicKey{

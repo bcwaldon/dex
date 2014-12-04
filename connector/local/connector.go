@@ -1,13 +1,11 @@
 package local
 
 import (
-	"flag"
 	"fmt"
 	"html/template"
 	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"path"
 
 	"github.com/coreos-inc/auth/connector"
@@ -21,8 +19,30 @@ const (
 	LoginPageTemplateName = "local-login.html"
 )
 
-func init() {
-	connector.Register("local", NewLocalIDPConnectorFromFlags)
+type LocalIDPConnectorConfig struct {
+	id    string
+	Users []User
+}
+
+func (cfg *LocalIDPConnectorConfig) ConnectorID() string {
+	return cfg.id
+}
+
+func (cfg *LocalIDPConnectorConfig) Connector(ns url.URL, lf oidc.LoginFunc, tpls *template.Template) (connector.IDPConnector, error) {
+	tpl := tpls.Lookup(LoginPageTemplateName)
+	if tpl == nil {
+		return nil, fmt.Errorf("unable to find necessary HTML template")
+	}
+
+	idp := NewLocalIdentityProvider(cfg.Users)
+	idpc := &LocalIDPConnector{
+		idp:       idp,
+		namespace: ns,
+		loginFunc: lf,
+		loginTpl:  tpl,
+	}
+
+	return idpc, nil
 }
 
 type LocalIDPConnector struct {
@@ -37,35 +57,6 @@ type Page struct {
 	Name    string
 	Error   bool
 	Message string
-}
-
-func NewLocalIDPConnectorFromFlags(ns url.URL, lf oidc.LoginFunc, tpls *template.Template, fs *flag.FlagSet) (connector.IDPConnector, error) {
-	uFile := fs.Lookup("connector-local-users").Value.String()
-	uf, err := os.Open(uFile)
-	if err != nil {
-		return nil, fmt.Errorf("unable to read users from file %q: %v", uFile, err)
-	}
-	defer uf.Close()
-	idp, err := NewLocalIdentityProviderFromReader(uf)
-	if err != nil {
-		return nil, fmt.Errorf("unable to build local identity provider from file %q: %v", uFile, err)
-	}
-
-	tpl := tpls.Lookup(LoginPageTemplateName)
-	if tpl == nil {
-		return nil, fmt.Errorf("unable to find necessary HTML template")
-	}
-
-	return NewLocalIDPConnector(ns, lf, idp, tpl), nil
-}
-
-func NewLocalIDPConnector(ns url.URL, lf oidc.LoginFunc, idp *LocalIdentityProvider, tpl *template.Template) *LocalIDPConnector {
-	return &LocalIDPConnector{
-		idp:       idp,
-		namespace: ns,
-		loginFunc: lf,
-		loginTpl:  tpl,
-	}
 }
 
 func (c *LocalIDPConnector) DisplayType() string {

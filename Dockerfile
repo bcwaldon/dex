@@ -5,5 +5,3 @@ ADD bin/authd-overlord /opt/authd/bin/authd-overlord
 ADD bin/authctl /opt/authd/bin/authctl
 ADD static/html/login.html /opt/authd/html/login.html
 ADD static/html/local-login.html /opt/authd/html/local-login.html
-
-CMD ["/opt/authd/bin/authd"]

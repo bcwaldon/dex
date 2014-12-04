@@ -22,7 +22,7 @@ var (
 
 func main() {
 	fs := flag.NewFlagSet("oidc-app", flag.ExitOnError)
-	listen := fs.String("listen", "http://localhost:5555", "")
+	listen := fs.String("listen", "http://127.0.0.1:5555", "")
 	clientID := fs.String("client-id", "", "")
 	clientSecret := fs.String("client-secret", "", "")
 	discovery := fs.String("discovery", "https://accounts.google.com", "")

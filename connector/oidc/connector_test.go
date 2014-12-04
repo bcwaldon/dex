@@ -89,7 +89,10 @@ func TestLoginURL(t *testing.T) {
 			RedirectURL:    tt.redir,
 			Scope:          tt.scope,
 		}
-		cn := NewOIDCIDPConnector(url.URL{}, lf, cl)
+		cn := &OIDCIDPConnector{
+			loginFunc: lf,
+			client:    cl,
+		}
 
 		lu, err := cn.LoginURL(tt.state, tt.prompt)
 		if err != nil {

@@ -1,13 +1,11 @@
 package local
 
 import (
-	"flag"
 	"fmt"
 	"html/template"
 	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"path"
 
 	"github.com/coreos-inc/auth/connector"
@@ -18,16 +16,40 @@ import (
 
 const (
 	LocalIDPConnectorType = "local"
+	LoginPageTemplateName = "local-login.html"
 )
 
-func init() {
-	connector.Register("local", NewLocalIDPConnectorFromFlags)
+type LocalIDPConnectorConfig struct {
+	id    string
+	Users []User
+}
+
+func (cfg *LocalIDPConnectorConfig) ConnectorID() string {
+	return cfg.id
+}
+
+func (cfg *LocalIDPConnectorConfig) Connector(ns url.URL, lf oidc.LoginFunc, tpls *template.Template) (connector.IDPConnector, error) {
+	tpl := tpls.Lookup(LoginPageTemplateName)
+	if tpl == nil {
+		return nil, fmt.Errorf("unable to find necessary HTML template")
+	}
+
+	idp := NewLocalIdentityProvider(cfg.Users)
+	idpc := &LocalIDPConnector{
+		idp:       idp,
+		namespace: ns,
+		loginFunc: lf,
+		loginTpl:  tpl,
+	}
+
+	return idpc, nil
 }
 
 type LocalIDPConnector struct {
 	idp       *LocalIdentityProvider
 	namespace url.URL
 	loginFunc oidc.LoginFunc
+	loginTpl  *template.Template
 }
 
 type Page struct {
@@ -35,37 +57,6 @@ type Page struct {
 	Name    string
 	Error   bool
 	Message string
-}
-
-var templates *template.Template
-
-func NewLocalIDPConnectorFromFlags(ns url.URL, lf oidc.LoginFunc, fs *flag.FlagSet) (connector.IDPConnector, error) {
-	uFile := fs.Lookup("connector-local-users").Value.String()
-	uf, err := os.Open(uFile)
-	if err != nil {
-		return nil, fmt.Errorf("unable to read users from file %q: %v", uFile, err)
-	}
-	defer uf.Close()
-	idp, err := NewLocalIdentityProviderFromReader(uf)
-	if err != nil {
-		return nil, fmt.Errorf("unable to build local identity provider from file %q: %v", uFile, err)
-	}
-
-	loginPage := fs.Lookup("connector-local-login-template").Value.String()
-	templates, err = template.ParseFiles(loginPage)
-	if err != nil {
-		return nil, fmt.Errorf("error loading local login page template: %s", err)
-	}
-
-	return NewLocalIDPConnector(ns, lf, idp), nil
-}
-
-func NewLocalIDPConnector(ns url.URL, lf oidc.LoginFunc, idp *LocalIdentityProvider) *LocalIDPConnector {
-	return &LocalIDPConnector{
-		idp:       idp,
-		namespace: ns,
-		loginFunc: lf,
-	}
 }
 
 func (c *LocalIDPConnector) DisplayType() string {
@@ -87,7 +78,7 @@ func (c *LocalIDPConnector) LoginURL(sessionKey, prompt string) (string, error) 
 
 func (c *LocalIDPConnector) Register(mux *http.ServeMux, errorURL url.URL) {
 	route := c.namespace.Path + "/login"
-	mux.Handle(route, handleLoginFunc(c.loginFunc, c.idp, route, errorURL))
+	mux.Handle(route, handleLoginFunc(c.loginFunc, c.loginTpl, c.idp, route, errorURL))
 }
 
 func redirectPostError(w http.ResponseWriter, errorURL url.URL, q url.Values) {
@@ -96,7 +87,7 @@ func redirectPostError(w http.ResponseWriter, errorURL url.URL, q url.Values) {
 	w.WriteHeader(http.StatusSeeOther)
 }
 
-func handleLoginFunc(lf oidc.LoginFunc, idp *LocalIdentityProvider, localErrorPath string, errorURL url.URL) http.HandlerFunc {
+func handleLoginFunc(lf oidc.LoginFunc, tpl *template.Template, idp *LocalIdentityProvider, localErrorPath string, errorURL url.URL) http.HandlerFunc {
 	handleGET := func(w http.ResponseWriter, r *http.Request, errMsg string) {
 		p := &Page{PostURL: r.URL.String(), Name: "Local"}
 		if errMsg != "" {
@@ -104,7 +95,7 @@ func handleLoginFunc(lf oidc.LoginFunc, idp *LocalIdentityProvider, localErrorPa
 			p.Message = errMsg
 		}
 
-		if err := templates.ExecuteTemplate(w, "local-login.html", p); err != nil {
+		if err := tpl.Execute(w, p); err != nil {
 			phttp.WriteError(w, http.StatusInternalServerError, err.Error())
 		}
 	}

@@ -18,8 +18,8 @@ import (
 	"time"
 
 	"github.com/coreos-inc/auth/connector"
-	localconnector "github.com/coreos-inc/auth/connector/local"
-	oidcconnector "github.com/coreos-inc/auth/connector/oidc"
+	connectorlocal "github.com/coreos-inc/auth/connector/local"
+	connectoroidc "github.com/coreos-inc/auth/connector/oidc"
 	"github.com/coreos-inc/auth/db"
 	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oauth2"
@@ -30,33 +30,31 @@ import (
 	"github.com/coreos-inc/auth/session"
 )
 
+const (
+	LoginPageTemplateName = "login.html"
+)
+
 var (
 	dbURLFlag string
 	useDB     bool
 )
-
-func init() {
-	connector.Register(localconnector.LocalIDPConnectorType, localconnector.NewLocalIDPConnectorFromFlags)
-	connector.Register(oidcconnector.OIDCIDPConnectorType, oidcconnector.NewOIDCIDPConnectorFromFlags)
-}
 
 func main() {
 	fs := flag.NewFlagSet("authd", flag.ExitOnError)
 	fs.String("listen", "http://0.0.0.0:5556", "")
 	fs.String("issuer", "http://127.0.0.1:5556", "")
 	fs.String("clients", "./static/fixtures/clients.json", "json file containing set of clients")
-	fs.String("login-page-template", "./static/html/login.html", "html template file to present to user for login")
+	fs.String("html-assets", "./static/html", "directory of html template files")
 	fs.String("db-url", "", "DSN-formatted database connection string")
 	fs.Bool("no-db", false, "manage entities in-process w/o any encryption, used only for single-node testing")
 	fs.String("key-secret", "", "symmetric key used to encrypt/decrypt signing key data in DB")
 
 	fs.String("connector-type", "local", "IdP connector type to configure")
-	fs.String("connector-local-users", "./cmd/authd/fixtures/users.json", "json file containing set of users")
+	fs.String("connector-local-users", "./static/fixtures/users.json", "json file containing set of users")
 	fs.String("connector-id", "id", "unique id of the connector")
 	fs.String("connector-oidc-issuer-url", "https://accounts.google.com", "")
 	fs.String("connector-oidc-client-id", "", "")
 	fs.String("connector-oidc-client-secret", "", "")
-	fs.String("connector-local-login-template", "./static/html/local-login.html", "")
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		log.Fatalf(err.Error())
@@ -86,19 +84,19 @@ func main() {
 		log.Fatalf("Unable to build KeyManager: %v", err)
 	}
 
-	srv, err := newServerFromFlags(fs, km)
+	tpls, err := newHTMLTemplatesFromFlags(fs)
+	if err != nil {
+		log.Fatalf("Unable to parse HTML templates: %v", err)
+	}
+
+	srv, err := newServerFromFlags(fs, km, tpls)
 	if err != nil {
 		log.Fatalf("Unable to build Server: %v", err)
 	}
 
-	idpcs, err := newIDPConnectorsFromFlags(fs, srv.Login)
+	idpcs, err := newIDPConnectorsFromFlags(fs, srv.Login, tpls)
 	if err != nil {
 		log.Fatalf("Unable to build IDPConnector: %v", err)
-	}
-
-	tpl, err := newLoginTemplateFromFlags(fs)
-	if err != nil {
-		log.Fatalf("Unable to parse login page template: %v", err)
 	}
 
 	checks := []health.Checkable{km}
@@ -113,7 +111,7 @@ func main() {
 		checks = append(checks, dbc)
 	}
 
-	hdlr := srv.HTTPHandler(idpcs, tpl, checks)
+	hdlr := srv.HTTPHandler(idpcs, checks)
 	httpsrv := &http.Server{
 		Addr:    lu.Host,
 		Handler: hdlr,
@@ -181,7 +179,7 @@ func newKeyManagerFromFlags(fs *flag.FlagSet) (key.PrivateKeyManager, error) {
 	return km, nil
 }
 
-func newServerFromFlags(fs *flag.FlagSet, km key.PrivateKeyManager) (*server.Server, error) {
+func newServerFromFlags(fs *flag.FlagSet, km key.PrivateKeyManager, tpls *template.Template) (*server.Server, error) {
 	var err error
 	var ciRepo server.ClientIdentityRepo
 	if useDB {
@@ -207,15 +205,20 @@ func newServerFromFlags(fs *flag.FlagSet, km key.PrivateKeyManager) (*server.Ser
 	if useDB {
 		sRepo, err = db.NewSessionRepo(dbURLFlag)
 		if err != nil {
-			log.Fatalf("Unable to create SessionRepo: %v", err)
+			return nil, fmt.Errorf("unable to create SessionRepo: %v", err)
 		}
 		skRepo, err = db.NewSessionKeyRepo(dbURLFlag)
 		if err != nil {
-			log.Fatalf("Unable to create SessionKeyRepo: %v", err)
+			return nil, fmt.Errorf("unable to create SessionKeyRepo: %v", err)
 		}
 	} else {
 		sRepo = session.NewSessionRepo()
 		skRepo = session.NewSessionKeyRepo()
+	}
+
+	tpl := tpls.Lookup(LoginPageTemplateName)
+	if tpl == nil {
+		return nil, errors.New("unable to find necessary HTML template")
 	}
 
 	sm := session.NewSessionManager(sRepo, skRepo)
@@ -225,26 +228,21 @@ func newServerFromFlags(fs *flag.FlagSet, km key.PrivateKeyManager) (*server.Ser
 		KeyManager:         km,
 		SessionManager:     sm,
 		ClientIdentityRepo: ciRepo,
+		LoginTemplate:      tpl,
 	}
 	return &srv, nil
 }
 
-func newLoginTemplateFromFlags(fs *flag.FlagSet) (*template.Template, error) {
-	lpt := fs.Lookup("login-page-template").Value.String()
-	templates, err := template.ParseFiles(lpt)
-	if err != nil {
-		return nil, err
+func newHTMLTemplatesFromFlags(fs *flag.FlagSet) (*template.Template, error) {
+	sa := fs.Lookup("html-assets").Value.String()
+	files := []string{
+		path.Join(sa, LoginPageTemplateName),
+		path.Join(sa, connectorlocal.LoginPageTemplateName),
 	}
-
-	tpl := templates.Lookup(path.Base(lpt))
-	if tpl == nil {
-		return nil, errors.New("template not found")
-	}
-
-	return tpl, nil
+	return template.ParseFiles(files...)
 }
 
-func newIDPConnectorsFromFlags(fs *flag.FlagSet, lf oidc.LoginFunc) (map[string]connector.IDPConnector, error) {
+func newIDPConnectorsFromFlags(fs *flag.FlagSet, lf oidc.LoginFunc, tpls *template.Template) (map[string]connector.IDPConnector, error) {
 	issuer := fs.Lookup("issuer").Value.String()
 	ns, err := url.Parse(issuer)
 	if err != nil {
@@ -258,15 +256,33 @@ func newIDPConnectorsFromFlags(fs *flag.FlagSet, lf oidc.LoginFunc) (map[string]
 
 	ns.Path = path.Join(ns.Path, server.HttpPathAuth, strings.ToLower(idpcID))
 
-	ct := fs.Lookup("connector-type").Value.String()
-	idcp, err := connector.NewIDPConnector(ct, *ns, lf, fs)
+	var cfg connector.IDPConnectorConfig
+	switch fs.Lookup("connector-type").Value.String() {
+	case connectorlocal.LocalIDPConnectorType:
+		uFile := fs.Lookup("connector-local-users").Value.String()
+		users, err := connectorlocal.ReadUsersFromFile(uFile)
+		if err != nil {
+			return nil, err
+		}
+		cfg = &connectorlocal.LocalIDPConnectorConfig{
+			Users: users,
+		}
+	case connectoroidc.OIDCIDPConnectorType:
+		cfg = &connectoroidc.OIDCIDPConnectorConfig{
+			IssuerURL:    fs.Lookup("connector-oidc-issuer-url").Value.String(),
+			ClientID:     fs.Lookup("connector-oidc-client-id").Value.String(),
+			ClientSecret: fs.Lookup("connector-oidc-client-secret").Value.String(),
+		}
+	default:
+		return nil, errors.New("unrecognized --connector-type value")
+	}
+
+	idpc, err := cfg.Connector(*ns, lf, tpls)
 	if err != nil {
 		return nil, err
 	}
 
-	idcps := make(map[string]connector.IDPConnector)
-	idcps[idpcID] = idcp
-	return idcps, nil
+	return map[string]connector.IDPConnector{idpcID: idpc}, nil
 }
 
 func newClientIdentityRepoFromReader(r io.Reader) (server.ClientIdentityRepo, error) {

@@ -1,8 +1,8 @@
 package oidc
 
 import (
-	"flag"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"net/url"
@@ -18,20 +18,31 @@ const (
 	OIDCIDPConnectorType = "oidc"
 )
 
+type OIDCIDPConnectorConfig struct {
+	id string
+
+	IssuerURL    string
+	ClientID     string
+	ClientSecret string
+}
+
+func (cfg *OIDCIDPConnectorConfig) ConnectorID() string {
+	return cfg.id
+}
+
 type OIDCIDPConnector struct {
 	client    *oidc.Client
 	namespace url.URL
 	loginFunc oidc.LoginFunc
 }
 
-func NewOIDCIDPConnectorFromFlags(ns url.URL, lf oidc.LoginFunc, fs *flag.FlagSet) (connector.IDPConnector, error) {
-	issuerURL := fs.Lookup("connector-oidc-issuer-url").Value.String()
+func (cfg *OIDCIDPConnectorConfig) Connector(ns url.URL, lf oidc.LoginFunc, tpls *template.Template) (connector.IDPConnector, error) {
 	ci := oauth2.ClientIdentity{
-		ID:     fs.Lookup("connector-oidc-client-id").Value.String(),
-		Secret: fs.Lookup("connector-oidc-client-secret").Value.String(),
+		ID:     cfg.ClientID,
+		Secret: cfg.ClientSecret,
 	}
 
-	cfg, err := oidc.FetchProviderConfig(http.DefaultClient, issuerURL)
+	pcfg, err := oidc.FetchProviderConfig(http.DefaultClient, cfg.IssuerURL)
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch provider config: %v", err)
 	}
@@ -39,22 +50,20 @@ func NewOIDCIDPConnectorFromFlags(ns url.URL, lf oidc.LoginFunc, fs *flag.FlagSe
 	cbURL := ns
 	cbURL.Path = path.Join(cbURL.Path, "/callback")
 	c := &oidc.Client{
-		ProviderConfig: cfg,
+		ProviderConfig: pcfg,
 		ClientIdentity: ci,
 		RedirectURL:    cbURL.String(),
 	}
 
 	c.SyncKeys()
 
-	return NewOIDCIDPConnector(ns, lf, c), nil
-}
-
-func NewOIDCIDPConnector(ns url.URL, lf oidc.LoginFunc, c *oidc.Client) *OIDCIDPConnector {
-	return &OIDCIDPConnector{
+	idpc := &OIDCIDPConnector{
 		client:    c,
 		namespace: ns,
 		loginFunc: lf,
 	}
+
+	return idpc, nil
 }
 
 func (c *OIDCIDPConnector) DisplayType() string {

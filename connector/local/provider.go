@@ -2,8 +2,9 @@ package local
 
 import (
 	"encoding/json"
-	"io"
+	"fmt"
 	"io/ioutil"
+	"os"
 
 	"github.com/coreos-inc/auth/oidc"
 )
@@ -23,18 +24,21 @@ func (u User) Identity() oidc.Identity {
 	}
 }
 
-func NewLocalIdentityProviderFromReader(r io.Reader) (*LocalIdentityProvider, error) {
-	b, err := ioutil.ReadAll(r)
+func ReadUsersFromFile(loc string) ([]User, error) {
+	uf, err := os.Open(loc)
+	if err != nil {
+		return nil, fmt.Errorf("unable to read users from file %q: %v", loc, err)
+	}
+	defer uf.Close()
+
+	b, err := ioutil.ReadAll(uf)
 	if err != nil {
 		return nil, err
 	}
 
 	var us []User
-	if err = json.Unmarshal(b, &us); err != nil {
-		return nil, err
-	}
-
-	return NewLocalIdentityProvider(us), nil
+	err = json.Unmarshal(b, &us)
+	return us, err
 }
 
 func NewLocalIdentityProvider(users []User) *LocalIdentityProvider {

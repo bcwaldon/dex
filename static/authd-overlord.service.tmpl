@@ -3,7 +3,7 @@
 [Service]
 ExecStartPre=-/usr/bin/docker rm %n
 ExecStart=/usr/bin/docker run \
---name=%n \
+--name %n \
 quay.io/coreosinc/authd /opt/authd/bin/authd-overlord \
 --db-url=${AUTHD_OVERLORD_DB_URL} \
 --key-secret=${AUTHD_OVERLORD_KEY_SECRET}

@@ -3,7 +3,7 @@
 [Service]
 ExecStartPre=-/usr/bin/docker rm %n
 ExecStart=/usr/bin/docker run \
---name=%n \
+--name %n \
 --volume /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt \
 --publish 5556:5556 \
 quay.io/coreosinc/authd /opt/authd/bin/authd \

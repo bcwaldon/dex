@@ -51,7 +51,7 @@ func main() {
 	fs.String("key-secret", "", "symmetric key used to encrypt/decrypt signing key data in DB")
 
 	fs.String("connector-type", "local", "IdP connector type to configure")
-	fs.String("connector-local-users", "./cmd/authd/fixtures/users.json", "json file containing set of users")
+	fs.String("connector-local-users", "./static/fixtures/users.json", "json file containing set of users")
 	fs.String("connector-id", "id", "unique id of the connector")
 	fs.String("connector-oidc-issuer-url", "https://accounts.google.com", "")
 	fs.String("connector-oidc-client-id", "", "")

@@ -24,8 +24,8 @@ type OIDCServer interface {
 	Client(string) (*oauth2.ClientIdentity, error)
 	NewSession(clientID, clientState string, redirectURL url.URL) (string, error)
 	Login(oidc.Identity, string) (string, error)
-	Token(clientID, clientState, code string) (*jose.JWT, error)
-	ClientToken(clientID, clientState string) (*jose.JWT, error)
+	CodeToken(clientID, clientState, code string) (*jose.JWT, error)
+	ClientCredsToken(clientID, clientState string) (*jose.JWT, error)
 	KillSession(string) error
 }
 
@@ -127,7 +127,7 @@ func (s *Server) Login(ident oidc.Identity, key string) (string, error) {
 	return ru.String(), nil
 }
 
-func (s *Server) ClientToken(clientID, clientSecret string) (*jose.JWT, error) {
+func (s *Server) ClientCredsToken(clientID, clientSecret string) (*jose.JWT, error) {
 	ci, err := s.Client(clientID)
 	if err != nil {
 		log.Printf("Failed fetching client %s from repo: %v", clientID, err)
@@ -144,19 +144,9 @@ func (s *Server) ClientToken(clientID, clientSecret string) (*jose.JWT, error) {
 	}
 
 	now := time.Now()
-	// TODO(sym3tri): get this from config
-	exp := now.Add(time.Hour)
-	claims := jose.Claims{
-		// required
-		"iss": s.IssuerURL,
-		"sub": clientID,
-		"aud": clientID,
-		"iat": float64(now.Unix()),
-		"exp": float64(exp.Unix()),
-
-		// conventional
-		"name": clientID,
-	}
+	exp := now.Add(s.SessionManager.ValidityWindow)
+	claims := oidc.NewClaims(s.IssuerURL, clientID, clientID, now, exp)
+	claims.Add("name", clientID)
 
 	jwt, err := josesig.NewSignedJWT(claims, signer)
 	if err != nil {
@@ -169,7 +159,7 @@ func (s *Server) ClientToken(clientID, clientSecret string) (*jose.JWT, error) {
 	return jwt, nil
 }
 
-func (s *Server) Token(clientID, clientSecret, key string) (*jose.JWT, error) {
+func (s *Server) CodeToken(clientID, clientSecret, key string) (*jose.JWT, error) {
 	ci, err := s.Client(clientID)
 	if err != nil {
 		log.Printf("Failed fetching client %s from repo: %v", clientID, err)

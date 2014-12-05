@@ -164,7 +164,7 @@ func TestClientIdentityMatch(t *testing.T) {
 	}
 }
 
-func TestClientToken(t *testing.T) {
+func TestClientCredsToken(t *testing.T) {
 	hc := &phttp.RequestRecorder{}
 	cfg := Config{
 		ClientID:     "cid",
@@ -179,7 +179,7 @@ func TestClientToken(t *testing.T) {
 	}
 
 	scope := []string{"openid"}
-	c.ClientToken(scope)
+	c.ClientCredsToken(scope)
 	if hc.Request == nil {
 		t.Error("request is empty")
 	}

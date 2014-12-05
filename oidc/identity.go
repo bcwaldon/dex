@@ -2,7 +2,6 @@ package oidc
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/coreos-inc/auth/jose"
@@ -20,41 +19,25 @@ func IdentityFromClaims(claims jose.Claims) (*Identity, error) {
 		return nil, errors.New("nil claim set")
 	}
 
-	claim := func(k string, required bool) (v string, err error) {
-		vi, ok := claims[k]
-		if !ok {
-			if required {
-				err = fmt.Errorf("missing %s claim", k)
-			}
-			return
-		}
-		v, ok = vi.(string)
-		if !ok {
-			err = fmt.Errorf("unparseable %s claim: %v", k, vi)
-		}
-		return
-	}
-
 	var ident Identity
 	var err error
+	var ok bool
 
-	if ident.ID, err = claim("sub", true); err != nil {
+	if ident.ID, ok, err = claims.StringClaim("sub"); err != nil {
+		return nil, err
+	} else if !ok {
+		return nil, errors.New("missing required claim: sub")
+	}
+
+	if ident.Email, _, err = claims.StringClaim("email"); err != nil {
 		return nil, err
 	}
-	if ident.Email, err = claim("email", false); err != nil {
-		return nil, err
-	}
 
-	if exp, ok := claims["exp"]; ok {
-		ei, ok := exp.(int64)
-		if !ok {
-			ef, ok := exp.(float64)
-			if !ok {
-				return nil, fmt.Errorf("unparseable exp claim: %v", exp)
-			}
-			ei = int64(ef)
-		}
-		ident.ExpiresAt = time.Unix(ei, 0).UTC()
+	exp, ok, err := claims.TimeClaim("exp")
+	if err != nil {
+		return nil, err
+	} else if ok {
+		ident.ExpiresAt = exp
 	}
 
 	return &ident, nil

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/coreos-inc/auth/jose"
@@ -17,21 +16,6 @@ import (
 var (
 	DefaultScope = []string{"openid", "email", "profile"}
 )
-
-func ParseTokenFromRequest(r *http.Request) (token jose.JWT, err error) {
-	ah := r.Header.Get("Authorization")
-	if ah == "" {
-		err = errors.New("missing Authorization header")
-		return
-	}
-
-	if len(ah) <= 6 || strings.ToUpper(ah[0:6]) != "BEARER" {
-		err = errors.New("should be a bearer token")
-		return
-	}
-
-	return jose.ParseJWT(ah[7:])
-}
 
 type Client struct {
 	HTTPClient     phttp.Client
@@ -130,7 +114,7 @@ func (c *Client) Verify(jwt jose.JWT) error {
 	return errors.New("could not verify JWT signature")
 }
 
-func (c *Client) ClientToken(scope []string) (jose.JWT, error) {
+func (c *Client) ClientCredsToken(scope []string) (jose.JWT, error) {
 	if !c.ProviderConfig.SupportsGrantType(oauth2.GrantTypeClientCreds) {
 		return jose.JWT{}, fmt.Errorf("%v grant type is not supported", oauth2.GrantTypeClientCreds)
 	}
@@ -140,7 +124,7 @@ func (c *Client) ClientToken(scope []string) (jose.JWT, error) {
 		return jose.JWT{}, err
 	}
 
-	t, err := oac.ClientToken(scope)
+	t, err := oac.ClientCredsToken(scope)
 	if err != nil {
 		return jose.JWT{}, err
 	}

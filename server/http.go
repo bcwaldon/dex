@@ -280,13 +280,13 @@ func handleTokenFunc(srv OIDCServer) http.HandlerFunc {
 				return
 			}
 
-			jwt, err = srv.Token(user, password, code)
+			jwt, err = srv.CodeToken(user, password, code)
 			if err != nil {
 				writeTokenError(w, err, state)
 				return
 			}
 		case oauth2.GrantTypeClientCreds:
-			jwt, err = srv.ClientToken(user, password)
+			jwt, err = srv.ClientCredsToken(user, password)
 			if err != nil {
 				writeTokenError(w, err, state)
 				return

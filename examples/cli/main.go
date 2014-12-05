@@ -58,7 +58,7 @@ func main() {
 	client.SyncKeys()
 	time.Sleep(1 * time.Second)
 
-	tok, err := client.ClientToken([]string{"openid"})
+	tok, err := client.ClientCredsToken([]string{"openid"})
 	if err != nil {
 		fmt.Printf("unable to verify auth code with issuer: %v", err)
 		os.Exit(1)

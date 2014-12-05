@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	sessionKeyValidityWindow = 10 * time.Minute //RFC6749
-	sessionValidityWindow    = time.Hour
+	sessionKeyValidityWindow     = 10 * time.Minute //RFC6749
+	defaultSessionValidityWindow = time.Hour
 )
 
 type SessionState string
@@ -43,16 +43,9 @@ func (s *Session) Claims(issuerURL string) jose.Claims {
 		exp = s.ExpiresAt
 	}
 
-	return jose.Claims{
-		// required
-		"iss": issuerURL,
-		"sub": s.Identity.ID,
-		"aud": s.ClientID,
-		"iat": float64(s.CreatedAt.Unix()),
-		"exp": float64(exp.Unix()),
+	claims := oidc.NewClaims(issuerURL, s.Identity.ID, s.ClientID, s.CreatedAt, exp)
+	claims.Add("name", s.Identity.Name)
+	claims.Add("email", s.Identity.Email)
 
-		// conventional
-		"name":  s.Identity.Name,
-		"email": s.Identity.Email,
-	}
+	return claims
 }

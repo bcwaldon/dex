@@ -122,9 +122,9 @@ func (c *Client) commonURLValues() url.Values {
 	}
 }
 
-// ClientToken posts the client id and secret to obtain a token scoped to the OAuth2 client via the "client_credentials" grant type.
+// ClientCredsToken posts the client id and secret to obtain a token scoped to the OAuth2 client via the "client_credentials" grant type.
 // May not be supported by all OAuth2 servers.
-func (c *Client) ClientToken(scope []string) (result TokenResponse, err error) {
+func (c *Client) ClientCredsToken(scope []string) (result TokenResponse, err error) {
 	v := url.Values{
 		"scope":      {strings.Join(scope, " ")},
 		"grant_type": {GrantTypeClientCreds},

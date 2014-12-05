@@ -1,12 +1,8 @@
 package jose
 
 import (
-	"encoding/json"
-	"fmt"
 	"strings"
 )
-
-type Claims map[string]interface{}
 
 type JWT JWS
 
@@ -60,29 +56,4 @@ func (j *JWT) Encode() string {
 	d := j.Data()
 	s := encodeSegment(j.Signature)
 	return strings.Join([]string{d, s}, ".")
-}
-
-func decodeClaims(payload []byte) (Claims, error) {
-	var c Claims
-	if err := json.Unmarshal(payload, &c); err != nil {
-		return nil, fmt.Errorf("malformed JWT claims, unable to decode: %v", err)
-	}
-	return c, nil
-}
-
-func marshalClaims(c Claims) ([]byte, error) {
-	b, err := json.Marshal(c)
-	if err != nil {
-		return nil, err
-	}
-	return b, nil
-}
-
-func encodeClaims(c Claims) (string, error) {
-	b, err := marshalClaims(c)
-	if err != nil {
-		return "", err
-	}
-
-	return encodeSegment(b), nil
 }

@@ -122,7 +122,7 @@ func TestHTTPExchangeToken(t *testing.T) {
 	}
 }
 
-func TestHTTPClientToken(t *testing.T) {
+func TestHTTPClientCredsToken(t *testing.T) {
 	ci := oauth2.ClientIdentity{
 		ID:     "72de74a9",
 		Secret: "XXX",
@@ -141,10 +141,12 @@ func TestHTTPClientToken(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
+	sm := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())
 	srv := &server.Server{
 		IssuerURL:          issuerURL,
 		KeyManager:         km,
 		ClientIdentityRepo: cir,
+		SessionManager:     sm,
 	}
 
 	ns, _ := url.Parse(issuerURL)
@@ -168,7 +170,7 @@ func TestHTTPClientToken(t *testing.T) {
 		},
 	}
 
-	tok, err := cl.ClientToken([]string{"openid"})
+	tok, err := cl.ClientCredsToken([]string{"openid"})
 	if err != nil {
 		t.Fatalf("Failed getting client token: %v", err)
 	}

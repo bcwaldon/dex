@@ -208,7 +208,7 @@ func TestServerLoginUnrecognizedSessionKey(t *testing.T) {
 	}
 }
 
-func TestServerToken(t *testing.T) {
+func TestServerCodeToken(t *testing.T) {
 	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
 	ciRepo := NewClientIdentityRepo([]oauth2.ClientIdentity{ci})
 	km := &StaticKeyManager{
@@ -237,7 +237,7 @@ func TestServerToken(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	jwt, err := srv.Token(ci.ID, ci.Secret, key)
+	jwt, err := srv.CodeToken(ci.ID, ci.Secret, key)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -271,7 +271,7 @@ func TestServerTokenUnrecognizedKey(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	jwt, err := srv.Token(ci.ID, ci.Secret, "foo")
+	jwt, err := srv.CodeToken(ci.ID, ci.Secret, "foo")
 	if err == nil {
 		t.Fatalf("Expected non-nil error")
 	}
@@ -354,7 +354,7 @@ func TestServerTokenFail(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		jwt, err := srv.Token(tt.argCI.ID, tt.argCI.Secret, tt.argKey)
+		jwt, err := srv.CodeToken(tt.argCI.ID, tt.argCI.Secret, tt.argKey)
 		if tt.err == "" {
 			if err != nil {
 				t.Errorf("case %d: got non-nil error: %v", i, err)

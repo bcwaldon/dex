@@ -249,16 +249,13 @@ func newIDPConnectorsFromFlags(fs *flag.FlagSet, lf oidc.LoginFunc, tpls *templa
 	if cFile == "" {
 		return nil, errors.New("missing --connectors flag")
 	}
-
-	cf, err := os.Open(cFile)
+	cfgRepo, err := connectorconfig.NewIDPConnectorConfigRepoFromFile(cFile)
 	if err != nil {
-		return nil, fmt.Errorf("unable to read connectors from file %s: %v", cFile, err)
+		return nil, fmt.Errorf("unable to build config repo from file %s: %v", cFile, err)
 	}
-	defer cf.Close()
-
-	cfgs, err := connectorconfig.NewIDPConnectorConfigsFromReader(cf)
+	cfgs, err := cfgRepo.All()
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse connectors from file %s: %v", cFile, err)
+		return nil, fmt.Errorf("unable to get connectors from file %s: %v", cFile, err)
 	}
 
 	idpcs := make(map[string]connector.IDPConnector, len(cfgs))

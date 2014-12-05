@@ -21,3 +21,7 @@ type IDPConnectorConfig interface {
 	ConnectorType() string
 	Connector(url.URL, oidc.LoginFunc, *template.Template) (IDPConnector, error)
 }
+
+type IDPConnectorConfigRepo interface {
+	All() ([]IDPConnectorConfig, error)
+}

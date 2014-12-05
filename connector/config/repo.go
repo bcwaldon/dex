@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"os"
 
 	"github.com/coreos-inc/auth/connector"
 )
 
-func NewIDPConnectorConfigsFromReader(r io.Reader) ([]connector.IDPConnectorConfig, error) {
+func newIDPConnectorConfigsFromReader(r io.Reader) ([]connector.IDPConnectorConfig, error) {
 	var ms []map[string]interface{}
 	if err := json.NewDecoder(r).Decode(&ms); err != nil {
 		return nil, err
@@ -45,4 +46,27 @@ func newIDPConnectorConfigFromMap(m map[string]interface{}) (connector.IDPConnec
 		return nil, err
 	}
 	return cfg, nil
+}
+
+func NewIDPConnectorConfigRepoFromFile(loc string) (connector.IDPConnectorConfigRepo, error) {
+	cf, err := os.Open(loc)
+	if err != nil {
+		return nil, err
+	}
+	defer cf.Close()
+
+	cfgs, err := newIDPConnectorConfigsFromReader(cf)
+	if err != nil {
+		return nil, err
+	}
+
+	return &memIDPConnectorConfigRepo{configs: cfgs}, nil
+}
+
+type memIDPConnectorConfigRepo struct {
+	configs []connector.IDPConnectorConfig
+}
+
+func (r *memIDPConnectorConfigRepo) All() ([]connector.IDPConnectorConfig, error) {
+	return r.configs, nil
 }

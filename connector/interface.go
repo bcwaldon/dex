@@ -18,5 +18,6 @@ type IDPConnector interface {
 
 type IDPConnectorConfig interface {
 	ConnectorID() string
+	ConnectorType() string
 	Connector(url.URL, oidc.LoginFunc, *template.Template) (IDPConnector, error)
 }

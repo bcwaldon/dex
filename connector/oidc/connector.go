@@ -19,15 +19,18 @@ const (
 )
 
 type OIDCIDPConnectorConfig struct {
-	id string
-
-	IssuerURL    string
-	ClientID     string
-	ClientSecret string
+	ID           string `json:"id"`
+	IssuerURL    string `json:"issuerURL"`
+	ClientID     string `json:"clientID"`
+	ClientSecret string `json:"clientSecret"`
 }
 
 func (cfg *OIDCIDPConnectorConfig) ConnectorID() string {
-	return cfg.id
+	return cfg.ID
+}
+
+func (cfg *OIDCIDPConnectorConfig) ConnectorType() string {
+	return OIDCIDPConnectorType
 }
 
 type OIDCIDPConnector struct {

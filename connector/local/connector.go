@@ -20,12 +20,16 @@ const (
 )
 
 type LocalIDPConnectorConfig struct {
-	id    string
-	Users []User
+	ID    string `json:"id"`
+	Users []User `json:"users"`
 }
 
 func (cfg *LocalIDPConnectorConfig) ConnectorID() string {
-	return cfg.id
+	return cfg.ID
+}
+
+func (cfg *LocalIDPConnectorConfig) ConnectorType() string {
+	return LocalIDPConnectorType
 }
 
 func (cfg *LocalIDPConnectorConfig) Connector(ns url.URL, lf oidc.LoginFunc, tpls *template.Template) (connector.IDPConnector, error) {

@@ -21,6 +21,10 @@ const (
 	LoginPageTemplateName = "local-login.html"
 )
 
+func init() {
+	RegisterConnectorConfigType(LocalIDPConnectorType, func() IDPConnectorConfig { return &LocalIDPConnectorConfig{} })
+}
+
 type LocalIDPConnectorConfig struct {
 	ID    string `json:"id"`
 	Users []User `json:"users"`

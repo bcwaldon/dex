@@ -17,6 +17,10 @@ const (
 	OIDCIDPConnectorType = "oidc"
 )
 
+func init() {
+	RegisterConnectorConfigType(OIDCIDPConnectorType, func() IDPConnectorConfig { return &OIDCIDPConnectorConfig{} })
+}
+
 type OIDCIDPConnectorConfig struct {
 	ID           string `json:"id"`
 	IssuerURL    string `json:"issuerURL"`

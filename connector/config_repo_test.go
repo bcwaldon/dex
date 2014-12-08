@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestNewConfigFromType(t *testing.T) {
+func TestNewConnectorConfigFromType(t *testing.T) {
 	tests := []struct {
 		typ  string
 		want interface{}
@@ -21,7 +21,7 @@ func TestNewConfigFromType(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		got, err := NewConfigFromType(tt.typ)
+		got, err := NewConnectorConfigFromType(tt.typ)
 		if err != nil {
 			t.Errorf("case %d: expected nil err: %v", i, err)
 			continue
@@ -32,8 +32,8 @@ func TestNewConfigFromType(t *testing.T) {
 	}
 }
 
-func TestNewConfigFromTypeUnrecognized(t *testing.T) {
-	_, err := NewConfigFromType("foo")
+func TestNewConnectorConfigFromTypeUnrecognized(t *testing.T) {
+	_, err := NewConnectorConfigFromType("foo")
 	if err == nil {
 		t.Fatalf("Expected non-nil error")
 	}

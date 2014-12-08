@@ -32,7 +32,7 @@ func newIDPConnectorConfigFromMap(m map[string]interface{}) (IDPConnectorConfig,
 	if !ok {
 		return nil, errors.New("connector config type not string")
 	}
-	cfg, err := NewConfigFromType(typ)
+	cfg, err := NewConnectorConfigFromType(typ)
 	if err != nil {
 		return nil, err
 	}

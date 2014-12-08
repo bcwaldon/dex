@@ -1,20 +1,18 @@
-package config
+package connector
 
 import (
 	"encoding/json"
 	"errors"
 	"io"
 	"os"
-
-	"github.com/coreos-inc/auth/connector"
 )
 
-func newIDPConnectorConfigsFromReader(r io.Reader) ([]connector.IDPConnectorConfig, error) {
+func newIDPConnectorConfigsFromReader(r io.Reader) ([]IDPConnectorConfig, error) {
 	var ms []map[string]interface{}
 	if err := json.NewDecoder(r).Decode(&ms); err != nil {
 		return nil, err
 	}
-	cfgs := make([]connector.IDPConnectorConfig, len(ms))
+	cfgs := make([]IDPConnectorConfig, len(ms))
 	for i, m := range ms {
 		cfg, err := newIDPConnectorConfigFromMap(m)
 		if err != nil {
@@ -25,7 +23,7 @@ func newIDPConnectorConfigsFromReader(r io.Reader) ([]connector.IDPConnectorConf
 	return cfgs, nil
 }
 
-func newIDPConnectorConfigFromMap(m map[string]interface{}) (connector.IDPConnectorConfig, error) {
+func newIDPConnectorConfigFromMap(m map[string]interface{}) (IDPConnectorConfig, error) {
 	ityp, ok := m["type"]
 	if !ok {
 		return nil, errors.New("connector config type not set")
@@ -48,7 +46,7 @@ func newIDPConnectorConfigFromMap(m map[string]interface{}) (connector.IDPConnec
 	return cfg, nil
 }
 
-func NewIDPConnectorConfigRepoFromFile(loc string) (connector.IDPConnectorConfigRepo, error) {
+func NewIDPConnectorConfigRepoFromFile(loc string) (IDPConnectorConfigRepo, error) {
 	cf, err := os.Open(loc)
 	if err != nil {
 		return nil, err
@@ -64,9 +62,9 @@ func NewIDPConnectorConfigRepoFromFile(loc string) (connector.IDPConnectorConfig
 }
 
 type memIDPConnectorConfigRepo struct {
-	configs []connector.IDPConnectorConfig
+	configs []IDPConnectorConfig
 }
 
-func (r *memIDPConnectorConfigRepo) All() ([]connector.IDPConnectorConfig, error) {
+func (r *memIDPConnectorConfigRepo) All() ([]IDPConnectorConfig, error) {
 	return r.configs, nil
 }

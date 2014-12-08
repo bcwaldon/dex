@@ -1,4 +1,4 @@
-package oidc
+package connector
 
 import (
 	"fmt"
@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"path"
 
-	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 	phttp "github.com/coreos-inc/auth/pkg/http"
@@ -39,7 +38,7 @@ type OIDCIDPConnector struct {
 	loginFunc oidc.LoginFunc
 }
 
-func (cfg *OIDCIDPConnectorConfig) Connector(ns url.URL, lf oidc.LoginFunc, tpls *template.Template) (connector.IDPConnector, error) {
+func (cfg *OIDCIDPConnectorConfig) Connector(ns url.URL, lf oidc.LoginFunc, tpls *template.Template) (IDPConnector, error) {
 	ci := oauth2.ClientIdentity{
 		ID:     cfg.ClientID,
 		Secret: cfg.ClientSecret,

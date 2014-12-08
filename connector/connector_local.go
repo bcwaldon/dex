@@ -1,14 +1,16 @@
-package local
+package connector
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"path"
 
-	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 	phttp "github.com/coreos-inc/auth/pkg/http"
@@ -32,7 +34,7 @@ func (cfg *LocalIDPConnectorConfig) ConnectorType() string {
 	return LocalIDPConnectorType
 }
 
-func (cfg *LocalIDPConnectorConfig) Connector(ns url.URL, lf oidc.LoginFunc, tpls *template.Template) (connector.IDPConnector, error) {
+func (cfg *LocalIDPConnectorConfig) Connector(ns url.URL, lf oidc.LoginFunc, tpls *template.Template) (IDPConnector, error) {
 	tpl := tpls.Lookup(LoginPageTemplateName)
 	if tpl == nil {
 		return nil, fmt.Errorf("unable to find necessary HTML template")
@@ -162,4 +164,63 @@ func handleLoginFunc(lf oidc.LoginFunc, tpl *template.Template, idp *LocalIdenti
 			phttp.WriteError(w, http.StatusMethodNotAllowed, "GET and POST only acceptable methods")
 		}
 	}
+}
+
+type User struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+func (u User) Identity() oidc.Identity {
+	return oidc.Identity{
+		ID:    u.ID,
+		Name:  u.Name,
+		Email: u.Email,
+	}
+}
+
+func ReadUsersFromFile(loc string) ([]User, error) {
+	uf, err := os.Open(loc)
+	if err != nil {
+		return nil, fmt.Errorf("unable to read users from file %q: %v", loc, err)
+	}
+	defer uf.Close()
+
+	b, err := ioutil.ReadAll(uf)
+	if err != nil {
+		return nil, err
+	}
+
+	var us []User
+	err = json.Unmarshal(b, &us)
+	return us, err
+}
+
+func NewLocalIdentityProvider(users []User) *LocalIdentityProvider {
+	p := LocalIdentityProvider{
+		users: make(map[string]User, len(users)),
+	}
+
+	for _, u := range users {
+		u := u
+		p.users[u.ID] = u
+	}
+
+	return &p
+}
+
+type LocalIdentityProvider struct {
+	users map[string]User
+}
+
+func (m *LocalIdentityProvider) Identity(id, password string) *oidc.Identity {
+	u, ok := m.users[id]
+	if !ok || u.Password != password {
+		return nil
+	}
+
+	ident := u.Identity()
+	return &ident
 }

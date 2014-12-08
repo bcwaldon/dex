@@ -1,4 +1,4 @@
-package oidc
+package connector
 
 import (
 	"net/url"

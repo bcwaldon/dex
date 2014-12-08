@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/coreos-inc/auth/connector"
-	connectorlocal "github.com/coreos-inc/auth/connector/local"
 	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
@@ -21,15 +20,15 @@ import (
 )
 
 func TestHTTPExchangeToken(t *testing.T) {
-	user := connectorlocal.User{
+	user := connector.User{
 		ID:       "elroy77",
 		Name:     "Elroy",
 		Email:    "elroy@example.com",
 		Password: "bones",
 	}
 
-	cfg := connectorlocal.LocalIDPConnectorConfig{
-		Users: []connectorlocal.User{user},
+	cfg := connector.LocalIDPConnectorConfig{
+		Users: []connector.User{user},
 	}
 
 	ci := oauth2.ClientIdentity{
@@ -62,7 +61,7 @@ func TestHTTPExchangeToken(t *testing.T) {
 
 	ns, _ := url.Parse(issuerURL)
 	ns.Path = path.Join(ns.Path, server.HttpPathAuth)
-	idpc, err := cfg.Connector(*ns, srv.Login, template.New(connectorlocal.LoginPageTemplateName))
+	idpc, err := cfg.Connector(*ns, srv.Login, template.New(connector.LoginPageTemplateName))
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}

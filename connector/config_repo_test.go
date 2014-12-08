@@ -1,12 +1,8 @@
-package config
+package connector
 
 import (
 	"reflect"
 	"testing"
-
-	"github.com/coreos-inc/auth/connector"
-	connectorlocal "github.com/coreos-inc/auth/connector/local"
-	connectoroidc "github.com/coreos-inc/auth/connector/oidc"
 )
 
 func TestNewConfigFromType(t *testing.T) {
@@ -15,12 +11,12 @@ func TestNewConfigFromType(t *testing.T) {
 		want interface{}
 	}{
 		{
-			typ:  connectorlocal.LocalIDPConnectorType,
-			want: &connectorlocal.LocalIDPConnectorConfig{},
+			typ:  LocalIDPConnectorType,
+			want: &LocalIDPConnectorConfig{},
 		},
 		{
-			typ:  connectoroidc.OIDCIDPConnectorType,
-			want: &connectoroidc.OIDCIDPConnectorConfig{},
+			typ:  OIDCIDPConnectorType,
+			want: &OIDCIDPConnectorConfig{},
 		},
 	}
 
@@ -46,7 +42,7 @@ func TestNewConfigFromTypeUnrecognized(t *testing.T) {
 func TestNewIDPConnectorConfigFromMap(t *testing.T) {
 	tests := []struct {
 		m    map[string]interface{}
-		want connector.IDPConnectorConfig
+		want IDPConnectorConfig
 	}{
 		{
 			m: map[string]interface{}{
@@ -57,11 +53,11 @@ func TestNewIDPConnectorConfigFromMap(t *testing.T) {
 					{"id": "271", "name": "pong"},
 				},
 			},
-			want: &connectorlocal.LocalIDPConnectorConfig{
+			want: &LocalIDPConnectorConfig{
 				ID: "foo",
-				Users: []connectorlocal.User{
-					connectorlocal.User{ID: "abc", Name: "ping"},
-					connectorlocal.User{ID: "271", Name: "pong"},
+				Users: []User{
+					User{ID: "abc", Name: "ping"},
+					User{ID: "271", Name: "pong"},
 				},
 			},
 		},
@@ -73,7 +69,7 @@ func TestNewIDPConnectorConfigFromMap(t *testing.T) {
 				"clientID":     "client123",
 				"clientSecret": "whaaaaa",
 			},
-			want: &connectoroidc.OIDCIDPConnectorConfig{
+			want: &OIDCIDPConnectorConfig{
 				ID:           "bar",
 				IssuerURL:    "http://example.com",
 				ClientID:     "client123",

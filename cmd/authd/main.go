@@ -18,8 +18,6 @@ import (
 	"time"
 
 	"github.com/coreos-inc/auth/connector"
-	connectorconfig "github.com/coreos-inc/auth/connector/config"
-	connectorlocal "github.com/coreos-inc/auth/connector/local"
 	"github.com/coreos-inc/auth/db"
 	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oauth2"
@@ -231,7 +229,7 @@ func newHTMLTemplatesFromFlags(fs *flag.FlagSet) (*template.Template, error) {
 	sa := fs.Lookup("html-assets").Value.String()
 	files := []string{
 		path.Join(sa, LoginPageTemplateName),
-		path.Join(sa, connectorlocal.LoginPageTemplateName),
+		path.Join(sa, connector.LoginPageTemplateName),
 	}
 	return template.ParseFiles(files...)
 }
@@ -249,7 +247,7 @@ func newIDPConnectorsFromFlags(fs *flag.FlagSet, lf oidc.LoginFunc, tpls *templa
 	if cFile == "" {
 		return nil, errors.New("missing --connectors flag")
 	}
-	cfgRepo, err := connectorconfig.NewIDPConnectorConfigRepoFromFile(cFile)
+	cfgRepo, err := connector.NewIDPConnectorConfigRepoFromFile(cFile)
 	if err != nil {
 		return nil, fmt.Errorf("unable to build config repo from file %s: %v", cFile, err)
 	}

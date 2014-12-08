@@ -55,9 +55,9 @@ func TestNewConnectorConfigFromMap(t *testing.T) {
 			},
 			want: &ConnectorConfigLocal{
 				ID: "foo",
-				Users: []User{
-					User{ID: "abc", Name: "ping"},
-					User{ID: "271", Name: "pong"},
+				Users: []LocalUser{
+					LocalUser{ID: "abc", Name: "ping"},
+					LocalUser{ID: "271", Name: "pong"},
 				},
 			},
 		},

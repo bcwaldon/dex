@@ -26,8 +26,8 @@ func init() {
 }
 
 type ConnectorConfigLocal struct {
-	ID    string `json:"id"`
-	Users []User `json:"users"`
+	ID    string      `json:"id"`
+	Users []LocalUser `json:"users"`
 }
 
 func (cfg *ConnectorConfigLocal) ConnectorID() string {
@@ -170,14 +170,14 @@ func handleLoginFunc(lf oidc.LoginFunc, tpl *template.Template, idp *LocalIdenti
 	}
 }
 
-type User struct {
+type LocalUser struct {
 	ID       string `json:"id"`
 	Name     string `json:"name"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
-func (u User) Identity() oidc.Identity {
+func (u LocalUser) Identity() oidc.Identity {
 	return oidc.Identity{
 		ID:    u.ID,
 		Name:  u.Name,
@@ -185,7 +185,7 @@ func (u User) Identity() oidc.Identity {
 	}
 }
 
-func ReadUsersFromFile(loc string) ([]User, error) {
+func ReadUsersFromFile(loc string) ([]LocalUser, error) {
 	uf, err := os.Open(loc)
 	if err != nil {
 		return nil, fmt.Errorf("unable to read users from file %q: %v", loc, err)
@@ -197,14 +197,14 @@ func ReadUsersFromFile(loc string) ([]User, error) {
 		return nil, err
 	}
 
-	var us []User
+	var us []LocalUser
 	err = json.Unmarshal(b, &us)
 	return us, err
 }
 
-func NewLocalIdentityProvider(users []User) *LocalIdentityProvider {
+func NewLocalIdentityProvider(users []LocalUser) *LocalIdentityProvider {
 	p := LocalIdentityProvider{
-		users: make(map[string]User, len(users)),
+		users: make(map[string]LocalUser, len(users)),
 	}
 
 	for _, u := range users {
@@ -216,7 +216,7 @@ func NewLocalIdentityProvider(users []User) *LocalIdentityProvider {
 }
 
 type LocalIdentityProvider struct {
-	users map[string]User
+	users map[string]LocalUser
 }
 
 func (m *LocalIdentityProvider) Identity(id, password string) *oidc.Identity {

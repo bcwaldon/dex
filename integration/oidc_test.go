@@ -20,7 +20,7 @@ import (
 )
 
 func TestHTTPExchangeToken(t *testing.T) {
-	user := connector.User{
+	user := connector.LocalUser{
 		ID:       "elroy77",
 		Name:     "Elroy",
 		Email:    "elroy@example.com",
@@ -28,7 +28,7 @@ func TestHTTPExchangeToken(t *testing.T) {
 	}
 
 	cfg := connector.ConnectorConfigLocal{
-		Users: []connector.User{user},
+		Users: []connector.LocalUser{user},
 	}
 
 	ci := oauth2.ClientIdentity{

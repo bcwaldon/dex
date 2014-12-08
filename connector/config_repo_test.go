@@ -11,12 +11,12 @@ func TestNewConnectorConfigFromType(t *testing.T) {
 		want interface{}
 	}{
 		{
-			typ:  LocalIDPConnectorType,
-			want: &LocalIDPConnectorConfig{},
+			typ:  ConnectorTypeLocal,
+			want: &ConnectorConfigLocal{},
 		},
 		{
-			typ:  OIDCIDPConnectorType,
-			want: &OIDCIDPConnectorConfig{},
+			typ:  ConnectorTypeOIDC,
+			want: &ConnectorConfigOIDC{},
 		},
 	}
 
@@ -53,7 +53,7 @@ func TestNewIDPConnectorConfigFromMap(t *testing.T) {
 					{"id": "271", "name": "pong"},
 				},
 			},
-			want: &LocalIDPConnectorConfig{
+			want: &ConnectorConfigLocal{
 				ID: "foo",
 				Users: []User{
 					User{ID: "abc", Name: "ping"},
@@ -69,7 +69,7 @@ func TestNewIDPConnectorConfigFromMap(t *testing.T) {
 				"clientID":     "client123",
 				"clientSecret": "whaaaaa",
 			},
-			want: &OIDCIDPConnectorConfig{
+			want: &ConnectorConfigOIDC{
 				ID:           "bar",
 				IssuerURL:    "http://example.com",
 				ClientID:     "client123",

@@ -17,28 +17,28 @@ import (
 )
 
 const (
-	LocalIDPConnectorType = "local"
+	ConnectorTypeLocal    = "local"
 	LoginPageTemplateName = "local-login.html"
 )
 
 func init() {
-	RegisterConnectorConfigType(LocalIDPConnectorType, func() IDPConnectorConfig { return &LocalIDPConnectorConfig{} })
+	RegisterConnectorConfigType(ConnectorTypeLocal, func() IDPConnectorConfig { return &ConnectorConfigLocal{} })
 }
 
-type LocalIDPConnectorConfig struct {
+type ConnectorConfigLocal struct {
 	ID    string `json:"id"`
 	Users []User `json:"users"`
 }
 
-func (cfg *LocalIDPConnectorConfig) ConnectorID() string {
+func (cfg *ConnectorConfigLocal) ConnectorID() string {
 	return cfg.ID
 }
 
-func (cfg *LocalIDPConnectorConfig) ConnectorType() string {
-	return LocalIDPConnectorType
+func (cfg *ConnectorConfigLocal) ConnectorType() string {
+	return ConnectorTypeLocal
 }
 
-func (cfg *LocalIDPConnectorConfig) Connector(ns url.URL, lf oidc.LoginFunc, tpls *template.Template) (IDPConnector, error) {
+func (cfg *ConnectorConfigLocal) Connector(ns url.URL, lf oidc.LoginFunc, tpls *template.Template) (IDPConnector, error) {
 	tpl := tpls.Lookup(LoginPageTemplateName)
 	if tpl == nil {
 		return nil, fmt.Errorf("unable to find necessary HTML template")

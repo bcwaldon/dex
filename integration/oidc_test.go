@@ -27,7 +27,7 @@ func TestHTTPExchangeToken(t *testing.T) {
 		Password: "bones",
 	}
 
-	cfg := connector.LocalIDPConnectorConfig{
+	cfg := connector.ConnectorConfigLocal{
 		Users: []connector.User{user},
 	}
 

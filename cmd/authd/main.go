@@ -18,8 +18,6 @@ import (
 	"time"
 
 	"github.com/coreos-inc/auth/connector"
-	connectorlocal "github.com/coreos-inc/auth/connector/local"
-	connectoroidc "github.com/coreos-inc/auth/connector/oidc"
 	"github.com/coreos-inc/auth/db"
 	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oauth2"
@@ -48,13 +46,7 @@ func main() {
 	fs.String("db-url", "", "DSN-formatted database connection string")
 	fs.Bool("no-db", false, "manage entities in-process w/o any encryption, used only for single-node testing")
 	fs.String("key-secret", "", "symmetric key used to encrypt/decrypt signing key data in DB")
-
-	fs.String("connector-type", "local", "IdP connector type to configure")
-	fs.String("connector-local-users", "./static/fixtures/users.json", "json file containing set of users")
-	fs.String("connector-id", "id", "unique id of the connector")
-	fs.String("connector-oidc-issuer-url", "https://accounts.google.com", "")
-	fs.String("connector-oidc-client-id", "", "")
-	fs.String("connector-oidc-client-secret", "", "")
+	fs.String("connectors", "./static/fixtures/connectors.json", "JSON file containg set of IDPC configs")
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		log.Fatalf(err.Error())
@@ -237,52 +229,48 @@ func newHTMLTemplatesFromFlags(fs *flag.FlagSet) (*template.Template, error) {
 	sa := fs.Lookup("html-assets").Value.String()
 	files := []string{
 		path.Join(sa, LoginPageTemplateName),
-		path.Join(sa, connectorlocal.LoginPageTemplateName),
+		path.Join(sa, connector.LoginPageTemplateName),
 	}
 	return template.ParseFiles(files...)
 }
 
 func newIDPConnectorsFromFlags(fs *flag.FlagSet, lf oidc.LoginFunc, tpls *template.Template) (map[string]connector.IDPConnector, error) {
-	issuer := fs.Lookup("issuer").Value.String()
-	ns, err := url.Parse(issuer)
+	issuer, err := url.Parse(fs.Lookup("issuer").Value.String())
 	if err != nil {
 		return nil, err
 	}
 
-	idpcID := fs.Lookup("connector-id").Value.String()
-	if idpcID == "" {
-		log.Fatalf("Missing --connector-id flag")
+	baseNS := *issuer
+	baseNS.Path = path.Join(baseNS.Path, server.HttpPathAuth)
+
+	cFile := fs.Lookup("connectors").Value.String()
+	if cFile == "" {
+		return nil, errors.New("missing --connectors flag")
+	}
+	cfgRepo, err := connector.NewConnectorConfigRepoFromFile(cFile)
+	if err != nil {
+		return nil, fmt.Errorf("unable to build config repo from file %s: %v", cFile, err)
+	}
+	cfgs, err := cfgRepo.All()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get connectors from file %s: %v", cFile, err)
 	}
 
-	ns.Path = path.Join(ns.Path, server.HttpPathAuth, strings.ToLower(idpcID))
-
-	var cfg connector.IDPConnectorConfig
-	switch fs.Lookup("connector-type").Value.String() {
-	case connectorlocal.LocalIDPConnectorType:
-		uFile := fs.Lookup("connector-local-users").Value.String()
-		users, err := connectorlocal.ReadUsersFromFile(uFile)
+	idpcs := make(map[string]connector.IDPConnector, len(cfgs))
+	for _, cfg := range cfgs {
+		idpcID := cfg.ConnectorID()
+		ns := baseNS
+		ns.Path = path.Join(ns.Path, strings.ToLower(idpcID))
+		idpc, err := cfg.Connector(ns, lf, tpls)
 		if err != nil {
 			return nil, err
 		}
-		cfg = &connectorlocal.LocalIDPConnectorConfig{
-			Users: users,
-		}
-	case connectoroidc.OIDCIDPConnectorType:
-		cfg = &connectoroidc.OIDCIDPConnectorConfig{
-			IssuerURL:    fs.Lookup("connector-oidc-issuer-url").Value.String(),
-			ClientID:     fs.Lookup("connector-oidc-client-id").Value.String(),
-			ClientSecret: fs.Lookup("connector-oidc-client-secret").Value.String(),
-		}
-	default:
-		return nil, errors.New("unrecognized --connector-type value")
+		idpcs[idpcID] = idpc
+
+		log.Printf("Loaded IdP connector: id=%s type=%s", idpcID, cfg.ConnectorType())
 	}
 
-	idpc, err := cfg.Connector(*ns, lf, tpls)
-	if err != nil {
-		return nil, err
-	}
-
-	return map[string]connector.IDPConnector{idpcID: idpc}, nil
+	return idpcs, nil
 }
 
 func newClientIdentityRepoFromReader(r io.Reader) (server.ClientIdentityRepo, error) {

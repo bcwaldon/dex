@@ -1,0 +1,27 @@
+[
+	{
+		"type": "local",
+		"id": "local",
+		"users": [
+			{
+				"id":"elroy77",
+				"name":"Elroy",
+				"email":"elroy@example.com",
+				"password": "bones"
+			},
+			{
+				"id":"penny",
+				"name":"Penny",
+				"email":"penny@example.com",
+				"password": "kibble"
+			}
+		]
+	},
+	{
+		"type": "oidc",
+		"id": "google",
+		"issuerURL": "https://accounts.google.com",
+		"clientID": "${CLIENT_ID}",
+		"clientSecret": "${CLIENT_SECRET}"
+	}
+]

@@ -5,8 +5,6 @@ mkdir -p deploy
 required=(
   ${AUTHD_OVERLORD_DB_URL:?"missing"}
   ${AUTHD_OVERLORD_KEY_SECRET:?"missing"}
-  ${AUTHD_OAUTH_CLIENT_ID:?"missing"}
-  ${AUTHD_OAUTH_CLIENT_SECRET:?"missing"}
   ${AUTHD_DB_URL:?"missing"}
   ${AUTHD_KEY_SECRET:?"missing"}
 )

@@ -14,8 +14,8 @@ COVER=${COVER:-"-cover"}
 
 source ./build
 
-TESTABLE="connector/oidc db integration jose jose/sig key oauth2 oidc pkg/crypto pkg/flag pkg/health pkg/http pkg/net pkg/time server session"
-FORMATTABLE="$TESTABLE cmd/authctl cmd/authd connector/local examples/app functional"
+TESTABLE="connector db integration jose jose/sig key oauth2 oidc pkg/crypto pkg/flag pkg/health pkg/http pkg/net pkg/time server session"
+FORMATTABLE="$TESTABLE cmd/authctl cmd/authd examples/app functional"
 
 # user has not provided PKG override
 if [ -z "$PKG" ]; then

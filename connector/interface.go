@@ -16,7 +16,12 @@ type IDPConnector interface {
 	Register(mux *http.ServeMux, errorURL url.URL)
 }
 
-type IDPConnectorConfig interface {
+type ConnectorConfig interface {
 	ConnectorID() string
+	ConnectorType() string
 	Connector(url.URL, oidc.LoginFunc, *template.Template) (IDPConnector, error)
+}
+
+type ConnectorConfigRepo interface {
+	All() ([]ConnectorConfig, error)
 }

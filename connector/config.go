@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-type NewConnectorConfigFunc func() IDPConnectorConfig
+type NewConnectorConfigFunc func() ConnectorConfig
 
 var (
 	ctypes map[string]NewConnectorConfigFunc
@@ -22,7 +22,7 @@ func RegisterConnectorConfigType(ctype string, fn NewConnectorConfigFunc) {
 	ctypes[ctype] = fn
 }
 
-func NewConnectorConfigFromType(ctype string) (IDPConnectorConfig, error) {
+func NewConnectorConfigFromType(ctype string) (ConnectorConfig, error) {
 	fn, ok := ctypes[ctype]
 	if !ok {
 		return nil, fmt.Errorf("unrecognized connector config type %q", ctype)

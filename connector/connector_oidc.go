@@ -18,7 +18,7 @@ const (
 )
 
 func init() {
-	RegisterConnectorConfigType(ConnectorTypeOIDC, func() IDPConnectorConfig { return &ConnectorConfigOIDC{} })
+	RegisterConnectorConfigType(ConnectorTypeOIDC, func() ConnectorConfig { return &ConnectorConfigOIDC{} })
 }
 
 type ConnectorConfigOIDC struct {

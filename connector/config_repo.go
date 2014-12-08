@@ -7,14 +7,14 @@ import (
 	"os"
 )
 
-func newIDPConnectorConfigsFromReader(r io.Reader) ([]IDPConnectorConfig, error) {
+func newConnectorConfigsFromReader(r io.Reader) ([]ConnectorConfig, error) {
 	var ms []map[string]interface{}
 	if err := json.NewDecoder(r).Decode(&ms); err != nil {
 		return nil, err
 	}
-	cfgs := make([]IDPConnectorConfig, len(ms))
+	cfgs := make([]ConnectorConfig, len(ms))
 	for i, m := range ms {
-		cfg, err := newIDPConnectorConfigFromMap(m)
+		cfg, err := newConnectorConfigFromMap(m)
 		if err != nil {
 			return nil, err
 		}
@@ -23,7 +23,7 @@ func newIDPConnectorConfigsFromReader(r io.Reader) ([]IDPConnectorConfig, error)
 	return cfgs, nil
 }
 
-func newIDPConnectorConfigFromMap(m map[string]interface{}) (IDPConnectorConfig, error) {
+func newConnectorConfigFromMap(m map[string]interface{}) (ConnectorConfig, error) {
 	ityp, ok := m["type"]
 	if !ok {
 		return nil, errors.New("connector config type not set")
@@ -46,25 +46,25 @@ func newIDPConnectorConfigFromMap(m map[string]interface{}) (IDPConnectorConfig,
 	return cfg, nil
 }
 
-func NewIDPConnectorConfigRepoFromFile(loc string) (IDPConnectorConfigRepo, error) {
+func NewConnectorConfigRepoFromFile(loc string) (ConnectorConfigRepo, error) {
 	cf, err := os.Open(loc)
 	if err != nil {
 		return nil, err
 	}
 	defer cf.Close()
 
-	cfgs, err := newIDPConnectorConfigsFromReader(cf)
+	cfgs, err := newConnectorConfigsFromReader(cf)
 	if err != nil {
 		return nil, err
 	}
 
-	return &memIDPConnectorConfigRepo{configs: cfgs}, nil
+	return &memConnectorConfigRepo{configs: cfgs}, nil
 }
 
-type memIDPConnectorConfigRepo struct {
-	configs []IDPConnectorConfig
+type memConnectorConfigRepo struct {
+	configs []ConnectorConfig
 }
 
-func (r *memIDPConnectorConfigRepo) All() ([]IDPConnectorConfig, error) {
+func (r *memConnectorConfigRepo) All() ([]ConnectorConfig, error) {
 	return r.configs, nil
 }

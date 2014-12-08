@@ -247,7 +247,7 @@ func newIDPConnectorsFromFlags(fs *flag.FlagSet, lf oidc.LoginFunc, tpls *templa
 	if cFile == "" {
 		return nil, errors.New("missing --connectors flag")
 	}
-	cfgRepo, err := connector.NewIDPConnectorConfigRepoFromFile(cFile)
+	cfgRepo, err := connector.NewConnectorConfigRepoFromFile(cFile)
 	if err != nil {
 		return nil, fmt.Errorf("unable to build config repo from file %s: %v", cFile, err)
 	}

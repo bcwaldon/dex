@@ -22,7 +22,7 @@ const (
 )
 
 func init() {
-	RegisterConnectorConfigType(ConnectorTypeLocal, func() IDPConnectorConfig { return &ConnectorConfigLocal{} })
+	RegisterConnectorConfigType(ConnectorTypeLocal, func() ConnectorConfig { return &ConnectorConfigLocal{} })
 }
 
 type ConnectorConfigLocal struct {

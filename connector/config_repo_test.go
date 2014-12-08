@@ -39,10 +39,10 @@ func TestNewConnectorConfigFromTypeUnrecognized(t *testing.T) {
 	}
 }
 
-func TestNewIDPConnectorConfigFromMap(t *testing.T) {
+func TestNewConnectorConfigFromMap(t *testing.T) {
 	tests := []struct {
 		m    map[string]interface{}
-		want IDPConnectorConfig
+		want ConnectorConfig
 	}{
 		{
 			m: map[string]interface{}{
@@ -79,7 +79,7 @@ func TestNewIDPConnectorConfigFromMap(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		got, err := newIDPConnectorConfigFromMap(tt.m)
+		got, err := newConnectorConfigFromMap(tt.m)
 		if err != nil {
 			t.Errorf("case %d: want nil error: %v", i, err)
 			continue
@@ -90,7 +90,7 @@ func TestNewIDPConnectorConfigFromMap(t *testing.T) {
 	}
 }
 
-func TestNewIDPConnectorConfigFromMapFail(t *testing.T) {
+func TestNewConnectorConfigFromMapFail(t *testing.T) {
 	tests := []map[string]interface{}{
 		// invalid local connector
 		map[string]interface{}{
@@ -110,7 +110,7 @@ func TestNewIDPConnectorConfigFromMapFail(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		_, err := newIDPConnectorConfigFromMap(tt)
+		_, err := newConnectorConfigFromMap(tt)
 		if err == nil {
 			t.Errorf("case %d: want non-nil error", i)
 		}

@@ -243,17 +243,25 @@ func newIDPConnectorsFromFlags(fs *flag.FlagSet, lf oidc.LoginFunc, tpls *templa
 	baseNS := *issuer
 	baseNS.Path = path.Join(baseNS.Path, server.HttpPathAuth)
 
-	cFile := fs.Lookup("connectors").Value.String()
-	if cFile == "" {
-		return nil, errors.New("missing --connectors flag")
-	}
-	cfgRepo, err := connector.NewConnectorConfigRepoFromFile(cFile)
+	cfgRepo, err := func() (connector.ConnectorConfigRepo, error) {
+		if useDB {
+			return db.NewConnectorConfigRepo(dbURLFlag)
+		} else {
+			cFile := fs.Lookup("connectors").Value.String()
+			if cFile == "" {
+				return nil, errors.New("missing --connectors flag")
+			}
+			return connector.NewConnectorConfigRepoFromFile(cFile)
+		}
+	}()
+
 	if err != nil {
-		return nil, fmt.Errorf("unable to build config repo from file %s: %v", cFile, err)
+		return nil, fmt.Errorf("unable to build connector config repo: %v", err)
 	}
+
 	cfgs, err := cfgRepo.All()
 	if err != nil {
-		return nil, fmt.Errorf("unable to get connectors from file %s: %v", cFile, err)
+		return nil, fmt.Errorf("unable to get connector configs from repo: %v", err)
 	}
 
 	idpcs := make(map[string]connector.IDPConnector, len(cfgs))

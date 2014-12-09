@@ -9,9 +9,13 @@ import (
 	ptime "github.com/coreos-inc/auth/pkg/time"
 )
 
-type purgeable struct {
-	name      string
-	purgeFunc func() error
+type purger interface {
+	purge() error
+}
+
+type namedPurger struct {
+	name string
+	purger
 }
 
 func NewGarbageCollector(dsn string, ival time.Duration) (*GarbageCollector, error) {
@@ -23,20 +27,28 @@ func NewGarbageCollector(dsn string, ival time.Duration) (*GarbageCollector, err
 	if err != nil {
 		return nil, err
 	}
+	cache, err := NewConnectorCache(dsn)
+	if err != nil {
+		return nil, err
+	}
 
-	repos := []purgeable{
-		purgeable{
-			name:      "session",
-			purgeFunc: sRepo.purge,
+	purgers := []namedPurger{
+		namedPurger{
+			name:   "session",
+			purger: sRepo,
 		},
-		purgeable{
-			name:      "sessionkey",
-			purgeFunc: skRepo.purge,
+		namedPurger{
+			name:   "sessionkey",
+			purger: skRepo,
+		},
+		namedPurger{
+			name:   "connectorcache",
+			purger: cache,
 		},
 	}
 
 	gc := GarbageCollector{
-		repos:    repos,
+		purgers:  purgers,
 		interval: ival,
 		clock:    clockwork.NewRealClock(),
 	}
@@ -45,7 +57,7 @@ func NewGarbageCollector(dsn string, ival time.Duration) (*GarbageCollector, err
 }
 
 type GarbageCollector struct {
-	repos    []purgeable
+	purgers  []namedPurger
 	interval time.Duration
 	clock    clockwork.Clock
 }
@@ -59,7 +71,7 @@ func (gc *GarbageCollector) Run() chan struct{} {
 		for {
 			select {
 			case <-gc.clock.After(next):
-				if anyPurgeErrors(purge(gc.repos)) {
+				if anyPurgeErrors(purgeAll(gc.purgers)) {
 					if !failing {
 						failing = true
 						next = time.Second
@@ -94,11 +106,11 @@ func anyPurgeErrors(errchan <-chan purgeError) (found bool) {
 	return
 }
 
-func purge(repos []purgeable) <-chan purgeError {
+func purgeAll(purgers []namedPurger) <-chan purgeError {
 	errchan := make(chan purgeError)
 	go func() {
-		for _, p := range repos {
-			if err := p.purgeFunc(); err != nil {
+		for _, p := range purgers {
+			if err := p.purge(); err != nil {
 				errchan <- purgeError{name: p.name, err: err}
 			}
 		}

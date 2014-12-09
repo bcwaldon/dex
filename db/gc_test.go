@@ -6,31 +6,33 @@ import (
 	"testing"
 )
 
-func pf(err error) func() error {
-	return func() error {
-		return err
-	}
+type staticPurger struct {
+	err error
 }
 
-func TestPurge(t *testing.T) {
+func (p staticPurger) purge() error {
+	return p.err
+}
+
+func TestPurgeAll(t *testing.T) {
 	tests := []struct {
-		pm   []purgeable
+		pm   []namedPurger
 		want []purgeError
 	}{
 		{
-			pm: []purgeable{
-				purgeable{
-					name:      "foo",
-					purgeFunc: pf(nil),
+			pm: []namedPurger{
+				namedPurger{
+					name:   "foo",
+					purger: staticPurger{err: nil},
 				},
 			},
 			want: []purgeError{},
 		},
 		{
-			pm: []purgeable{
-				purgeable{
-					name:      "foo",
-					purgeFunc: pf(errors.New("foo fail")),
+			pm: []namedPurger{
+				namedPurger{
+					name:   "foo",
+					purger: staticPurger{err: errors.New("foo fail")},
 				},
 			},
 			want: []purgeError{
@@ -39,22 +41,22 @@ func TestPurge(t *testing.T) {
 		},
 
 		{
-			pm: []purgeable{
-				purgeable{
-					name:      "foo",
-					purgeFunc: pf(nil),
+			pm: []namedPurger{
+				namedPurger{
+					name:   "foo",
+					purger: staticPurger{err: nil},
 				},
-				purgeable{
-					name:      "bar",
-					purgeFunc: pf(errors.New("bar fail")),
+				namedPurger{
+					name:   "bar",
+					purger: staticPurger{err: errors.New("bar fail")},
 				},
-				purgeable{
-					name:      "baz",
-					purgeFunc: pf(nil),
+				namedPurger{
+					name:   "baz",
+					purger: staticPurger{err: nil},
 				},
-				purgeable{
-					name:      "fum",
-					purgeFunc: pf(errors.New("fum fail")),
+				namedPurger{
+					name:   "fum",
+					purger: staticPurger{err: errors.New("fum fail")},
 				},
 			},
 			want: []purgeError{
@@ -66,7 +68,7 @@ func TestPurge(t *testing.T) {
 
 	for i, tt := range tests {
 		got := make([]purgeError, 0)
-		for perr := range purge(tt.pm) {
+		for perr := range purgeAll(tt.pm) {
 			got = append(got, perr)
 		}
 		if !reflect.DeepEqual(tt.want, got) {

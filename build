@@ -12,4 +12,5 @@ eval $(go env)
 go build -o bin/authd github.com/coreos-inc/auth/cmd/authd
 go build -o bin/authctl github.com/coreos-inc/auth/cmd/authctl
 go build -o bin/authd-overlord github.com/coreos-inc/auth/cmd/authd-overlord
-go build -o bin/oidc-app github.com/coreos-inc/auth/examples/app
+go build -o bin/example-app github.com/coreos-inc/auth/examples/app
+go build -o bin/example-cli github.com/coreos-inc/auth/examples/cli

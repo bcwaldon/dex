@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/coreos-inc/auth/oauth2"
 	phttp "github.com/coreos-inc/auth/pkg/http"
 	pnet "github.com/coreos-inc/auth/pkg/net"
 	ptime "github.com/coreos-inc/auth/pkg/time"
@@ -30,6 +31,24 @@ type ProviderConfig struct {
 	IDTokenAlgValuesSupported         []string  `json:"id_token_alg_values_supported"`
 	TokenEndpointAuthMethodsSupported []string  `json:"token_endpoint_auth_methods_supported"`
 	ExpiresAt                         time.Time `json:"-"`
+}
+
+func (p ProviderConfig) SupportsGrantType(grantType string) bool {
+	var supported []string
+	if len(p.GrantTypesSupported) == 0 {
+		// If omitted, the default value is ["authorization_code", "implicit"].
+		// http://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata
+		supported = []string{oauth2.GrantTypeAuthCode, oauth2.GrantTypeImplicit}
+	} else {
+		supported = p.GrantTypesSupported
+	}
+
+	for _, t := range supported {
+		if t == grantType {
+			return true
+		}
+	}
+	return false
 }
 
 type ProviderConfigGetter interface {

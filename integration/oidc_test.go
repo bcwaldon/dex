@@ -122,6 +122,81 @@ func TestHTTPExchangeToken(t *testing.T) {
 	}
 }
 
+func TestHTTPClientCredsToken(t *testing.T) {
+	ci := oauth2.ClientIdentity{
+		ID:     "72de74a9",
+		Secret: "XXX",
+	}
+	cir := server.NewClientIdentityRepo([]oauth2.ClientIdentity{ci})
+	issuerURL := "http://server.example.com"
+
+	k, err := key.GeneratePrivateRSAKey()
+	if err != nil {
+		t.Fatalf("Unable to generate RSA key: %v", err)
+	}
+
+	km := key.NewPrivateKeyManager()
+	err = km.Set(key.NewPrivateKeySet([]key.PrivateKey{k}, time.Now().Add(time.Minute)))
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	sm := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())
+	srv := &server.Server{
+		IssuerURL:          issuerURL,
+		KeyManager:         km,
+		ClientIdentityRepo: cir,
+		SessionManager:     sm,
+	}
+
+	ns, _ := url.Parse(issuerURL)
+	ns.Path = path.Join(ns.Path, server.HttpPathAuth)
+
+	idpcs := map[string]connector.IDPConnector{}
+	hdlr := srv.HTTPHandler(idpcs, []health.Checkable{})
+	sClient := &phttp.HandlerClient{Handler: hdlr}
+
+	cfg, err := oidc.FetchProviderConfig(sClient, issuerURL)
+	if err != nil {
+		t.Fatalf("Failed to fetch provider config: %v", err)
+	}
+
+	cl := &oidc.Client{
+		HTTPClient:     sClient,
+		ProviderConfig: cfg,
+		ClientIdentity: ci,
+		Keys: []key.PublicKey{
+			key.NewPublicKey(k.JWK()),
+		},
+	}
+
+	tok, err := cl.ClientCredsToken([]string{"openid"})
+	if err != nil {
+		t.Fatalf("Failed getting client token: %v", err)
+	}
+
+	claims, err := tok.Claims()
+	if err != nil {
+		t.Fatalf("Failed parsing claims from client token: %v", err)
+	}
+
+	if aud := claims["aud"].(string); aud != ci.ID {
+		t.Fatalf("unexpected claim value for aud, got=%v, want=%v", aud, ci.ID)
+	}
+
+	if sub := claims["sub"].(string); sub != ci.ID {
+		t.Fatalf("unexpected claim value for sub, got=%v, want=%v", sub, ci.ID)
+	}
+
+	if name := claims["name"].(string); name != ci.ID {
+		t.Fatalf("unexpected claim value for name, got=%v, want=%v", name, ci.ID)
+	}
+
+	if iss := claims["iss"].(string); iss != issuerURL {
+		t.Fatalf("unexpected claim value for iss, got=%v, want=%v", iss, issuerURL)
+	}
+}
+
 func handleCallbackFunc(c *oidc.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		code := r.URL.Query().Get("code")

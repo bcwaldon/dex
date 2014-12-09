@@ -40,7 +40,7 @@ Given this requirement, the client_id and client_secret fields of the request ar
 
 Refresh tokens are never generated and returned.
 
-Given that the authorization endpoint only supports authorization codes and refresh tokens are never generated, the only supported value of grant_type is "authorization_code".
+Given that the authorization endpoint only supports authorization codes and refresh tokens are never generated, the only supported values of grant_type are "authorization_code" and "client_credentials".
 
 A failed request MUST yield an error field (RFC 6749 Section 5.2), yet authd does not properly implement this (https://github.com/coreos-inc/auth/issues/29). 
 

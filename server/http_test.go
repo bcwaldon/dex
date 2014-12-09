@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -185,6 +186,33 @@ func TestHandleTokenFuncMethodNotAllowed(t *testing.T) {
 	}
 }
 
+func TestHandleTokenFuncState(t *testing.T) {
+	want := "test-state"
+	v := url.Values{
+		"state": {want},
+	}
+	hdlr := handleTokenFunc(nil)
+	req, err := http.NewRequest("POST", "http://example.com", strings.NewReader(v.Encode()))
+	if err != nil {
+		t.Errorf("unable to create HTTP request, error=%v", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	w := httptest.NewRecorder()
+	hdlr.ServeHTTP(w, req)
+
+	// should have errored and returned state in the response body
+	var resp map[string]string
+	if err = json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Errorf("error unmarshaling response, error=%v", err)
+	}
+
+	got := resp["state"]
+	if want != got {
+		t.Errorf("unexpected state, want=%v, got=%v", want, got)
+	}
+}
+
 func TestHandleDiscoveryFuncMethodNotAllowed(t *testing.T) {
 	for _, m := range []string{"POST", "PUT", "DELETE"} {
 		hdlr := handleDiscoveryFunc(oidc.ProviderConfig{})
@@ -213,7 +241,7 @@ func TestHandleDiscoveryFunc(t *testing.T) {
 		TokenEndpoint: u + httpPathToken,
 		KeysEndpoint:  u + httpPathKeys,
 
-		GrantTypesSupported:               []string{"authorization_code"},
+		GrantTypesSupported:               []string{oauth2.GrantTypeAuthCode},
 		ResponseTypesSupported:            []string{"code"},
 		SubjectTypesSupported:             []string{"public"},
 		IDTokenAlgValuesSupported:         []string{"RS256"},

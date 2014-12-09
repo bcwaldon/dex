@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/jonboulle/clockwork"
 
@@ -23,7 +24,8 @@ type OIDCServer interface {
 	Client(string) (*oauth2.ClientIdentity, error)
 	NewSession(clientID, clientState string, redirectURL url.URL) (string, error)
 	Login(oidc.Identity, string) (string, error)
-	Token(clientID, clientState, code string) (*jose.JWT, error)
+	CodeToken(clientID, clientState, code string) (*jose.JWT, error)
+	ClientCredsToken(clientID, clientState string) (*jose.JWT, error)
 	KillSession(string) error
 }
 
@@ -53,7 +55,7 @@ func (s *Server) ProviderConfig() oidc.ProviderConfig {
 		TokenEndpoint: s.IssuerURL + httpPathToken,
 		KeysEndpoint:  s.IssuerURL + httpPathKeys,
 
-		GrantTypesSupported:               []string{"authorization_code"},
+		GrantTypesSupported:               []string{oauth2.GrantTypeAuthCode, oauth2.GrantTypeClientCreds},
 		ResponseTypesSupported:            []string{"code"},
 		SubjectTypesSupported:             []string{"public"},
 		IDTokenAlgValuesSupported:         []string{"RS256"},
@@ -125,7 +127,39 @@ func (s *Server) Login(ident oidc.Identity, key string) (string, error) {
 	return ru.String(), nil
 }
 
-func (s *Server) Token(clientID, clientSecret, key string) (*jose.JWT, error) {
+func (s *Server) ClientCredsToken(clientID, clientSecret string) (*jose.JWT, error) {
+	ci, err := s.Client(clientID)
+	if err != nil {
+		log.Printf("Failed fetching client %s from repo: %v", clientID, err)
+		return nil, oauth2.NewError(oauth2.ErrorServerError)
+	}
+	if ci == nil || ci.Secret != clientSecret {
+		return nil, oauth2.NewError(oauth2.ErrorInvalidClient)
+	}
+
+	signer, err := s.KeyManager.Signer()
+	if err != nil {
+		log.Printf("Failed to generate ID token: %v", err)
+		return nil, oauth2.NewError(oauth2.ErrorServerError)
+	}
+
+	now := time.Now()
+	exp := now.Add(s.SessionManager.ValidityWindow)
+	claims := oidc.NewClaims(s.IssuerURL, clientID, clientID, now, exp)
+	claims.Add("name", clientID)
+
+	jwt, err := josesig.NewSignedJWT(claims, signer)
+	if err != nil {
+		log.Printf("Failed to generate ID token: %v", err)
+		return nil, oauth2.NewError(oauth2.ErrorServerError)
+	}
+
+	log.Printf("Client token sent: clientID=%s", clientID)
+
+	return jwt, nil
+}
+
+func (s *Server) CodeToken(clientID, clientSecret, key string) (*jose.JWT, error) {
 	ci, err := s.Client(clientID)
 	if err != nil {
 		log.Printf("Failed fetching client %s from repo: %v", clientID, err)

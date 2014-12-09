@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"time"
 
 	"github.com/jonboulle/clockwork"
 
@@ -27,18 +28,20 @@ func DefaultGenerateCode() (string, error) {
 
 func NewSessionManager(sRepo SessionRepo, skRepo SessionKeyRepo) *SessionManager {
 	return &SessionManager{
-		GenerateCode: DefaultGenerateCode,
-		Clock:        clockwork.NewRealClock(),
-		sessions:     sRepo,
-		keys:         skRepo,
+		GenerateCode:   DefaultGenerateCode,
+		Clock:          clockwork.NewRealClock(),
+		ValidityWindow: defaultSessionValidityWindow,
+		sessions:       sRepo,
+		keys:           skRepo,
 	}
 }
 
 type SessionManager struct {
-	GenerateCode GenerateCodeFunc
-	Clock        clockwork.Clock
-	sessions     SessionRepo
-	keys         SessionKeyRepo
+	GenerateCode   GenerateCodeFunc
+	Clock          clockwork.Clock
+	ValidityWindow time.Duration
+	sessions       SessionRepo
+	keys           SessionKeyRepo
 }
 
 func (m *SessionManager) NewSession(clientID, clientState string, redirectURL url.URL) (string, error) {
@@ -52,7 +55,7 @@ func (m *SessionManager) NewSession(clientID, clientState string, redirectURL ur
 		ID:          sID,
 		State:       SessionStateNew,
 		CreatedAt:   now,
-		ExpiresAt:   now.Add(sessionValidityWindow),
+		ExpiresAt:   now.Add(m.ValidityWindow),
 		ClientID:    clientID,
 		ClientState: clientState,
 		RedirectURL: redirectURL,

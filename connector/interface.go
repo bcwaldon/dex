@@ -4,6 +4,7 @@ import (
 	"html/template"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/coreos-inc/auth/oidc"
 	"github.com/coreos-inc/auth/pkg/health"
@@ -24,4 +25,8 @@ type ConnectorConfig interface {
 
 type ConnectorConfigRepo interface {
 	All() ([]ConnectorConfig, error)
+}
+
+type WritableConnectorCache interface {
+	Write(string, string, interface{}, time.Time) error
 }

@@ -14,6 +14,7 @@ import (
 type PublicKey interface {
 	ID() string
 	Verifier() (josesig.Verifier, error)
+	JWK() jose.JWK
 }
 
 type publicRSAKey struct {
@@ -22,6 +23,10 @@ type publicRSAKey struct {
 
 func (k *publicRSAKey) ID() string {
 	return k.jwk.ID
+}
+
+func (k *publicRSAKey) JWK() jose.JWK {
+	return k.jwk
 }
 
 func (k *publicRSAKey) Verifier() (josesig.Verifier, error) {
@@ -60,6 +65,7 @@ func (k *PrivateRSAKey) JWK() jose.JWK {
 
 type KeySet interface {
 	ExpiresAt() time.Time
+	JWKs() []jose.JWK
 }
 
 type PublicKeySet struct {
@@ -88,6 +94,14 @@ func (s *PublicKeySet) ExpiresAt() time.Time {
 
 func (s *PublicKeySet) Keys() []PublicKey {
 	return s.keys
+}
+
+func (s *PublicKeySet) JWKs() []jose.JWK {
+	jwks := make([]jose.JWK, len(s.keys))
+	for i, k := range s.keys {
+		jwks[i] = k.JWK()
+	}
+	return jwks
 }
 
 type PrivateKeySet struct {
@@ -120,6 +134,14 @@ func (s *PrivateKeySet) Active() PrivateKey {
 	}
 
 	return nil
+}
+
+func (s *PrivateKeySet) JWKs() []jose.JWK {
+	jwks := make([]jose.JWK, len(s.keys))
+	for i, k := range s.keys {
+		jwks[i] = k.JWK()
+	}
+	return jwks
 }
 
 type GeneratePrivateRSAKeyFunc func() (*PrivateRSAKey, error)

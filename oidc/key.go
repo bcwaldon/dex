@@ -11,7 +11,7 @@ import (
 	phttp "github.com/coreos-inc/auth/pkg/http"
 )
 
-func newRemotePublicKeyRepo(hc phttp.Client, ep string) *remotePublicKeyRepo {
+func NewRemotePublicKeyRepo(hc phttp.Client, ep string) *remotePublicKeyRepo {
 	return &remotePublicKeyRepo{hc: hc, ep: ep}
 }
 

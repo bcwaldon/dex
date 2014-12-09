@@ -72,7 +72,7 @@ func (c *Client) SyncProviderConfig() chan struct{} {
 }
 
 func (c *Client) SyncKeys() chan struct{} {
-	r := newRemotePublicKeyRepo(c.getHTTPClient(), c.ProviderConfig.KeysEndpoint)
+	r := NewRemotePublicKeyRepo(c.getHTTPClient(), c.ProviderConfig.KeysEndpoint)
 	w := &clientKeyRepo{client: c}
 	return key.NewKeySetSyncer(r, w).Run()
 }

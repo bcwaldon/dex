@@ -2,9 +2,12 @@ package db
 
 import (
 	"encoding/json"
+	"fmt"
+	"log"
 	"time"
 
 	"github.com/coopernurse/gorp"
+	"github.com/lib/pq"
 )
 
 const (
@@ -69,4 +72,24 @@ func (r *connectorCache) Write(cID, key string, val interface{}, exp time.Time) 
 	}
 
 	return r.dbMap.Insert(m)
+}
+
+func (r *connectorCache) purge() error {
+	qt := pq.QuoteIdentifier(connectorCacheTableName)
+	q := fmt.Sprintf("DELETE FROM %s WHERE expiresAt < $1", qt)
+	res, err := r.dbMap.Exec(q, time.Now().UTC())
+	if err != nil {
+		return err
+	}
+
+	d := "unknown # of"
+	if n, err := res.RowsAffected(); err == nil {
+		if n == 0 {
+			return nil
+		}
+		d = fmt.Sprintf("%d", n)
+	}
+
+	log.Printf("Deleted %s stale row(s) from %s table", d, connectorCacheTableName)
+	return nil
 }

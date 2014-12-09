@@ -27,6 +27,10 @@ func NewGarbageCollector(dsn string, ival time.Duration) (*GarbageCollector, err
 	if err != nil {
 		return nil, err
 	}
+	cache, err := NewConnectorCache(dsn)
+	if err != nil {
+		return nil, err
+	}
 
 	purgers := []namedPurger{
 		namedPurger{
@@ -36,6 +40,10 @@ func NewGarbageCollector(dsn string, ival time.Duration) (*GarbageCollector, err
 		namedPurger{
 			name:   "sessionkey",
 			purger: skRepo,
+		},
+		namedPurger{
+			name:   "connectorcache",
+			purger: cache,
 		},
 	}
 

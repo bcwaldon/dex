@@ -22,7 +22,7 @@ func main() {
 		log.Fatalf(err.Error())
 	}
 
-	if err := pflag.SetFlagsFromEnv(fs, "AUTHD_ROTATOR"); err != nil {
+	if err := pflag.SetFlagsFromEnv(fs, "AUTHD_OVERLORD"); err != nil {
 		log.Fatalf(err.Error())
 	}
 

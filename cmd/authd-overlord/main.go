@@ -2,16 +2,12 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"time"
 
-	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/db"
 	"github.com/coreos-inc/auth/key"
-	"github.com/coreos-inc/auth/oidc"
 	pflag "github.com/coreos-inc/auth/pkg/flag"
 )
 
@@ -46,73 +42,6 @@ func main() {
 		log.Fatalf(err.Error())
 	}
 
-	cache, err := db.NewConnectorCache(*dbURL)
-	if err != nil {
-		log.Fatalf(err.Error())
-	}
-
-	cfgRepo, err := db.NewConnectorConfigRepo(*dbURL)
-	if err != nil {
-		log.Fatalf(err.Error())
-	}
-
-	cfgs, err := cfgRepo.All()
-	if err != nil {
-		log.Fatalf(err.Error())
-	}
-
-	for _, cfg := range cfgs {
-		if cfg.ConnectorType() != connector.ConnectorTypeOIDC {
-			continue
-		}
-
-		ocfg, ok := cfg.(*connector.ConnectorConfigOIDC)
-		if !ok {
-			log.Fatalf("Unable to cast OIDC connector config to proper type")
-		}
-
-		startOIDCSync(ocfg, cache)
-	}
-
 	gc.Run()
 	<-krot.Run()
-}
-
-func startOIDCSync(cfg *connector.ConnectorConfigOIDC, cache connector.WritableConnectorCache) error {
-	pcfg, err := oidc.FetchProviderConfig(http.DefaultClient, cfg.IssuerURL)
-	if err != nil {
-		return fmt.Errorf("unable to fetch provider config: %v", err)
-	}
-
-	idc := identifiedConnectorCache{cID: cfg.ConnectorID(), cache: cache}
-
-	pr := oidc.NewHTTPProviderConfigGetter(http.DefaultClient, cfg.IssuerURL)
-	pw := providerConfigRepo(idc)
-	psync := oidc.NewProviderConfigSyncer(pr, &pw)
-
-	kr := oidc.NewRemotePublicKeyRepo(http.DefaultClient, pcfg.KeysEndpoint)
-	kw := publicKeySetRepo(idc)
-	ksync := key.NewKeySetSyncer(kr, &kw)
-
-	psync.Run()
-	ksync.Run()
-
-	return nil
-}
-
-type identifiedConnectorCache struct {
-	cID   string
-	cache connector.WritableConnectorCache
-}
-
-type publicKeySetRepo identifiedConnectorCache
-
-func (r *publicKeySetRepo) Set(ks key.KeySet) error {
-	return r.cache.Write(r.cID, "remoteJWKs", ks.JWKs(), ks.ExpiresAt())
-}
-
-type providerConfigRepo identifiedConnectorCache
-
-func (r *providerConfigRepo) Set(pcfg oidc.ProviderConfig) error {
-	return r.cache.Write(r.cID, "providerConfig", &pcfg, pcfg.ExpiresAt)
 }

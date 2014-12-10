@@ -69,10 +69,6 @@ type Page struct {
 	Message string
 }
 
-func (c *LocalConnector) DisplayType() string {
-	return "Local"
-}
-
 func (c *LocalConnector) Healthy() error {
 	return nil
 }

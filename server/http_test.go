@@ -32,10 +32,6 @@ func (f *fakeConnector) Healthy() error {
 	return nil
 }
 
-func (f *fakeConnector) DisplayType() string {
-	return "Fake"
-}
-
 func (f *fakeConnector) LoginURL(sessionKey, prompt string) (string, error) {
 	return f.loginURL, nil
 }

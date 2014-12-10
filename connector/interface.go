@@ -12,7 +12,6 @@ import (
 
 type Connector interface {
 	health.Checkable
-	DisplayType() string
 	LoginURL(sessionKey, prompt string) (string, error)
 	Register(mux *http.ServeMux, errorURL url.URL)
 }

@@ -72,10 +72,6 @@ func (cfg *OIDCConnectorConfig) Connector(ns url.URL, lf oidc.LoginFunc, tpls *t
 	return idpc, nil
 }
 
-func (c *OIDCConnector) DisplayType() string {
-	return "OIDC"
-}
-
 func (c *OIDCConnector) Healthy() error {
 	return c.client.Healthy()
 }

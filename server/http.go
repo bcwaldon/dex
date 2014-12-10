@@ -97,9 +97,8 @@ type templateData struct {
 	Instruction string
 	Detail      string
 	Links       []struct {
-		DisplayType string
-		URL         string
-		ID          string
+		URL string
+		ID  string
 	}
 }
 
@@ -156,15 +155,13 @@ func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idp
 	}
 
 	td.Links = make([]struct {
-		DisplayType string
-		URL         string
-		ID          string
+		URL string
+		ID  string
 	}, len(idpcs))
 
 	n := 0
-	for id, c := range idpcs {
+	for id := range idpcs {
 		td.Links[n].ID = id
-		td.Links[n].DisplayType = c.DisplayType()
 
 		v := r.URL.Query()
 		v.Set("idpc_id", id)

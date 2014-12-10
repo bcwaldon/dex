@@ -38,6 +38,10 @@ func (f *fakeConnector) LoginURL(sessionKey, prompt string) (string, error) {
 
 func (f *fakeConnector) Register(mux *http.ServeMux, errorURL url.URL) {}
 
+func (f *fakeConnector) Sync() chan struct{} {
+	return nil
+}
+
 func TestHandleAuthFuncMethodNotAllowed(t *testing.T) {
 	for _, m := range []string{"POST", "PUT", "DELETE"} {
 		hdlr := handleAuthFunc(nil, nil, nil)

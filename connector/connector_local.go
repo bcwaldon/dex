@@ -87,6 +87,10 @@ func (c *LocalConnector) Register(mux *http.ServeMux, errorURL url.URL) {
 	mux.Handle(route, handleLoginFunc(c.loginFunc, c.loginTpl, c.idp, route, errorURL))
 }
 
+func (c *LocalConnector) Sync() chan struct{} {
+	return make(chan struct{})
+}
+
 func redirectPostError(w http.ResponseWriter, errorURL url.URL, q url.Values) {
 	redirectURL := phttp.MergeQuery(errorURL, q)
 	w.Header().Set("Location", redirectURL.String())

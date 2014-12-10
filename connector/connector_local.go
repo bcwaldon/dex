@@ -22,23 +22,23 @@ const (
 )
 
 func init() {
-	RegisterConnectorConfigType(ConnectorTypeLocal, func() ConnectorConfig { return &ConnectorConfigLocal{} })
+	RegisterConnectorConfigType(ConnectorTypeLocal, func() ConnectorConfig { return &LocalConnectorConfig{} })
 }
 
-type ConnectorConfigLocal struct {
+type LocalConnectorConfig struct {
 	ID    string      `json:"id"`
 	Users []LocalUser `json:"users"`
 }
 
-func (cfg *ConnectorConfigLocal) ConnectorID() string {
+func (cfg *LocalConnectorConfig) ConnectorID() string {
 	return cfg.ID
 }
 
-func (cfg *ConnectorConfigLocal) ConnectorType() string {
+func (cfg *LocalConnectorConfig) ConnectorType() string {
 	return ConnectorTypeLocal
 }
 
-func (cfg *ConnectorConfigLocal) Connector(ns url.URL, lf oidc.LoginFunc, tpls *template.Template) (Connector, error) {
+func (cfg *LocalConnectorConfig) Connector(ns url.URL, lf oidc.LoginFunc, tpls *template.Template) (Connector, error) {
 	tpl := tpls.Lookup(LoginPageTemplateName)
 	if tpl == nil {
 		return nil, fmt.Errorf("unable to find necessary HTML template")

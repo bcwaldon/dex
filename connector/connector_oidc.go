@@ -13,11 +13,11 @@ import (
 )
 
 const (
-	ConnectorTypeOIDC = "oidc"
+	OIDCConnectorType = "oidc"
 )
 
 func init() {
-	RegisterConnectorConfigType(ConnectorTypeOIDC, func() ConnectorConfig { return &OIDCConnectorConfig{} })
+	RegisterConnectorConfigType(OIDCConnectorType, func() ConnectorConfig { return &OIDCConnectorConfig{} })
 }
 
 type OIDCConnectorConfig struct {
@@ -32,7 +32,7 @@ func (cfg *OIDCConnectorConfig) ConnectorID() string {
 }
 
 func (cfg *OIDCConnectorConfig) ConnectorType() string {
-	return ConnectorTypeOIDC
+	return OIDCConnectorType
 }
 
 type OIDCConnector struct {

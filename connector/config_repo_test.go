@@ -15,7 +15,7 @@ func TestNewConnectorConfigFromType(t *testing.T) {
 			want: &LocalConnectorConfig{},
 		},
 		{
-			typ:  ConnectorTypeOIDC,
+			typ:  OIDCConnectorType,
 			want: &OIDCConnectorConfig{},
 		},
 	}

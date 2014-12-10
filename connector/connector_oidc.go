@@ -18,21 +18,21 @@ const (
 )
 
 func init() {
-	RegisterConnectorConfigType(ConnectorTypeOIDC, func() ConnectorConfig { return &ConnectorConfigOIDC{} })
+	RegisterConnectorConfigType(ConnectorTypeOIDC, func() ConnectorConfig { return &OIDCConnectorConfig{} })
 }
 
-type ConnectorConfigOIDC struct {
+type OIDCConnectorConfig struct {
 	ID           string `json:"id"`
 	IssuerURL    string `json:"issuerURL"`
 	ClientID     string `json:"clientID"`
 	ClientSecret string `json:"clientSecret"`
 }
 
-func (cfg *ConnectorConfigOIDC) ConnectorID() string {
+func (cfg *OIDCConnectorConfig) ConnectorID() string {
 	return cfg.ID
 }
 
-func (cfg *ConnectorConfigOIDC) ConnectorType() string {
+func (cfg *OIDCConnectorConfig) ConnectorType() string {
 	return ConnectorTypeOIDC
 }
 
@@ -42,7 +42,7 @@ type OIDCConnector struct {
 	loginFunc oidc.LoginFunc
 }
 
-func (cfg *ConnectorConfigOIDC) Connector(ns url.URL, lf oidc.LoginFunc, tpls *template.Template) (Connector, error) {
+func (cfg *OIDCConnectorConfig) Connector(ns url.URL, lf oidc.LoginFunc, tpls *template.Template) (Connector, error) {
 	ci := oauth2.ClientIdentity{
 		ID:     cfg.ClientID,
 		Secret: cfg.ClientSecret,

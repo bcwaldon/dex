@@ -16,7 +16,7 @@ func TestNewConnectorConfigFromType(t *testing.T) {
 		},
 		{
 			typ:  ConnectorTypeOIDC,
-			want: &ConnectorConfigOIDC{},
+			want: &OIDCConnectorConfig{},
 		},
 	}
 
@@ -69,7 +69,7 @@ func TestNewConnectorConfigFromMap(t *testing.T) {
 				"clientID":     "client123",
 				"clientSecret": "whaaaaa",
 			},
-			want: &ConnectorConfigOIDC{
+			want: &OIDCConnectorConfig{
 				ID:           "bar",
 				IssuerURL:    "http://example.com",
 				ClientID:     "client123",

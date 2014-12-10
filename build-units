@@ -5,14 +5,14 @@ mkdir -p deploy
 required=(
   ${AUTHD_OVERLORD_DB_URL:?"missing"}
   ${AUTHD_OVERLORD_KEY_SECRET:?"missing"}
-  ${AUTHD_DB_URL:?"missing"}
-  ${AUTHD_KEY_SECRET:?"missing"}
+  ${AUTHD_WORKER_DB_URL:?"missing"}
+  ${AUTHD_WORKER_KEY_SECRET:?"missing"}
 )
 
 eval "cat <<EOF
-$(<static/authd.service.tmpl)
+$(<static/authd-worker.service.tmpl)
 EOF
-" 1> deploy/authd.service
+" 1> deploy/authd-worker.service
 
 eval "cat <<EOF
 $(<static/authd-overlord.service.tmpl)

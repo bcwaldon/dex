@@ -18,31 +18,31 @@ const (
 )
 
 func init() {
-	RegisterConnectorConfigType(ConnectorTypeOIDC, func() ConnectorConfig { return &ConnectorConfigOIDC{} })
+	RegisterConnectorConfigType(ConnectorTypeOIDC, func() ConnectorConfig { return &OIDCConnectorConfig{} })
 }
 
-type ConnectorConfigOIDC struct {
+type OIDCConnectorConfig struct {
 	ID           string `json:"id"`
 	IssuerURL    string `json:"issuerURL"`
 	ClientID     string `json:"clientID"`
 	ClientSecret string `json:"clientSecret"`
 }
 
-func (cfg *ConnectorConfigOIDC) ConnectorID() string {
+func (cfg *OIDCConnectorConfig) ConnectorID() string {
 	return cfg.ID
 }
 
-func (cfg *ConnectorConfigOIDC) ConnectorType() string {
+func (cfg *OIDCConnectorConfig) ConnectorType() string {
 	return ConnectorTypeOIDC
 }
 
-type OIDCIDPConnector struct {
+type OIDCConnector struct {
 	client    *oidc.Client
 	namespace url.URL
 	loginFunc oidc.LoginFunc
 }
 
-func (cfg *ConnectorConfigOIDC) Connector(ns url.URL, lf oidc.LoginFunc, tpls *template.Template) (IDPConnector, error) {
+func (cfg *OIDCConnectorConfig) Connector(ns url.URL, lf oidc.LoginFunc, tpls *template.Template) (Connector, error) {
 	ci := oauth2.ClientIdentity{
 		ID:     cfg.ClientID,
 		Secret: cfg.ClientSecret,
@@ -63,7 +63,7 @@ func (cfg *ConnectorConfigOIDC) Connector(ns url.URL, lf oidc.LoginFunc, tpls *t
 
 	c.SyncKeys()
 
-	idpc := &OIDCIDPConnector{
+	idpc := &OIDCConnector{
 		client:    c,
 		namespace: ns,
 		loginFunc: lf,
@@ -72,15 +72,15 @@ func (cfg *ConnectorConfigOIDC) Connector(ns url.URL, lf oidc.LoginFunc, tpls *t
 	return idpc, nil
 }
 
-func (c *OIDCIDPConnector) DisplayType() string {
+func (c *OIDCConnector) DisplayType() string {
 	return "OIDC"
 }
 
-func (c *OIDCIDPConnector) Healthy() error {
+func (c *OIDCConnector) Healthy() error {
 	return c.client.Healthy()
 }
 
-func (c *OIDCIDPConnector) LoginURL(sessionKey, prompt string) (string, error) {
+func (c *OIDCConnector) LoginURL(sessionKey, prompt string) (string, error) {
 	oac, err := c.client.OAuthClient()
 	if err != nil {
 		return "", err
@@ -89,7 +89,7 @@ func (c *OIDCIDPConnector) LoginURL(sessionKey, prompt string) (string, error) {
 	return oac.AuthCodeURL(sessionKey, "", prompt), nil
 }
 
-func (c *OIDCIDPConnector) Register(mux *http.ServeMux, errorURL url.URL) {
+func (c *OIDCConnector) Register(mux *http.ServeMux, errorURL url.URL) {
 	mux.Handle(c.namespace.Path+"/callback", handleCallbackFunc(c.loginFunc, c.client, errorURL))
 }
 

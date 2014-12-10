@@ -12,11 +12,11 @@ func TestNewConnectorConfigFromType(t *testing.T) {
 	}{
 		{
 			typ:  ConnectorTypeLocal,
-			want: &ConnectorConfigLocal{},
+			want: &LocalConnectorConfig{},
 		},
 		{
 			typ:  ConnectorTypeOIDC,
-			want: &ConnectorConfigOIDC{},
+			want: &OIDCConnectorConfig{},
 		},
 	}
 
@@ -53,7 +53,7 @@ func TestNewConnectorConfigFromMap(t *testing.T) {
 					{"id": "271", "name": "pong"},
 				},
 			},
-			want: &ConnectorConfigLocal{
+			want: &LocalConnectorConfig{
 				ID: "foo",
 				Users: []LocalUser{
 					LocalUser{ID: "abc", Name: "ping"},
@@ -69,7 +69,7 @@ func TestNewConnectorConfigFromMap(t *testing.T) {
 				"clientID":     "client123",
 				"clientSecret": "whaaaaa",
 			},
-			want: &ConnectorConfigOIDC{
+			want: &OIDCConnectorConfig{
 				ID:           "bar",
 				IssuerURL:    "http://example.com",
 				ClientID:     "client123",

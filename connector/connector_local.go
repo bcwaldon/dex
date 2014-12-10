@@ -22,30 +22,30 @@ const (
 )
 
 func init() {
-	RegisterConnectorConfigType(ConnectorTypeLocal, func() ConnectorConfig { return &ConnectorConfigLocal{} })
+	RegisterConnectorConfigType(ConnectorTypeLocal, func() ConnectorConfig { return &LocalConnectorConfig{} })
 }
 
-type ConnectorConfigLocal struct {
+type LocalConnectorConfig struct {
 	ID    string      `json:"id"`
 	Users []LocalUser `json:"users"`
 }
 
-func (cfg *ConnectorConfigLocal) ConnectorID() string {
+func (cfg *LocalConnectorConfig) ConnectorID() string {
 	return cfg.ID
 }
 
-func (cfg *ConnectorConfigLocal) ConnectorType() string {
+func (cfg *LocalConnectorConfig) ConnectorType() string {
 	return ConnectorTypeLocal
 }
 
-func (cfg *ConnectorConfigLocal) Connector(ns url.URL, lf oidc.LoginFunc, tpls *template.Template) (IDPConnector, error) {
+func (cfg *LocalConnectorConfig) Connector(ns url.URL, lf oidc.LoginFunc, tpls *template.Template) (Connector, error) {
 	tpl := tpls.Lookup(LoginPageTemplateName)
 	if tpl == nil {
 		return nil, fmt.Errorf("unable to find necessary HTML template")
 	}
 
 	idp := NewLocalIdentityProvider(cfg.Users)
-	idpc := &LocalIDPConnector{
+	idpc := &LocalConnector{
 		idp:       idp,
 		namespace: ns,
 		loginFunc: lf,
@@ -55,7 +55,7 @@ func (cfg *ConnectorConfigLocal) Connector(ns url.URL, lf oidc.LoginFunc, tpls *
 	return idpc, nil
 }
 
-type LocalIDPConnector struct {
+type LocalConnector struct {
 	idp       *LocalIdentityProvider
 	namespace url.URL
 	loginFunc oidc.LoginFunc
@@ -69,15 +69,15 @@ type Page struct {
 	Message string
 }
 
-func (c *LocalIDPConnector) DisplayType() string {
+func (c *LocalConnector) DisplayType() string {
 	return "Local"
 }
 
-func (c *LocalIDPConnector) Healthy() error {
+func (c *LocalConnector) Healthy() error {
 	return nil
 }
 
-func (c *LocalIDPConnector) LoginURL(sessionKey, prompt string) (string, error) {
+func (c *LocalConnector) LoginURL(sessionKey, prompt string) (string, error) {
 	q := url.Values{}
 	q.Set("session_key", sessionKey)
 	q.Set("prompt", prompt)
@@ -86,7 +86,7 @@ func (c *LocalIDPConnector) LoginURL(sessionKey, prompt string) (string, error) 
 	return path.Join(c.namespace.Path, "login") + "?" + enc, nil
 }
 
-func (c *LocalIDPConnector) Register(mux *http.ServeMux, errorURL url.URL) {
+func (c *LocalConnector) Register(mux *http.ServeMux, errorURL url.URL) {
 	route := c.namespace.Path + "/login"
 	mux.Handle(route, handleLoginFunc(c.loginFunc, c.loginTpl, c.idp, route, errorURL))
 }

@@ -27,7 +27,7 @@ func TestHTTPExchangeToken(t *testing.T) {
 		Password: "bones",
 	}
 
-	cfg := connector.ConnectorConfigLocal{
+	cfg := connector.LocalConnectorConfig{
 		Users: []connector.LocalUser{user},
 	}
 
@@ -66,7 +66,7 @@ func TestHTTPExchangeToken(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	idpcs := map[string]connector.IDPConnector{
+	idpcs := map[string]connector.Connector{
 		"fake": idpc,
 	}
 
@@ -152,7 +152,7 @@ func TestHTTPClientCredsToken(t *testing.T) {
 	ns, _ := url.Parse(issuerURL)
 	ns.Path = path.Join(ns.Path, server.HttpPathAuth)
 
-	idpcs := map[string]connector.IDPConnector{}
+	idpcs := map[string]connector.Connector{}
 	hdlr := srv.HTTPHandler(idpcs, []health.Checkable{})
 	sClient := &phttp.HandlerClient{Handler: hdlr}
 

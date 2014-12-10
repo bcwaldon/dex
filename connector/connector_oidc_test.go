@@ -89,7 +89,7 @@ func TestLoginURL(t *testing.T) {
 			RedirectURL:    tt.redir,
 			Scope:          tt.scope,
 		}
-		cn := &OIDCIDPConnector{
+		cn := &OIDCConnector{
 			loginFunc: lf,
 			client:    cl,
 		}

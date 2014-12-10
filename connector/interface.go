@@ -10,7 +10,7 @@ import (
 	"github.com/coreos-inc/auth/pkg/health"
 )
 
-type IDPConnector interface {
+type Connector interface {
 	health.Checkable
 	DisplayType() string
 	LoginURL(sessionKey, prompt string) (string, error)
@@ -20,7 +20,7 @@ type IDPConnector interface {
 type ConnectorConfig interface {
 	ConnectorID() string
 	ConnectorType() string
-	Connector(url.URL, oidc.LoginFunc, *template.Template) (IDPConnector, error)
+	Connector(url.URL, oidc.LoginFunc, *template.Template) (Connector, error)
 }
 
 type ConnectorConfigRepo interface {

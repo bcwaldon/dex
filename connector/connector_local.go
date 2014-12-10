@@ -17,12 +17,12 @@ import (
 )
 
 const (
-	ConnectorTypeLocal    = "local"
+	LocalConnectorType    = "local"
 	LoginPageTemplateName = "local-login.html"
 )
 
 func init() {
-	RegisterConnectorConfigType(ConnectorTypeLocal, func() ConnectorConfig { return &LocalConnectorConfig{} })
+	RegisterConnectorConfigType(LocalConnectorType, func() ConnectorConfig { return &LocalConnectorConfig{} })
 }
 
 type LocalConnectorConfig struct {
@@ -35,7 +35,7 @@ func (cfg *LocalConnectorConfig) ConnectorID() string {
 }
 
 func (cfg *LocalConnectorConfig) ConnectorType() string {
-	return ConnectorTypeLocal
+	return LocalConnectorType
 }
 
 func (cfg *LocalConnectorConfig) Connector(ns url.URL, lf oidc.LoginFunc, tpls *template.Template) (Connector, error) {

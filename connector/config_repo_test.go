@@ -11,11 +11,11 @@ func TestNewConnectorConfigFromType(t *testing.T) {
 		want interface{}
 	}{
 		{
-			typ:  ConnectorTypeLocal,
+			typ:  LocalConnectorType,
 			want: &LocalConnectorConfig{},
 		},
 		{
-			typ:  ConnectorTypeOIDC,
+			typ:  OIDCConnectorType,
 			want: &OIDCConnectorConfig{},
 		},
 	}

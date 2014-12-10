@@ -276,6 +276,7 @@ func newConnectorsFromFlags(fs *flag.FlagSet, lf oidc.LoginFunc, tpls *template.
 		idpcs[idpcID] = idpc
 
 		log.Printf("Loaded IdP connector: id=%s type=%s", idpcID, cfg.ConnectorType())
+		idpc.Sync()
 	}
 
 	return idpcs, nil

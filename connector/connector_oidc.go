@@ -1,7 +1,6 @@
 package connector
 
 import (
-	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -14,11 +13,11 @@ import (
 )
 
 const (
-	ConnectorTypeOIDC = "oidc"
+	OIDCConnectorType = "oidc"
 )
 
 func init() {
-	RegisterConnectorConfigType(ConnectorTypeOIDC, func() ConnectorConfig { return &OIDCConnectorConfig{} })
+	RegisterConnectorConfigType(OIDCConnectorType, func() ConnectorConfig { return &OIDCConnectorConfig{} })
 }
 
 type OIDCConnectorConfig struct {
@@ -33,47 +32,28 @@ func (cfg *OIDCConnectorConfig) ConnectorID() string {
 }
 
 func (cfg *OIDCConnectorConfig) ConnectorType() string {
-	return ConnectorTypeOIDC
+	return OIDCConnectorType
 }
 
 type OIDCConnector struct {
-	client    *oidc.Client
-	namespace url.URL
-	loginFunc oidc.LoginFunc
+	issuerURL      string
+	clientIdentity oauth2.ClientIdentity
+	namespace      url.URL
+	loginFunc      oidc.LoginFunc
+	client         *oidc.Client
 }
 
 func (cfg *OIDCConnectorConfig) Connector(ns url.URL, lf oidc.LoginFunc, tpls *template.Template) (Connector, error) {
-	ci := oauth2.ClientIdentity{
-		ID:     cfg.ClientID,
-		Secret: cfg.ClientSecret,
-	}
-
-	pcfg, err := oidc.FetchProviderConfig(http.DefaultClient, cfg.IssuerURL)
-	if err != nil {
-		return nil, fmt.Errorf("unable to fetch provider config: %v", err)
-	}
-
-	cbURL := ns
-	cbURL.Path = path.Join(cbURL.Path, "/callback")
-	c := &oidc.Client{
-		ProviderConfig: pcfg,
-		ClientIdentity: ci,
-		RedirectURL:    cbURL.String(),
-	}
-
-	c.SyncKeys()
-
 	idpc := &OIDCConnector{
-		client:    c,
+		issuerURL: cfg.IssuerURL,
+		clientIdentity: oauth2.ClientIdentity{
+			ID:     cfg.ClientID,
+			Secret: cfg.ClientSecret,
+		},
 		namespace: ns,
 		loginFunc: lf,
 	}
-
 	return idpc, nil
-}
-
-func (c *OIDCConnector) DisplayType() string {
-	return "OIDC"
 }
 
 func (c *OIDCConnector) Healthy() error {
@@ -90,7 +70,28 @@ func (c *OIDCConnector) LoginURL(sessionKey, prompt string) (string, error) {
 }
 
 func (c *OIDCConnector) Register(mux *http.ServeMux, errorURL url.URL) {
-	mux.Handle(c.namespace.Path+"/callback", handleCallbackFunc(c.loginFunc, c.client, errorURL))
+	mux.Handle(c.namespace.Path+"/callback", c.handleCallbackFunc(c.loginFunc, errorURL))
+}
+
+func (c *OIDCConnector) Sync() chan struct{} {
+	stop := make(chan struct{})
+	go func() {
+		pcfg, err := oidc.FetchProviderConfig(http.DefaultClient, c.issuerURL)
+		if err != nil {
+			log.Fatalf("Unable to fetch provider config: %v", err)
+		}
+
+		cbURL := c.namespace
+		cbURL.Path = path.Join(cbURL.Path, "/callback")
+		c.client = &oidc.Client{
+			ProviderConfig: pcfg,
+			RedirectURL:    cbURL.String(),
+			ClientIdentity: c.clientIdentity,
+		}
+
+		c.client.SyncKeys()
+	}()
+	return stop
 }
 
 func redirectError(w http.ResponseWriter, errorURL url.URL, q url.Values) {
@@ -99,7 +100,7 @@ func redirectError(w http.ResponseWriter, errorURL url.URL, q url.Values) {
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
-func handleCallbackFunc(lf oidc.LoginFunc, c *oidc.Client, errorURL url.URL) http.HandlerFunc {
+func (c *OIDCConnector) handleCallbackFunc(lf oidc.LoginFunc, errorURL url.URL) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 
@@ -117,7 +118,7 @@ func handleCallbackFunc(lf oidc.LoginFunc, c *oidc.Client, errorURL url.URL) htt
 			return
 		}
 
-		tok, err := c.ExchangeAuthCode(code)
+		tok, err := c.client.ExchangeAuthCode(code)
 		if err != nil {
 			log.Printf("unable to verify auth code with issuer: %v", err)
 			q.Set("error", oauth2.ErrorUnsupportedResponseType)

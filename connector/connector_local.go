@@ -17,12 +17,12 @@ import (
 )
 
 const (
-	ConnectorTypeLocal    = "local"
+	LocalConnectorType    = "local"
 	LoginPageTemplateName = "local-login.html"
 )
 
 func init() {
-	RegisterConnectorConfigType(ConnectorTypeLocal, func() ConnectorConfig { return &LocalConnectorConfig{} })
+	RegisterConnectorConfigType(LocalConnectorType, func() ConnectorConfig { return &LocalConnectorConfig{} })
 }
 
 type LocalConnectorConfig struct {
@@ -35,7 +35,7 @@ func (cfg *LocalConnectorConfig) ConnectorID() string {
 }
 
 func (cfg *LocalConnectorConfig) ConnectorType() string {
-	return ConnectorTypeLocal
+	return LocalConnectorType
 }
 
 func (cfg *LocalConnectorConfig) Connector(ns url.URL, lf oidc.LoginFunc, tpls *template.Template) (Connector, error) {
@@ -69,10 +69,6 @@ type Page struct {
 	Message string
 }
 
-func (c *LocalConnector) DisplayType() string {
-	return "Local"
-}
-
 func (c *LocalConnector) Healthy() error {
 	return nil
 }
@@ -89,6 +85,10 @@ func (c *LocalConnector) LoginURL(sessionKey, prompt string) (string, error) {
 func (c *LocalConnector) Register(mux *http.ServeMux, errorURL url.URL) {
 	route := c.namespace.Path + "/login"
 	mux.Handle(route, handleLoginFunc(c.loginFunc, c.loginTpl, c.idp, route, errorURL))
+}
+
+func (c *LocalConnector) Sync() chan struct{} {
+	return make(chan struct{})
 }
 
 func redirectPostError(w http.ResponseWriter, errorURL url.URL, q url.Values) {

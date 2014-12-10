@@ -32,15 +32,15 @@ func (f *fakeConnector) Healthy() error {
 	return nil
 }
 
-func (f *fakeConnector) DisplayType() string {
-	return "Fake"
-}
-
 func (f *fakeConnector) LoginURL(sessionKey, prompt string) (string, error) {
 	return f.loginURL, nil
 }
 
 func (f *fakeConnector) Register(mux *http.ServeMux, errorURL url.URL) {}
+
+func (f *fakeConnector) Sync() chan struct{} {
+	return nil
+}
 
 func TestHandleAuthFuncMethodNotAllowed(t *testing.T) {
 	for _, m := range []string{"POST", "PUT", "DELETE"} {

@@ -12,9 +12,13 @@ import (
 
 type Connector interface {
 	health.Checkable
-	DisplayType() string
 	LoginURL(sessionKey, prompt string) (string, error)
 	Register(mux *http.ServeMux, errorURL url.URL)
+
+	// Sync triggers any long-running tasks needed to maintain the
+	// Connector's operation. For example, this would encompass
+	// repeatedly caching any remote resources for local use.
+	Sync() chan struct{}
 }
 
 type ConnectorConfig interface {

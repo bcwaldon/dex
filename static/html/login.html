@@ -153,14 +153,13 @@
 
       <div id="panel">
         {{ if .Error }}
-          <h2 id="heading">Authentication Error</h2>
+          <h2 id="heading">{{ .Message }}</h2>
         {{ else }}
           <h2 id="heading">Verify Your Identity</h2>
         {{ end }}
         <div id="button-container">
 
           {{ if .Error }}
-            <div>{{ .Message }}</div>
             <div>{{ .Instruction }}</div>
             <div class="detail-block">{{ .Detail }}</div>
           {{ else }}

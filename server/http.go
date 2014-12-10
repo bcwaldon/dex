@@ -116,7 +116,8 @@ func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idp
 	}
 
 	td := templateData{
-		Instruction: "Return to the referring application to login.",
+		Message:     "Error",
+		Instruction: "Please try again or contact the system administrator",
 	}
 
 	// Render error if remote IdP connector errored and redirected here.
@@ -125,14 +126,15 @@ func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idp
 	idpcID := q.Get("idpc_id")
 	if e != "" {
 		td.Error = true
-		td.Detail = q.Get("error_description")
-		if td.Detail == "" {
-			td.Detail = q.Get("error")
+		td.Message = "Authentication Error"
+		remoteMsg := q.Get("error_description")
+		if remoteMsg == "" {
+			remoteMsg = q.Get("error")
 		}
 		if idpcID == "" {
-			td.Message = "Error authenticating."
+			td.Detail = remoteMsg
 		} else {
-			td.Message = fmt.Sprintf("Error authenticating with %s.", idpcID)
+			td.Detail = fmt.Sprintf("Error from %s: %s.", idpcID, remoteMsg)
 		}
 		execTemplate(w, tpl, td)
 		return
@@ -144,12 +146,22 @@ func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idp
 	if err != nil {
 		log.Printf("Failed fetching client %s from repo: %v", clientID, err)
 		td.Error = true
-		td.Message = "Internal server error."
+		td.Message = "Server Error"
 		execTemplate(w, tpl, td)
 		return
 	} else if ci == nil {
 		td.Error = true
-		td.Message = "Invalid client ID."
+		td.Message = "Authentication Error"
+		td.Detail = "Invalid client ID"
+		execTemplate(w, tpl, td)
+		return
+	}
+
+	if len(idpcs) == 0 {
+		td.Error = true
+		td.Message = "Server Error"
+		td.Instruction = "Unable to authenticate users at this time"
+		td.Detail = "Authencitcation service may be misconfigured"
 		execTemplate(w, tpl, td)
 		return
 	}

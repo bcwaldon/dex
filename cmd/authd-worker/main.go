@@ -86,9 +86,9 @@ func main() {
 		log.Fatalf("Unable to build Server: %v", err)
 	}
 
-	idpcs, err := newIDPConnectorsFromFlags(fs, srv.Login, tpls)
+	idpcs, err := newConnectorsFromFlags(fs, srv.Login, tpls)
 	if err != nil {
-		log.Fatalf("Unable to build IDPConnector: %v", err)
+		log.Fatalf("Unable to build connector: %v", err)
 	}
 
 	checks := []health.Checkable{km}
@@ -234,7 +234,7 @@ func newHTMLTemplatesFromFlags(fs *flag.FlagSet) (*template.Template, error) {
 	return template.ParseFiles(files...)
 }
 
-func newIDPConnectorsFromFlags(fs *flag.FlagSet, lf oidc.LoginFunc, tpls *template.Template) (map[string]connector.IDPConnector, error) {
+func newConnectorsFromFlags(fs *flag.FlagSet, lf oidc.LoginFunc, tpls *template.Template) (map[string]connector.Connector, error) {
 	issuer, err := url.Parse(fs.Lookup("issuer").Value.String())
 	if err != nil {
 		return nil, err
@@ -264,7 +264,7 @@ func newIDPConnectorsFromFlags(fs *flag.FlagSet, lf oidc.LoginFunc, tpls *templa
 		return nil, fmt.Errorf("unable to get connector configs from repo: %v", err)
 	}
 
-	idpcs := make(map[string]connector.IDPConnector, len(cfgs))
+	idpcs := make(map[string]connector.Connector, len(cfgs))
 	for _, cfg := range cfgs {
 		idpcID := cfg.ConnectorID()
 		ns := baseNS

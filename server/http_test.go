@@ -63,7 +63,7 @@ func TestHandleAuthFuncMethodNotAllowed(t *testing.T) {
 }
 
 func TestHandleAuthFuncResponses(t *testing.T) {
-	idpcs := map[string]connector.IDPConnector{
+	idpcs := map[string]connector.Connector{
 		"fake": &fakeIDPConnector{loginURL: "http://fake.example.com"},
 	}
 	srv := &Server{

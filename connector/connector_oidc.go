@@ -42,7 +42,7 @@ type OIDCIDPConnector struct {
 	loginFunc oidc.LoginFunc
 }
 
-func (cfg *ConnectorConfigOIDC) Connector(ns url.URL, lf oidc.LoginFunc, tpls *template.Template) (IDPConnector, error) {
+func (cfg *ConnectorConfigOIDC) Connector(ns url.URL, lf oidc.LoginFunc, tpls *template.Template) (Connector, error) {
 	ci := oauth2.ClientIdentity{
 		ID:     cfg.ClientID,
 		Secret: cfg.ClientSecret,

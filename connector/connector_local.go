@@ -38,7 +38,7 @@ func (cfg *ConnectorConfigLocal) ConnectorType() string {
 	return ConnectorTypeLocal
 }
 
-func (cfg *ConnectorConfigLocal) Connector(ns url.URL, lf oidc.LoginFunc, tpls *template.Template) (IDPConnector, error) {
+func (cfg *ConnectorConfigLocal) Connector(ns url.URL, lf oidc.LoginFunc, tpls *template.Template) (Connector, error) {
 	tpl := tpls.Lookup(LoginPageTemplateName)
 	if tpl == nil {
 		return nil, fmt.Errorf("unable to find necessary HTML template")

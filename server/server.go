@@ -65,7 +65,7 @@ func (s *Server) ProviderConfig() oidc.ProviderConfig {
 	return cfg
 }
 
-func (s *Server) HTTPHandler(idpcs map[string]connector.IDPConnector, checks []health.Checkable) http.Handler {
+func (s *Server) HTTPHandler(idpcs map[string]connector.Connector, checks []health.Checkable) http.Handler {
 	clock := clockwork.NewRealClock()
 	mux := http.NewServeMux()
 	mux.HandleFunc(httpPathDiscovery, handleDiscoveryFunc(s.ProviderConfig()))

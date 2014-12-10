@@ -110,7 +110,7 @@ func execTemplate(w http.ResponseWriter, tpl *template.Template, td templateData
 	}
 }
 
-func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idpcs map[string]connector.IDPConnector, tpl *template.Template) {
+func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idpcs map[string]connector.Connector, tpl *template.Template) {
 	if tpl == nil {
 		phttp.WriteError(w, http.StatusInternalServerError, "error loading login page")
 		return
@@ -176,7 +176,7 @@ func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idp
 	execTemplate(w, tpl, td)
 }
 
-func handleAuthFunc(srv OIDCServer, idpcs map[string]connector.IDPConnector, tpl *template.Template) http.HandlerFunc {
+func handleAuthFunc(srv OIDCServer, idpcs map[string]connector.Connector, tpl *template.Template) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			w.Header().Set("Allow", "GET")
@@ -235,7 +235,7 @@ func handleAuthFunc(srv OIDCServer, idpcs map[string]connector.IDPConnector, tpl
 		}
 		lu, err := idpc.LoginURL(key, p)
 		if err != nil {
-			log.Printf("IDPConnector.LoginURL failed: %v", err)
+			log.Printf("Connector.LoginURL failed: %v", err)
 			redirectAuthError(w, err, acr.State, ci.RedirectURL)
 			return
 		}

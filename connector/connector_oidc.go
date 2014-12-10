@@ -86,7 +86,7 @@ func (c *OIDCConnector) LoginURL(sessionKey, prompt string) (string, error) {
 }
 
 func (c *OIDCConnector) Register(mux *http.ServeMux, errorURL url.URL) {
-	mux.Handle(c.namespace.Path+"/callback", handleCallbackFunc(c.loginFunc, c.client, errorURL))
+	mux.Handle(c.namespace.Path+"/callback", c.handleCallbackFunc(c.loginFunc, errorURL))
 }
 
 func redirectError(w http.ResponseWriter, errorURL url.URL, q url.Values) {
@@ -95,7 +95,7 @@ func redirectError(w http.ResponseWriter, errorURL url.URL, q url.Values) {
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
-func handleCallbackFunc(lf oidc.LoginFunc, c *oidc.Client, errorURL url.URL) http.HandlerFunc {
+func (c *OIDCIDPConnector) handleCallbackFunc(lf oidc.LoginFunc, errorURL url.URL) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 
@@ -113,7 +113,7 @@ func handleCallbackFunc(lf oidc.LoginFunc, c *oidc.Client, errorURL url.URL) htt
 			return
 		}
 
-		tok, err := c.ExchangeAuthCode(code)
+		tok, err := c.client.ExchangeAuthCode(code)
 		if err != nil {
 			log.Printf("unable to verify auth code with issuer: %v", err)
 			q.Set("error", oauth2.ErrorUnsupportedResponseType)

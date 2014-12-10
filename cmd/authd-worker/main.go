@@ -38,7 +38,7 @@ var (
 )
 
 func main() {
-	fs := flag.NewFlagSet("authd", flag.ExitOnError)
+	fs := flag.NewFlagSet("authd-worker", flag.ExitOnError)
 	fs.String("listen", "http://0.0.0.0:5556", "")
 	fs.String("issuer", "http://127.0.0.1:5556", "")
 	fs.String("clients", "./static/fixtures/clients.json", "json file containing set of clients")
@@ -52,7 +52,7 @@ func main() {
 		log.Fatalf(err.Error())
 	}
 
-	if err := pflag.SetFlagsFromEnv(fs, "AUTHD"); err != nil {
+	if err := pflag.SetFlagsFromEnv(fs, "AUTHD_WORKER"); err != nil {
 		log.Fatalf(err.Error())
 	}
 

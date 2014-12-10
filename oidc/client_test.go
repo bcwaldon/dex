@@ -3,6 +3,12 @@ package oidc
 import (
 	"reflect"
 	"testing"
+	"time"
+
+	"github.com/jonboulle/clockwork"
+
+	"github.com/coreos-inc/auth/jose"
+	"github.com/coreos-inc/auth/key"
 )
 
 func TestGetScopeDefault(t *testing.T) {
@@ -46,6 +52,89 @@ func TestGetScopeDefault(t *testing.T) {
 		s := tt.c.getScope()
 		if !reflect.DeepEqual(tt.e, s) {
 			t.Errorf("case %d: want: %v, got: %v", i, tt.e, s)
+		}
+	}
+}
+
+func TestHealthy(t *testing.T) {
+	clock := clockwork.NewFakeClock()
+	now := clock.Now().UTC()
+
+	k, err := key.GeneratePrivateRSAKey()
+	if err != nil {
+		t.Fatalf("Unable to generate RSA key: %v", err)
+	}
+	okKS := key.NewPublicKeySet([]jose.JWK{k.JWK()}, now.Add(time.Hour))
+	expKS := key.NewPublicKeySet([]jose.JWK{k.JWK()}, now.Add(time.Hour*-1))
+
+	okCfg := ProviderConfig{
+		ExpiresAt: now.Add(time.Hour),
+	}
+	expCfg := ProviderConfig{
+		ExpiresAt: now.Add(time.Hour * -1),
+	}
+
+	tests := []struct {
+		c *Client
+		h bool
+	}{
+		// all ok
+		{
+			c: &Client{
+				ProviderConfig: okCfg,
+				KeySet:         *okKS,
+				Clock:          clock,
+			},
+			h: true,
+		},
+		// expired config
+		{
+			c: &Client{
+				ProviderConfig: expCfg,
+				KeySet:         *okKS,
+				Clock:          clock,
+			},
+			h: false,
+		},
+		// expired keyset
+		{
+			c: &Client{
+				ProviderConfig: okCfg,
+				KeySet:         *expKS,
+				Clock:          clock,
+			},
+			h: false,
+		},
+		// missing config
+		{
+			c: &Client{
+				KeySet: *okKS,
+				Clock:  clock,
+			},
+			h: false,
+		},
+		// missing keyset
+		{
+			c: &Client{
+				ProviderConfig: okCfg,
+				Clock:          clock,
+			},
+			h: false,
+		},
+		// empty client
+		{
+			c: &Client{},
+			h: false,
+		},
+	}
+
+	for i, tt := range tests {
+		err := tt.c.Healthy()
+		want := tt.h
+		got := (err == nil)
+
+		if want != got {
+			t.Errorf("case %d: want: healhty=%v, got: healhty=%v, err: %v", i, want, got, err)
 		}
 	}
 }

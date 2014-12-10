@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/coreos-inc/auth/connector"
+	"github.com/coreos-inc/auth/jose"
 	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
@@ -78,14 +79,13 @@ func TestHTTPExchangeToken(t *testing.T) {
 		t.Fatalf("Failed to fetch provider config: %v", err)
 	}
 
+	ks := key.NewPublicKeySet([]jose.JWK{k.JWK()}, time.Now().Add(1*time.Hour))
 	cl := &oidc.Client{
 		HTTPClient:     sClient,
 		ProviderConfig: pcfg,
 		ClientIdentity: ci,
 		RedirectURL:    "http://client.example.com",
-		Keys: []key.PublicKey{
-			key.NewPublicKey(k.JWK()),
-		},
+		KeySet:         *ks,
 	}
 
 	m := http.NewServeMux()
@@ -161,13 +161,12 @@ func TestHTTPClientCredsToken(t *testing.T) {
 		t.Fatalf("Failed to fetch provider config: %v", err)
 	}
 
+	ks := key.NewPublicKeySet([]jose.JWK{k.JWK()}, time.Now().Add(1*time.Hour))
 	cl := &oidc.Client{
 		HTTPClient:     sClient,
 		ProviderConfig: cfg,
 		ClientIdentity: ci,
-		Keys: []key.PublicKey{
-			key.NewPublicKey(k.JWK()),
-		},
+		KeySet:         *ks,
 	}
 
 	tok, err := cl.ClientCredsToken([]string{"openid"})

@@ -6,11 +6,14 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/jonboulle/clockwork"
+
 	"github.com/coreos-inc/auth/jose"
 	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oauth2"
 	phttp "github.com/coreos-inc/auth/pkg/http"
 	pnet "github.com/coreos-inc/auth/pkg/net"
+	ptime "github.com/coreos-inc/auth/pkg/time"
 )
 
 var (
@@ -23,15 +26,30 @@ type Client struct {
 	ClientIdentity oauth2.ClientIdentity
 	RedirectURL    string
 	Scope          []string
-	Keys           []key.PublicKey
+	KeySet         key.PublicKeySet
+	Clock          clockwork.Clock
+}
+
+func (c *Client) GetClock() clockwork.Clock {
+	return c.Clock
 }
 
 func (c *Client) Healthy() error {
-	if c.ProviderConfig.ExpiresAt.Before(time.Now().UTC()) {
+	clock := ptime.Clock(c)
+
+	if c.ProviderConfig.ExpiresAt.IsZero() {
+		return errors.New("oidc client provider config not initialized")
+	}
+
+	if c.ProviderConfig.ExpiresAt.Before(clock.Now().UTC()) {
 		return errors.New("oidc client provider config expired")
 	}
 
-	if len(c.Keys) == 0 {
+	if c.KeySet.ExpiresAt().Before(clock.Now().UTC()) {
+		return errors.New("oidc client keyset is expired")
+	}
+
+	if len(c.KeySet.Keys()) == 0 {
 		return errors.New("oidc client missing public keys")
 	}
 
@@ -95,13 +113,13 @@ func (r *clientKeyRepo) Set(ks key.KeySet) error {
 	if !ok {
 		return errors.New("unable to cast to PublicKey")
 	}
-	r.client.Keys = pks.Keys()
+	r.client.KeySet = *pks
 	return nil
 }
 
 // verify if a JWT is valid or not
 func (c *Client) Verify(jwt jose.JWT) error {
-	for _, k := range c.Keys {
+	for _, k := range c.KeySet.Keys() {
 		v, err := k.Verifier()
 		if err != nil {
 			return err

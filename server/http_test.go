@@ -24,23 +24,23 @@ import (
 	"github.com/coreos-inc/auth/session"
 )
 
-type fakeIDPConnector struct {
+type fakeConnector struct {
 	loginURL string
 }
 
-func (f *fakeIDPConnector) Healthy() error {
+func (f *fakeConnector) Healthy() error {
 	return nil
 }
 
-func (f *fakeIDPConnector) DisplayType() string {
+func (f *fakeConnector) DisplayType() string {
 	return "Fake"
 }
 
-func (f *fakeIDPConnector) LoginURL(sessionKey, prompt string) (string, error) {
+func (f *fakeConnector) LoginURL(sessionKey, prompt string) (string, error) {
 	return f.loginURL, nil
 }
 
-func (f *fakeIDPConnector) Register(mux *http.ServeMux, errorURL url.URL) {}
+func (f *fakeConnector) Register(mux *http.ServeMux, errorURL url.URL) {}
 
 func TestHandleAuthFuncMethodNotAllowed(t *testing.T) {
 	for _, m := range []string{"POST", "PUT", "DELETE"} {
@@ -64,7 +64,7 @@ func TestHandleAuthFuncMethodNotAllowed(t *testing.T) {
 
 func TestHandleAuthFuncResponses(t *testing.T) {
 	idpcs := map[string]connector.Connector{
-		"fake": &fakeIDPConnector{loginURL: "http://fake.example.com"},
+		"fake": &fakeConnector{loginURL: "http://fake.example.com"},
 	}
 	srv := &Server{
 		IssuerURL:      "http://server.example.com",

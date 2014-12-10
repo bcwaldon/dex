@@ -45,7 +45,7 @@ func (cfg *ConnectorConfigLocal) Connector(ns url.URL, lf oidc.LoginFunc, tpls *
 	}
 
 	idp := NewLocalIdentityProvider(cfg.Users)
-	idpc := &LocalIDPConnector{
+	idpc := &LocalConnector{
 		idp:       idp,
 		namespace: ns,
 		loginFunc: lf,
@@ -55,7 +55,7 @@ func (cfg *ConnectorConfigLocal) Connector(ns url.URL, lf oidc.LoginFunc, tpls *
 	return idpc, nil
 }
 
-type LocalIDPConnector struct {
+type LocalConnector struct {
 	idp       *LocalIdentityProvider
 	namespace url.URL
 	loginFunc oidc.LoginFunc
@@ -69,15 +69,15 @@ type Page struct {
 	Message string
 }
 
-func (c *LocalIDPConnector) DisplayType() string {
+func (c *LocalConnector) DisplayType() string {
 	return "Local"
 }
 
-func (c *LocalIDPConnector) Healthy() error {
+func (c *LocalConnector) Healthy() error {
 	return nil
 }
 
-func (c *LocalIDPConnector) LoginURL(sessionKey, prompt string) (string, error) {
+func (c *LocalConnector) LoginURL(sessionKey, prompt string) (string, error) {
 	q := url.Values{}
 	q.Set("session_key", sessionKey)
 	q.Set("prompt", prompt)
@@ -86,7 +86,7 @@ func (c *LocalIDPConnector) LoginURL(sessionKey, prompt string) (string, error) 
 	return path.Join(c.namespace.Path, "login") + "?" + enc, nil
 }
 
-func (c *LocalIDPConnector) Register(mux *http.ServeMux, errorURL url.URL) {
+func (c *LocalConnector) Register(mux *http.ServeMux, errorURL url.URL) {
 	route := c.namespace.Path + "/login"
 	mux.Handle(route, handleLoginFunc(c.loginFunc, c.loginTpl, c.idp, route, errorURL))
 }

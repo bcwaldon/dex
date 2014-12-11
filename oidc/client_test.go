@@ -5,8 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jonboulle/clockwork"
-
 	"github.com/coreos-inc/auth/jose"
 	"github.com/coreos-inc/auth/key"
 )
@@ -57,8 +55,7 @@ func TestGetScopeDefault(t *testing.T) {
 }
 
 func TestHealthy(t *testing.T) {
-	clock := clockwork.NewFakeClock()
-	now := clock.Now().UTC()
+	now := time.Now().UTC()
 
 	k, err := key.GeneratePrivateKey()
 	if err != nil {
@@ -83,7 +80,6 @@ func TestHealthy(t *testing.T) {
 			c: &Client{
 				ProviderConfig: okCfg,
 				KeySet:         *okKS,
-				Clock:          clock,
 			},
 			h: true,
 		},
@@ -92,7 +88,6 @@ func TestHealthy(t *testing.T) {
 			c: &Client{
 				ProviderConfig: expCfg,
 				KeySet:         *okKS,
-				Clock:          clock,
 			},
 			h: false,
 		},
@@ -101,7 +96,6 @@ func TestHealthy(t *testing.T) {
 			c: &Client{
 				ProviderConfig: okCfg,
 				KeySet:         *expKS,
-				Clock:          clock,
 			},
 			h: false,
 		},
@@ -109,7 +103,6 @@ func TestHealthy(t *testing.T) {
 		{
 			c: &Client{
 				KeySet: *okKS,
-				Clock:  clock,
 			},
 			h: false,
 		},
@@ -117,7 +110,6 @@ func TestHealthy(t *testing.T) {
 		{
 			c: &Client{
 				ProviderConfig: okCfg,
-				Clock:          clock,
 			},
 			h: false,
 		},

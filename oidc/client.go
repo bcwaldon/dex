@@ -6,14 +6,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/jonboulle/clockwork"
-
 	"github.com/coreos-inc/auth/jose"
 	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oauth2"
 	phttp "github.com/coreos-inc/auth/pkg/http"
 	pnet "github.com/coreos-inc/auth/pkg/net"
-	ptime "github.com/coreos-inc/auth/pkg/time"
 )
 
 var (
@@ -27,25 +24,20 @@ type Client struct {
 	RedirectURL    string
 	Scope          []string
 	KeySet         key.PublicKeySet
-	Clock          clockwork.Clock
-}
-
-func (c *Client) GetClock() clockwork.Clock {
-	return c.Clock
 }
 
 func (c *Client) Healthy() error {
-	clock := ptime.Clock(c)
+	now := time.Now().UTC()
 
 	if c.ProviderConfig.ExpiresAt.IsZero() {
 		return errors.New("oidc client provider config not initialized")
 	}
 
-	if c.ProviderConfig.ExpiresAt.Before(clock.Now().UTC()) {
+	if c.ProviderConfig.ExpiresAt.Before(now) {
 		return errors.New("oidc client provider config expired")
 	}
 
-	if c.KeySet.ExpiresAt().Before(clock.Now().UTC()) {
+	if c.KeySet.ExpiresAt().Before(now) {
 		return errors.New("oidc client keyset is expired")
 	}
 

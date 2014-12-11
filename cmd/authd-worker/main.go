@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	"log"
+	"fmt"
 	"net/http"
 	"net/url"
 	"os"
@@ -10,6 +10,7 @@ import (
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/db"
 	pflag "github.com/coreos-inc/auth/pkg/flag"
+	"github.com/coreos-inc/auth/pkg/log"
 	"github.com/coreos-inc/auth/server"
 )
 
@@ -28,12 +29,24 @@ func main() {
 	connectors := fs.String("connectors", "./static/fixtures/connectors.json", "JSON file containg set of IDPC configs")
 	clients := fs.String("clients", "./static/fixtures/clients.json", "json file containing set of clients")
 
+	logDebug := fs.Bool("log-debug", false, "log debug-level information")
+	logTimestamps := fs.Bool("log-timestamps", false, "prefix log lines with timestamps")
+
 	if err := fs.Parse(os.Args[1:]); err != nil {
-		log.Fatalf(err.Error())
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
 	}
 
 	if err := pflag.SetFlagsFromEnv(fs, "AUTHD_WORKER"); err != nil {
-		log.Fatalf(err.Error())
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+	}
+
+	if *logDebug {
+		log.EnableDebug()
+	}
+	if *logTimestamps {
+		log.EnableTimestamps()
 	}
 
 	lu, err := url.Parse(*listen)
@@ -47,7 +60,7 @@ func main() {
 
 	var scfg server.ServerConfig
 	if *noDB {
-		log.Printf("WARNING: running in-process without external database or key rotation")
+		log.Warning("Running in-process without external database or key rotation")
 		scfg = &server.SingleServerConfig{
 			IssuerURL:   *issuer,
 			TemplateDir: *templates,
@@ -91,7 +104,7 @@ func main() {
 		Handler: srv.HTTPHandler(),
 	}
 
-	log.Printf("binding to %s...", httpsrv.Addr)
+	log.Infof("Binding to %s...", httpsrv.Addr)
 	go func() {
 		log.Fatal(httpsrv.ListenAndServe())
 	}()

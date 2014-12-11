@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -13,7 +12,9 @@ import (
 
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
+	pflag "github.com/coreos-inc/auth/pkg/flag"
 	phttp "github.com/coreos-inc/auth/pkg/http"
+	"github.com/coreos-inc/auth/pkg/log"
 )
 
 var (
@@ -26,7 +27,25 @@ func main() {
 	clientID := fs.String("client-id", "", "")
 	clientSecret := fs.String("client-secret", "", "")
 	discovery := fs.String("discovery", "https://accounts.google.com", "")
-	fs.Parse(os.Args[1:])
+	logDebug := fs.Bool("log-debug", false, "log debug-level information")
+	logTimestamps := fs.Bool("log-timestamps", false, "prefix log lines with timestamps")
+
+	if err := fs.Parse(os.Args[1:]); err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+	}
+
+	if err := pflag.SetFlagsFromEnv(fs, "EXAMPLE_APP"); err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+	}
+
+	if *logDebug {
+		log.EnableDebug()
+	}
+	if *logTimestamps {
+		log.EnableTimestamps()
+	}
 
 	if *clientID == "" {
 		log.Fatal("--client-id must be set")
@@ -62,11 +81,11 @@ func main() {
 		}
 
 		sleep := 3 * time.Second
-		log.Printf("Failed fetching provider config, trying again in %v: %v", sleep, err)
+		log.Errorf("Failed fetching provider config, trying again in %v: %v", sleep, err)
 		time.Sleep(sleep)
 	}
 
-	log.Printf("Fetched provider config from %s: %#v", *discovery, cfg)
+	log.Infof("Fetched provider config from %s: %#v", *discovery, cfg)
 
 	client := &oidc.Client{
 		ProviderConfig: cfg,
@@ -84,7 +103,7 @@ func main() {
 		Handler: hdlr,
 	}
 
-	log.Printf("binding to %s...", httpsrv.Addr)
+	log.Infof("Binding to %s...", httpsrv.Addr)
 	log.Fatal(httpsrv.ListenAndServe())
 }
 

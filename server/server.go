@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"path"
 	"time"
 
 	"github.com/jonboulle/clockwork"
@@ -20,6 +21,10 @@ import (
 	"github.com/coreos-inc/auth/session"
 )
 
+const (
+	LoginPageTemplateName = "login.html"
+)
+
 type OIDCServer interface {
 	Client(string) (*oauth2.ClientIdentity, error)
 	NewSession(clientID, clientState string, redirectURL url.URL) (string, error)
@@ -30,11 +35,36 @@ type OIDCServer interface {
 }
 
 type Server struct {
-	IssuerURL          string
+	IssuerURL          url.URL
 	KeyManager         key.PrivateKeyManager
+	KeySetRepo         key.PrivateKeySetRepo
 	SessionManager     *session.SessionManager
 	ClientIdentityRepo ClientIdentityRepo
+	Templates          *template.Template
 	LoginTemplate      *template.Template
+	HealthChecks       []health.Checkable
+	Connectors         map[string]connector.Connector
+}
+
+func (s *Server) Run() chan struct{} {
+	stop := make(chan struct{})
+
+	chans := []chan struct{}{
+		key.NewKeySetSyncer(s.KeySetRepo, s.KeyManager).Run(),
+	}
+
+	for _, idpc := range s.Connectors {
+		chans = append(chans, idpc.Sync())
+	}
+
+	go func() {
+		<-stop
+		for _, ch := range chans {
+			close(ch)
+		}
+	}()
+
+	return stop
 }
 
 func (s *Server) KillSession(sessionKey string) error {
@@ -48,12 +78,13 @@ func (s *Server) KillSession(sessionKey string) error {
 }
 
 func (s *Server) ProviderConfig() oidc.ProviderConfig {
+	iss := s.IssuerURL.String()
 	cfg := oidc.ProviderConfig{
-		Issuer: s.IssuerURL,
+		Issuer: iss,
 
-		AuthEndpoint:  s.IssuerURL + HttpPathAuth,
-		TokenEndpoint: s.IssuerURL + httpPathToken,
-		KeysEndpoint:  s.IssuerURL + httpPathKeys,
+		AuthEndpoint:  iss + httpPathAuth,
+		TokenEndpoint: iss + httpPathToken,
+		KeysEndpoint:  iss + httpPathKeys,
 
 		GrantTypesSupported:               []string{oauth2.GrantTypeAuthCode, oauth2.GrantTypeClientCreds},
 		ResponseTypesSupported:            []string{"code"},
@@ -65,17 +96,40 @@ func (s *Server) ProviderConfig() oidc.ProviderConfig {
 	return cfg
 }
 
-func (s *Server) HTTPHandler(idpcs map[string]connector.Connector, checks []health.Checkable) http.Handler {
+func (s *Server) AddConnector(cfg connector.ConnectorConfig) error {
+	idpcID := cfg.ConnectorID()
+	ns := s.IssuerURL
+	ns.Path = path.Join(ns.Path, httpPathAuth, idpcID)
+
+	idpc, err := cfg.Connector(ns, s.Login, s.Templates)
+	if err != nil {
+		return err
+	}
+
+	s.Connectors[idpcID] = idpc
+
+	log.Printf("Loaded IdP connector: id=%s type=%s", idpcID, cfg.ConnectorType())
+	return nil
+}
+
+func (s *Server) HTTPHandler() http.Handler {
+	checks := make([]health.Checkable, len(s.HealthChecks))
+	copy(checks, s.HealthChecks)
+	for _, idpc := range s.Connectors {
+		idpc := idpc
+		checks = append(checks, idpc)
+	}
+
 	clock := clockwork.NewRealClock()
 	mux := http.NewServeMux()
 	mux.HandleFunc(httpPathDiscovery, handleDiscoveryFunc(s.ProviderConfig()))
-	mux.HandleFunc(HttpPathAuth, handleAuthFunc(s, idpcs, s.LoginTemplate))
+	mux.HandleFunc(httpPathAuth, handleAuthFunc(s, s.Connectors, s.LoginTemplate))
 	mux.HandleFunc(httpPathToken, handleTokenFunc(s))
 	mux.HandleFunc(httpPathKeys, handleKeysFunc(s.KeyManager, clock))
 	mux.HandleFunc(httpPathHealth, handleHealthFunc(checks))
 
 	pcfg := s.ProviderConfig()
-	for id, idpc := range idpcs {
+	for id, idpc := range s.Connectors {
 		errorURL, err := url.Parse(fmt.Sprintf("%s?idpc_id=%s", pcfg.AuthEndpoint, id))
 		if err != nil {
 			log.Fatal(err)
@@ -145,7 +199,7 @@ func (s *Server) ClientCredsToken(clientID, clientSecret string) (*jose.JWT, err
 
 	now := time.Now()
 	exp := now.Add(s.SessionManager.ValidityWindow)
-	claims := oidc.NewClaims(s.IssuerURL, clientID, clientID, now, exp)
+	claims := oidc.NewClaims(s.IssuerURL.String(), clientID, clientID, now, exp)
 	claims.Add("name", clientID)
 
 	jwt, err := josesig.NewSignedJWT(claims, signer)
@@ -189,7 +243,7 @@ func (s *Server) CodeToken(clientID, clientSecret, key string) (*jose.JWT, error
 		return nil, oauth2.NewError(oauth2.ErrorServerError)
 	}
 
-	jwt, err := josesig.NewSignedJWT(ses.Claims(s.IssuerURL), signer)
+	jwt, err := josesig.NewSignedJWT(ses.Claims(s.IssuerURL.String()), signer)
 	if err != nil {
 		log.Printf("Failed to generate ID token: %v", err)
 		return nil, oauth2.NewError(oauth2.ErrorServerError)

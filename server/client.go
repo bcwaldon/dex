@@ -1,7 +1,11 @@
 package server
 
 import (
+	"encoding/json"
 	"github.com/coreos-inc/auth/oauth2"
+	"io"
+	"io/ioutil"
+	"net/url"
 )
 
 type ClientIdentityRepo interface {
@@ -34,4 +38,48 @@ func (cr *memClientIdentityRepo) Find(clientID string) (*oauth2.ClientIdentity, 
 		return nil, nil
 	}
 	return &ci, nil
+}
+
+func newClientIdentityRepoFromReader(r io.Reader) (ClientIdentityRepo, error) {
+	b, err := ioutil.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+
+	var cs []clientIdentity
+	if err = json.Unmarshal(b, &cs); err != nil {
+		return nil, err
+	}
+
+	ocs := make([]oauth2.ClientIdentity, len(cs))
+	for i, c := range cs {
+		ocs[i] = oauth2.ClientIdentity(c)
+	}
+
+	return NewClientIdentityRepo(ocs), nil
+}
+
+type clientIdentity oauth2.ClientIdentity
+
+func (ci *clientIdentity) UnmarshalJSON(data []byte) error {
+	c := struct {
+		ID          string `json:"id"`
+		Secret      string `json:"secret"`
+		RedirectURL string `json:"redirectURL"`
+	}{}
+
+	if err := json.Unmarshal(data, &c); err != nil {
+		return err
+	}
+
+	ru, err := url.Parse(c.RedirectURL)
+	if err != nil {
+		return err
+	}
+
+	ci.ID = c.ID
+	ci.Secret = c.Secret
+	ci.RedirectURL = *ru
+
+	return nil
 }

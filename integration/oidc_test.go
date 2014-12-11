@@ -14,7 +14,6 @@ import (
 	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
-	"github.com/coreos-inc/auth/pkg/health"
 	phttp "github.com/coreos-inc/auth/pkg/http"
 	"github.com/coreos-inc/auth/server"
 	"github.com/coreos-inc/auth/session"
@@ -28,7 +27,7 @@ func TestHTTPExchangeToken(t *testing.T) {
 		Password: "bones",
 	}
 
-	cfg := connector.LocalConnectorConfig{
+	cfg := &connector.LocalConnectorConfig{
 		Users: []connector.LocalUser{user},
 	}
 
@@ -39,7 +38,7 @@ func TestHTTPExchangeToken(t *testing.T) {
 
 	cir := server.NewClientIdentityRepo([]oauth2.ClientIdentity{ci})
 
-	issuerURL := "http://server.example.com"
+	issuerURL := url.URL{Scheme: "http", Host: "server.example.com"}
 	sm := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())
 
 	k, err := key.GeneratePrivateKey()
@@ -58,23 +57,16 @@ func TestHTTPExchangeToken(t *testing.T) {
 		KeyManager:         km,
 		SessionManager:     sm,
 		ClientIdentityRepo: cir,
+		Templates:          template.New(connector.LoginPageTemplateName),
+		Connectors:         make(map[string]connector.Connector),
 	}
 
-	ns, _ := url.Parse(issuerURL)
-	ns.Path = path.Join(ns.Path, server.HttpPathAuth)
-	idpc, err := cfg.Connector(*ns, srv.Login, template.New(connector.LoginPageTemplateName))
-	if err != nil {
+	if err = srv.AddConnector(cfg); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	idpcs := map[string]connector.Connector{
-		"fake": idpc,
-	}
-
-	hdlr := srv.HTTPHandler(idpcs, []health.Checkable{})
-	sClient := &phttp.HandlerClient{Handler: hdlr}
-
-	pcfg, err := oidc.FetchProviderConfig(sClient, issuerURL)
+	sClient := &phttp.HandlerClient{Handler: srv.HTTPHandler()}
+	pcfg, err := oidc.FetchProviderConfig(sClient, issuerURL.String())
 	if err != nil {
 		t.Fatalf("Failed to fetch provider config: %v", err)
 	}
@@ -128,7 +120,7 @@ func TestHTTPClientCredsToken(t *testing.T) {
 		Secret: "XXX",
 	}
 	cir := server.NewClientIdentityRepo([]oauth2.ClientIdentity{ci})
-	issuerURL := "http://server.example.com"
+	issuerURL := url.URL{Scheme: "http", Host: "server.example.com"}
 
 	k, err := key.GeneratePrivateKey()
 	if err != nil {
@@ -149,14 +141,13 @@ func TestHTTPClientCredsToken(t *testing.T) {
 		SessionManager:     sm,
 	}
 
-	ns, _ := url.Parse(issuerURL)
-	ns.Path = path.Join(ns.Path, server.HttpPathAuth)
+	ns := issuerURL
+	ns.Path = path.Join(ns.Path, "/auth")
 
-	idpcs := map[string]connector.Connector{}
-	hdlr := srv.HTTPHandler(idpcs, []health.Checkable{})
+	hdlr := srv.HTTPHandler()
 	sClient := &phttp.HandlerClient{Handler: hdlr}
 
-	cfg, err := oidc.FetchProviderConfig(sClient, issuerURL)
+	cfg, err := oidc.FetchProviderConfig(sClient, issuerURL.String())
 	if err != nil {
 		t.Fatalf("Failed to fetch provider config: %v", err)
 	}
@@ -191,8 +182,8 @@ func TestHTTPClientCredsToken(t *testing.T) {
 		t.Fatalf("unexpected claim value for name, got=%v, want=%v", name, ci.ID)
 	}
 
-	if iss := claims["iss"].(string); iss != issuerURL {
-		t.Fatalf("unexpected claim value for iss, got=%v, want=%v", iss, issuerURL)
+	if iss := claims["iss"].(string); iss != issuerURL.String() {
+		t.Fatalf("unexpected claim value for iss, got=%v, want=%v", iss, issuerURL.String())
 	}
 }
 

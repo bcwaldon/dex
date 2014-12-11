@@ -28,6 +28,10 @@ type fakeConnector struct {
 	loginURL string
 }
 
+func (f *fakeConnector) ID() string {
+	return "123"
+}
+
 func (f *fakeConnector) Healthy() error {
 	return nil
 }
@@ -67,7 +71,7 @@ func TestHandleAuthFuncResponses(t *testing.T) {
 		"fake": &fakeConnector{loginURL: "http://fake.example.com"},
 	}
 	srv := &Server{
-		IssuerURL:      "http://server.example.com",
+		IssuerURL:      url.URL{Scheme: "http", Host: "server.example.com"},
 		SessionManager: session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo()),
 		ClientIdentityRepo: NewClientIdentityRepo([]oauth2.ClientIdentity{
 			oauth2.ClientIdentity{
@@ -237,7 +241,7 @@ func TestHandleDiscoveryFunc(t *testing.T) {
 	u := "http://server.example.com"
 	cfg := oidc.ProviderConfig{
 		Issuer:        u,
-		AuthEndpoint:  u + HttpPathAuth,
+		AuthEndpoint:  u + httpPathAuth,
 		TokenEndpoint: u + httpPathToken,
 		KeysEndpoint:  u + httpPathKeys,
 

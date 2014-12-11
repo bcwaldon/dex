@@ -6,6 +6,7 @@ import (
 	"os"
 
 	pflag "github.com/coreos-inc/auth/pkg/flag"
+	"github.com/coreos-inc/auth/pkg/log"
 )
 
 var (
@@ -16,15 +17,19 @@ var (
 	globalFS = flag.NewFlagSet(cliName, flag.ExitOnError)
 
 	global struct {
-		dbURL string
-		help  bool
+		dbURL    string
+		help     bool
+		logDebug bool
 	}
 )
 
 func init() {
+	log.EnableTimestamps()
+
 	globalFS.StringVar(&global.dbURL, "db-url", "", "DSN-formatted database connection string")
 	globalFS.BoolVar(&global.help, "help", false, "Print usage information and exit")
 	globalFS.BoolVar(&global.help, "h", false, "Print usage information and exit")
+	globalFS.BoolVar(&global.logDebug, "log-debug", false, "Log debug-level information")
 }
 
 func main() {
@@ -32,6 +37,10 @@ func main() {
 	if err != nil {
 		stderr(err.Error())
 		os.Exit(2)
+	}
+
+	if global.logDebug {
+		log.EnableDebug()
 	}
 
 	args := globalFS.Args()

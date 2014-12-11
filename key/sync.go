@@ -2,11 +2,11 @@ package key
 
 import (
 	"errors"
-	"log"
 	"time"
 
 	"github.com/jonboulle/clockwork"
 
+	"github.com/coreos-inc/auth/pkg/log"
 	ptime "github.com/coreos-inc/auth/pkg/time"
 )
 
@@ -38,11 +38,11 @@ func (s *KeySetSyncer) Run() chan struct{} {
 				} else {
 					next = ptime.ExpBackoff(next, time.Minute)
 				}
-				log.Printf("Failed syncing key set, retrying in %v: %v", next, err)
+				log.Errorf("Failed syncing key set, retrying in %v: %v", next, err)
 			} else {
 				failing = false
 				next = exp / 2
-				log.Printf("Synced key set, checking again in %v", next)
+				log.Infof("Synced key set, checking again in %v", next)
 			}
 
 			select {

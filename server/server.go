@@ -3,7 +3,6 @@ package server
 import (
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 	"net/url"
 	"path"
@@ -18,6 +17,7 @@ import (
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 	"github.com/coreos-inc/auth/pkg/health"
+	"github.com/coreos-inc/auth/pkg/log"
 	"github.com/coreos-inc/auth/session"
 )
 
@@ -108,7 +108,7 @@ func (s *Server) AddConnector(cfg connector.ConnectorConfig) error {
 
 	s.Connectors[idpcID] = idpc
 
-	log.Printf("Loaded IdP connector: id=%s type=%s", idpcID, cfg.ConnectorType())
+	log.Infof("Loaded IdP connector: id=%s type=%s", idpcID, cfg.ConnectorType())
 	return nil
 }
 
@@ -150,7 +150,7 @@ func (s *Server) NewSession(clientID, clientState string, redirectURL url.URL) (
 		return "", err
 	}
 
-	log.Printf("Session %s created: clientID=%s clientState=%s", sessionID, clientID, clientState)
+	log.Infof("Session %s created: clientID=%s clientState=%s", sessionID, clientID, clientState)
 	return s.SessionManager.NewSessionKey(sessionID)
 }
 
@@ -165,7 +165,7 @@ func (s *Server) Login(ident oidc.Identity, key string) (string, error) {
 		return "", err
 	}
 
-	log.Printf("Session %s identified: clientID=%s identity=%#v", sessionID, ses.ClientID, ident)
+	log.Infof("Session %s identified: clientID=%s identity=%#v", sessionID, ses.ClientID, ident)
 
 	code, err := s.SessionManager.NewSessionKey(sessionID)
 	if err != nil {
@@ -184,7 +184,7 @@ func (s *Server) Login(ident oidc.Identity, key string) (string, error) {
 func (s *Server) ClientCredsToken(clientID, clientSecret string) (*jose.JWT, error) {
 	ci, err := s.Client(clientID)
 	if err != nil {
-		log.Printf("Failed fetching client %s from repo: %v", clientID, err)
+		log.Errorf("Failed fetching client %s from repo: %v", clientID, err)
 		return nil, oauth2.NewError(oauth2.ErrorServerError)
 	}
 	if ci == nil || ci.Secret != clientSecret {
@@ -193,7 +193,7 @@ func (s *Server) ClientCredsToken(clientID, clientSecret string) (*jose.JWT, err
 
 	signer, err := s.KeyManager.Signer()
 	if err != nil {
-		log.Printf("Failed to generate ID token: %v", err)
+		log.Errorf("Failed to generate ID token: %v", err)
 		return nil, oauth2.NewError(oauth2.ErrorServerError)
 	}
 
@@ -204,11 +204,11 @@ func (s *Server) ClientCredsToken(clientID, clientSecret string) (*jose.JWT, err
 
 	jwt, err := josesig.NewSignedJWT(claims, signer)
 	if err != nil {
-		log.Printf("Failed to generate ID token: %v", err)
+		log.Errorf("Failed to generate ID token: %v", err)
 		return nil, oauth2.NewError(oauth2.ErrorServerError)
 	}
 
-	log.Printf("Client token sent: clientID=%s", clientID)
+	log.Infof("Client token sent: clientID=%s", clientID)
 
 	return jwt, nil
 }
@@ -216,7 +216,7 @@ func (s *Server) ClientCredsToken(clientID, clientSecret string) (*jose.JWT, err
 func (s *Server) CodeToken(clientID, clientSecret, key string) (*jose.JWT, error) {
 	ci, err := s.Client(clientID)
 	if err != nil {
-		log.Printf("Failed fetching client %s from repo: %v", clientID, err)
+		log.Errorf("Failed fetching client %s from repo: %v", clientID, err)
 		return nil, oauth2.NewError(oauth2.ErrorServerError)
 	}
 	if ci == nil || ci.Secret != clientSecret {
@@ -239,17 +239,17 @@ func (s *Server) CodeToken(clientID, clientSecret, key string) (*jose.JWT, error
 
 	signer, err := s.KeyManager.Signer()
 	if err != nil {
-		log.Printf("Failed to generate ID token: %v", err)
+		log.Errorf("Failed to generate ID token: %v", err)
 		return nil, oauth2.NewError(oauth2.ErrorServerError)
 	}
 
 	jwt, err := josesig.NewSignedJWT(ses.Claims(s.IssuerURL.String()), signer)
 	if err != nil {
-		log.Printf("Failed to generate ID token: %v", err)
+		log.Errorf("Failed to generate ID token: %v", err)
 		return nil, oauth2.NewError(oauth2.ErrorServerError)
 	}
 
-	log.Printf("Session %s token sent: clientID=%s", sessionID, clientID)
+	log.Infof("Session %s token sent: clientID=%s", sessionID, clientID)
 
 	return jwt, nil
 }

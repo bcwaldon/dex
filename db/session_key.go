@@ -3,12 +3,12 @@ package db
 import (
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/coopernurse/gorp"
 	"github.com/lib/pq"
 
+	"github.com/coreos-inc/auth/pkg/log"
 	"github.com/coreos-inc/auth/session"
 )
 
@@ -78,7 +78,7 @@ func (r *SessionKeyRepo) Pop(key string) (string, error) {
 
 	if n, err := res.RowsAffected(); n != 1 {
 		if err != nil {
-			log.Printf("Failed determining rows affected by UPDATE sessionKey query: %v", err)
+			log.Errorf("Failed determining rows affected by UPDATE sessionKey query: %v", err)
 		}
 		return "", fmt.Errorf("failed to pop entity")
 	}
@@ -102,6 +102,6 @@ func (r *SessionKeyRepo) purge() error {
 		d = fmt.Sprintf("%d", n)
 	}
 
-	log.Printf("Deleted %s stale row(s) from %s table", d, sessionKeyTableName)
+	log.Infof("Deleted %s stale row(s) from %s table", d, sessionKeyTableName)
 	return nil
 }

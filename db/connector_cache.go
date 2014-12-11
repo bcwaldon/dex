@@ -3,11 +3,12 @@ package db
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/coopernurse/gorp"
 	"github.com/lib/pq"
+
+	"github.com/coreos-inc/auth/pkg/log"
 )
 
 const (
@@ -90,6 +91,6 @@ func (r *connectorCache) purge() error {
 		d = fmt.Sprintf("%d", n)
 	}
 
-	log.Printf("Deleted %s stale row(s) from %s table", d, connectorCacheTableName)
+	log.Infof("Deleted %s stale row(s) from %s table", d, connectorCacheTableName)
 	return nil
 }

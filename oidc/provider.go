@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
 	"github.com/coreos-inc/auth/oauth2"
 	phttp "github.com/coreos-inc/auth/pkg/http"
+	"github.com/coreos-inc/auth/pkg/log"
 	pnet "github.com/coreos-inc/auth/pkg/net"
 	ptime "github.com/coreos-inc/auth/pkg/time"
 
@@ -87,7 +87,7 @@ func (s *ProviderConfigSyncer) Run() chan struct{} {
 			} else {
 				next = ptime.ExpBackoff(next, time.Minute)
 			}
-			log.Printf("Error syncing provider config, retrying in %v: %v", next, err)
+			log.Errorf("Error syncing provider config, retrying in %v: %v", next, err)
 		}
 
 		for {
@@ -104,7 +104,7 @@ func (s *ProviderConfigSyncer) Run() chan struct{} {
 					if err = s.to.Set(cfg); err != nil {
 						fail(fmt.Errorf("error setting provider config: %v", err))
 					} else {
-						log.Printf("Provider config updated, config=%#v\nchecking again in %v", cfg, next)
+						log.Infof("Updating provider config in %v: config=%#v", next, cfg)
 					}
 				}
 			}

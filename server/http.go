@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -19,6 +18,7 @@ import (
 	"github.com/coreos-inc/auth/oidc"
 	"github.com/coreos-inc/auth/pkg/health"
 	phttp "github.com/coreos-inc/auth/pkg/http"
+	"github.com/coreos-inc/auth/pkg/log"
 )
 
 const (
@@ -44,7 +44,7 @@ func handleDiscoveryFunc(cfg oidc.ProviderConfig) http.HandlerFunc {
 
 		b, err := json.Marshal(cfg)
 		if err != nil {
-			log.Printf("Unable to marshal %#v to JSON: %v", cfg, err)
+			log.Errorf("Unable to marshal %#v to JSON: %v", cfg, err)
 		}
 
 		w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", int(discoveryMaxAge.Seconds())))
@@ -63,7 +63,7 @@ func handleKeysFunc(km key.PrivateKeyManager, clock clockwork.Clock) http.Handle
 
 		jwks, err := km.JWKs()
 		if err != nil {
-			log.Printf("Failed to get JWKs while serving HTTP request: %v", err)
+			log.Errorf("Failed to get JWKs while serving HTTP request: %v", err)
 			phttp.WriteError(w, http.StatusInternalServerError, "")
 			return
 		}
@@ -76,7 +76,7 @@ func handleKeysFunc(km key.PrivateKeyManager, clock clockwork.Clock) http.Handle
 
 		b, err := json.Marshal(keys)
 		if err != nil {
-			log.Printf("Unable to marshal signing key to JSON: %v", err)
+			log.Errorf("Unable to marshal signing key to JSON: %v", err)
 		}
 
 		exp := km.ExpiresAt()
@@ -144,7 +144,7 @@ func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idp
 	clientID := q.Get("client_id")
 	ci, err := srv.Client(clientID)
 	if err != nil {
-		log.Printf("Failed fetching client %s from repo: %v", clientID, err)
+		log.Errorf("Failed fetching client %q from repo: %v", clientID, err)
 		td.Error = true
 		td.Message = "Server Error"
 		execTemplate(w, tpl, td)
@@ -198,7 +198,7 @@ func handleAuthFunc(srv OIDCServer, idpcs map[string]connector.Connector, tpl *t
 		if e != "" {
 			sessionKey := q.Get("state")
 			if err := srv.KillSession(sessionKey); err != nil {
-				log.Printf("error killing sessionKey=%s, error=%v", sessionKey, err)
+				log.Errorf("Failed killing sessionKey %q: %v", sessionKey, err)
 			}
 			renderLoginPage(w, r, srv, idpcs, tpl)
 			return
@@ -218,7 +218,7 @@ func handleAuthFunc(srv OIDCServer, idpcs map[string]connector.Connector, tpl *t
 
 		ci, err := srv.Client(acr.ClientID)
 		if err != nil {
-			log.Printf("Failed fetching client %s from repo: %v", acr.ClientID, err)
+			log.Errorf("Failed fetching client %q from repo: %v", acr.ClientID, err)
 			writeAuthError(w, oauth2.NewError(oauth2.ErrorServerError), acr.State)
 			return
 		}
@@ -244,7 +244,7 @@ func handleAuthFunc(srv OIDCServer, idpcs map[string]connector.Connector, tpl *t
 		}
 		lu, err := idpc.LoginURL(key, p)
 		if err != nil {
-			log.Printf("Connector.LoginURL failed: %v", err)
+			log.Errorf("Connector.LoginURL failed: %v", err)
 			redirectAuthError(w, err, acr.State, ci.RedirectURL)
 			return
 		}
@@ -313,7 +313,7 @@ func handleTokenFunc(srv OIDCServer) http.HandlerFunc {
 
 		b, err := json.Marshal(t)
 		if err != nil {
-			log.Printf("Failed marshaling %#v to JSON: %v", t, err)
+			log.Errorf("Failed marshaling %#v to JSON: %v", t, err)
 			writeTokenError(w, oauth2.NewError(oauth2.ErrorServerError), state)
 			return
 		}
@@ -340,16 +340,16 @@ func handleHealthFunc(checks []health.Checkable) http.HandlerFunc {
 		if err := health.Check(checks); err != nil {
 			h.Message = "fail"
 			status = http.StatusInternalServerError
-			log.Printf("Health check failed: %v", err)
+			log.Errorf("Health check failed: %v", err)
 		} else {
 			h.Message = "ok"
 			status = http.StatusOK
-			log.Println("Health check ok")
+			log.Debugf("Health check succeeded")
 		}
 
 		b, err := json.Marshal(h)
 		if err != nil {
-			log.Printf("Health check failed to marshal response: %v", err)
+			log.Errorf("Health check failed to marshal response: %v", err)
 			phttp.WriteError(w, http.StatusInternalServerError, "error executing health check")
 			return
 		}
@@ -384,7 +384,7 @@ func writeTokenError(w http.ResponseWriter, err error, state string) {
 
 	b, err := json.Marshal(oerr)
 	if err != nil {
-		log.Printf("Failed marshaling OAuth2 error: %v", err)
+		log.Errorf("Failed marshaling OAuth2 error: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -403,7 +403,7 @@ func writeAuthError(w http.ResponseWriter, err error, state string) {
 
 	b, err := json.Marshal(oerr)
 	if err != nil {
-		log.Printf("Failed marshaling OAuth2 error: %v", err)
+		log.Errorf("Failed marshaling OAuth2 error: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

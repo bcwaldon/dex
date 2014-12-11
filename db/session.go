@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/url"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/lib/pq"
 
 	"github.com/coreos-inc/auth/oidc"
+	"github.com/coreos-inc/auth/pkg/log"
 	"github.com/coreos-inc/auth/session"
 )
 
@@ -154,6 +154,6 @@ func (r *SessionRepo) purge() error {
 		d = fmt.Sprintf("%d", n)
 	}
 
-	log.Printf("Deleted %s stale row(s) from %s table", d, sessionTableName)
+	log.Infof("Deleted %s stale row(s) from %s table", d, sessionTableName)
 	return nil
 }

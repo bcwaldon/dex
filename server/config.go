@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
-	"log"
 	"net/url"
 	"os"
 	"path"
@@ -14,6 +13,7 @@ import (
 	"github.com/coreos-inc/auth/db"
 	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/pkg/health"
+	"github.com/coreos-inc/auth/pkg/log"
 	"github.com/coreos-inc/auth/session"
 )
 

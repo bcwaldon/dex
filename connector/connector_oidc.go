@@ -2,7 +2,6 @@ package connector
 
 import (
 	"html/template"
-	"log"
 	"net/http"
 	"net/url"
 	"path"
@@ -10,6 +9,7 @@ import (
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 	phttp "github.com/coreos-inc/auth/pkg/http"
+	"github.com/coreos-inc/auth/pkg/log"
 )
 
 const (
@@ -120,7 +120,7 @@ func (c *OIDCConnector) handleCallbackFunc(lf oidc.LoginFunc, errorURL url.URL) 
 
 		tok, err := c.client.ExchangeAuthCode(code)
 		if err != nil {
-			log.Printf("unable to verify auth code with issuer: %v", err)
+			log.Errorf("Unable to verify auth code with issuer: %v", err)
 			q.Set("error", oauth2.ErrorUnsupportedResponseType)
 			q.Set("error_description", "unable to verify auth code with issuer")
 			redirectError(w, errorURL, q)
@@ -129,7 +129,7 @@ func (c *OIDCConnector) handleCallbackFunc(lf oidc.LoginFunc, errorURL url.URL) 
 
 		claims, err := tok.Claims()
 		if err != nil {
-			log.Printf("unable to construct claims: %v", err)
+			log.Errorf("Unable to construct claims: %v", err)
 			q.Set("error", oauth2.ErrorUnsupportedResponseType)
 			q.Set("error_description", "unable to construct claims")
 			redirectError(w, errorURL, q)
@@ -138,7 +138,7 @@ func (c *OIDCConnector) handleCallbackFunc(lf oidc.LoginFunc, errorURL url.URL) 
 
 		ident, err := oidc.IdentityFromClaims(claims)
 		if err != nil {
-			log.Printf("Failed parsing claims from remote provider: %v", err)
+			log.Errorf("Failed parsing claims from remote provider: %v", err)
 			q.Set("error", oauth2.ErrorUnsupportedResponseType)
 			q.Set("error_description", "unable to convert claims to identity")
 			redirectError(w, errorURL, q)
@@ -155,7 +155,7 @@ func (c *OIDCConnector) handleCallbackFunc(lf oidc.LoginFunc, errorURL url.URL) 
 
 		redirectURL, err := lf(*ident, sessionKey)
 		if err != nil {
-			log.Printf("Unable to log in %#v: %v", *ident, err)
+			log.Errorf("Unable to log in %#v: %v", *ident, err)
 			q.Set("error", oauth2.ErrorAccessDenied)
 			q.Set("error_description", "login failed")
 			redirectError(w, errorURL, q)

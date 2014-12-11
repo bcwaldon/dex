@@ -4,11 +4,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/coreos-inc/auth/pkg/log"
 )
 
 func WriteError(w http.ResponseWriter, code int, msg string) {
@@ -19,7 +20,7 @@ func WriteError(w http.ResponseWriter, code int, msg string) {
 	}
 	b, err := json.Marshal(e)
 	if err != nil {
-		log.Printf("Failed marshaling %#v to JSON: %v", e, err)
+		log.Errorf("Failed marshaling %#v to JSON: %v", e, err)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)

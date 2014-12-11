@@ -2,13 +2,13 @@ package main
 
 import (
 	"flag"
-	"log"
 	"os"
 	"time"
 
 	"github.com/coreos-inc/auth/db"
 	"github.com/coreos-inc/auth/key"
 	pflag "github.com/coreos-inc/auth/pkg/flag"
+	"github.com/coreos-inc/auth/pkg/log"
 )
 
 func main() {

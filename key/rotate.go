@@ -2,10 +2,11 @@ package key
 
 import (
 	"errors"
-	"log"
 	"time"
 
 	"github.com/jonboulle/clockwork"
+
+	"github.com/coreos-inc/auth/pkg/log"
 )
 
 const (
@@ -39,17 +40,17 @@ func (r *PrivateKeyRotator) Run() chan struct{} {
 	attempt := func() {
 		k, err := r.generateKey()
 		if err != nil {
-			log.Printf("Failed generating signing key: %v", err)
+			log.Errorf("Failed generating signing key: %v", err)
 			return
 		}
 
 		exp := r.expiresAt()
 		if err := rotatePrivateKeys(r.repo, k, r.keep, exp); err != nil {
-			log.Printf("Failed key rotation: %v", err)
+			log.Errorf("Failed key rotation: %v", err)
 			return
 		}
 
-		log.Printf("Rotated signing keys: id=%s expiresAt=%s", k.ID(), exp)
+		log.Infof("Rotated signing keys: id=%s expiresAt=%s", k.ID(), exp)
 	}
 
 	stop := make(chan struct{})

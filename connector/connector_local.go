@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"html/template"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -14,6 +13,7 @@ import (
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 	phttp "github.com/coreos-inc/auth/pkg/http"
+	"github.com/coreos-inc/auth/pkg/log"
 )
 
 const (
@@ -146,7 +146,7 @@ func handleLoginFunc(lf oidc.LoginFunc, tpl *template.Template, idp *LocalIdenti
 
 		redirectURL, err := lf(*ident, sessionKey)
 		if err != nil {
-			log.Printf("Unable to log in %#v: %v", *ident, err)
+			log.Errorf("Unable to log in %#v: %v", *ident, err)
 			q.Set("error", oauth2.ErrorAccessDenied)
 			q.Set("error_description", "login failed")
 			redirectPostError(w, errorURL, q)

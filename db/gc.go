@@ -1,11 +1,11 @@
 package db
 
 import (
-	"log"
 	"time"
 
 	"github.com/jonboulle/clockwork"
 
+	"github.com/coreos-inc/auth/pkg/log"
 	ptime "github.com/coreos-inc/auth/pkg/time"
 )
 
@@ -78,11 +78,11 @@ func (gc *GarbageCollector) Run() chan struct{} {
 					} else {
 						next = ptime.ExpBackoff(next, time.Minute)
 					}
-					log.Printf("Failed garbage collection, retrying in %v", next)
+					log.Errorf("Failed garbage collection, retrying in %v", next)
 				} else {
 					failing = false
 					next = gc.interval
-					log.Printf("Garbage collection complete, running again in %v", next)
+					log.Infof("Garbage collection complete, running again in %v", next)
 				}
 			case <-stop:
 				return
@@ -101,7 +101,7 @@ type purgeError struct {
 func anyPurgeErrors(errchan <-chan purgeError) (found bool) {
 	for perr := range errchan {
 		found = true
-		log.Printf("Failed purging %s: %v", perr.name, perr.err)
+		log.Errorf("Failed purging %s: %v", perr.name, perr.err)
 	}
 	return
 }

@@ -12,10 +12,10 @@ func TestKeySyncerSync(t *testing.T) {
 	fc := clockwork.NewFakeClock()
 	now := fc.Now().UTC()
 
-	k1 := generatePrivateRSAKeyStatic(t, 1)
-	k2 := generatePrivateRSAKeyStatic(t, 2)
-	k3 := generatePrivateRSAKeyStatic(t, 3)
-	k4 := generatePrivateRSAKeyStatic(t, 4)
+	k1 := generatePrivateKeyStatic(t, 1)
+	k2 := generatePrivateKeyStatic(t, 2)
+	k3 := generatePrivateKeyStatic(t, 3)
+	k4 := generatePrivateKeyStatic(t, 4)
 
 	steps := []struct {
 		from    *PrivateKeySet
@@ -25,13 +25,13 @@ func TestKeySyncerSync(t *testing.T) {
 		// on startup, first sync should trigger within a second
 		{
 			from: &PrivateKeySet{
-				keys:        []PrivateKey{k1},
+				keys:        []*PrivateKey{k1},
 				ActiveKeyID: k1.KeyID,
 				expiresAt:   now.Add(10 * time.Second),
 			},
 			advance: time.Second,
 			want: &PrivateKeySet{
-				keys:        []PrivateKey{k1},
+				keys:        []*PrivateKey{k1},
 				ActiveKeyID: k1.KeyID,
 				expiresAt:   now.Add(10 * time.Second),
 			},
@@ -39,13 +39,13 @@ func TestKeySyncerSync(t *testing.T) {
 		// advance halfway into TTL, triggering sync
 		{
 			from: &PrivateKeySet{
-				keys:        []PrivateKey{k2, k1},
+				keys:        []*PrivateKey{k2, k1},
 				ActiveKeyID: k2.KeyID,
 				expiresAt:   now.Add(15 * time.Second),
 			},
 			advance: 5 * time.Second,
 			want: &PrivateKeySet{
-				keys:        []PrivateKey{k2, k1},
+				keys:        []*PrivateKey{k2, k1},
 				ActiveKeyID: k2.KeyID,
 				expiresAt:   now.Add(15 * time.Second),
 			},
@@ -54,13 +54,13 @@ func TestKeySyncerSync(t *testing.T) {
 		// advance halfway into TTL, triggering sync that fails
 		{
 			from: &PrivateKeySet{
-				keys:        []PrivateKey{k3, k2, k1},
+				keys:        []*PrivateKey{k3, k2, k1},
 				ActiveKeyID: k3.KeyID,
 				expiresAt:   now.Add(10 * time.Second),
 			},
 			advance: 10 * time.Second,
 			want: &PrivateKeySet{
-				keys:        []PrivateKey{k2, k1},
+				keys:        []*PrivateKey{k2, k1},
 				ActiveKeyID: k2.KeyID,
 				expiresAt:   now.Add(15 * time.Second),
 			},
@@ -69,13 +69,13 @@ func TestKeySyncerSync(t *testing.T) {
 		// sync retries quickly, and succeeds with fixed data
 		{
 			from: &PrivateKeySet{
-				keys:        []PrivateKey{k4, k2, k1},
+				keys:        []*PrivateKey{k4, k2, k1},
 				ActiveKeyID: k4.KeyID,
 				expiresAt:   now.Add(25 * time.Second),
 			},
 			advance: 3 * time.Second,
 			want: &PrivateKeySet{
-				keys:        []PrivateKey{k4, k2, k1},
+				keys:        []*PrivateKey{k4, k2, k1},
 				ActiveKeyID: k4.KeyID,
 				expiresAt:   now.Add(25 * time.Second),
 			},
@@ -113,9 +113,9 @@ func TestSync(t *testing.T) {
 	fc := clockwork.NewFakeClock()
 	now := fc.Now().UTC()
 
-	k1 := generatePrivateRSAKeyStatic(t, 1)
-	k2 := generatePrivateRSAKeyStatic(t, 2)
-	k3 := generatePrivateRSAKeyStatic(t, 3)
+	k1 := generatePrivateKeyStatic(t, 1)
+	k2 := generatePrivateKeyStatic(t, 2)
+	k3 := generatePrivateKeyStatic(t, 3)
 
 	tests := []struct {
 		keySet *PrivateKeySet
@@ -123,7 +123,7 @@ func TestSync(t *testing.T) {
 	}{
 		{
 			keySet: &PrivateKeySet{
-				keys:        []PrivateKey{k1},
+				keys:        []*PrivateKey{k1},
 				ActiveKeyID: k1.KeyID,
 				expiresAt:   now.Add(time.Minute),
 			},
@@ -131,7 +131,7 @@ func TestSync(t *testing.T) {
 		},
 		{
 			keySet: &PrivateKeySet{
-				keys:        []PrivateKey{k2, k1},
+				keys:        []*PrivateKey{k2, k1},
 				ActiveKeyID: k2.KeyID,
 				expiresAt:   now.Add(time.Minute),
 			},
@@ -139,7 +139,7 @@ func TestSync(t *testing.T) {
 		},
 		{
 			keySet: &PrivateKeySet{
-				keys:        []PrivateKey{k3, k2, k1},
+				keys:        []*PrivateKey{k3, k2, k1},
 				ActiveKeyID: k2.KeyID,
 				expiresAt:   now.Add(time.Minute),
 			},
@@ -147,7 +147,7 @@ func TestSync(t *testing.T) {
 		},
 		{
 			keySet: &PrivateKeySet{
-				keys:        []PrivateKey{k2, k1},
+				keys:        []*PrivateKey{k2, k1},
 				ActiveKeyID: k2.KeyID,
 				expiresAt:   now.Add(time.Hour),
 			},
@@ -183,10 +183,10 @@ func TestSyncFail(t *testing.T) {
 	from := NewPrivateKeySetRepo()
 	to := NewPrivateKeySetRepo()
 
-	k1 := generatePrivateRSAKeyStatic(t, 1)
-	k2 := generatePrivateRSAKeyStatic(t, 2)
+	k1 := generatePrivateKeyStatic(t, 1)
+	k2 := generatePrivateKeyStatic(t, 2)
 	fixture := &PrivateKeySet{
-		keys:        []PrivateKey{k2, k1},
+		keys:        []*PrivateKey{k2, k1},
 		ActiveKeyID: k2.KeyID,
 		expiresAt:   now.Add(-1 * time.Minute),
 	}

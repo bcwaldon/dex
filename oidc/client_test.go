@@ -60,9 +60,9 @@ func TestHealthy(t *testing.T) {
 	clock := clockwork.NewFakeClock()
 	now := clock.Now().UTC()
 
-	k, err := key.GeneratePrivateRSAKey()
+	k, err := key.GeneratePrivateKey()
 	if err != nil {
-		t.Fatalf("Unable to generate RSA key: %v", err)
+		t.Fatalf("Unable to generate private key: %v", err)
 	}
 	okKS := key.NewPublicKeySet([]jose.JWK{k.JWK()}, now.Add(time.Hour))
 	expKS := key.NewPublicKeySet([]jose.JWK{k.JWK()}, now.Add(time.Hour*-1))

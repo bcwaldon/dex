@@ -13,7 +13,7 @@ import (
 	"github.com/coreos-inc/auth/jose"
 )
 
-func generatePrivateRSAKeyStatic(t *testing.T, idAndN int) *PrivateRSAKey {
+func generatePrivateKeyStatic(t *testing.T, idAndN int) *PrivateKey {
 	n := big.NewInt(int64(idAndN))
 	if n == nil {
 		t.Fatalf("Call to NewInt(%d) failed", idAndN)
@@ -23,14 +23,14 @@ func generatePrivateRSAKeyStatic(t *testing.T, idAndN int) *PrivateRSAKey {
 		PublicKey: rsa.PublicKey{N: n, E: 65537},
 	}
 
-	return &PrivateRSAKey{
+	return &PrivateKey{
 		KeyID:      strconv.Itoa(idAndN),
 		PrivateKey: pk,
 	}
 }
 
 func TestPrivateKeyManagerJWKsRotate(t *testing.T) {
-	k1 := generatePrivateRSAKeyStatic(t, 1)
+	k1 := generatePrivateKeyStatic(t, 1)
 	jwk1 := jose.JWK{
 		ID:       "1",
 		Type:     "RSA",
@@ -40,7 +40,7 @@ func TestPrivateKeyManagerJWKsRotate(t *testing.T) {
 		Exponent: 65537,
 	}
 
-	k2 := generatePrivateRSAKeyStatic(t, 2)
+	k2 := generatePrivateKeyStatic(t, 2)
 	jwk2 := jose.JWK{
 		ID:       "2",
 		Type:     "RSA",
@@ -50,7 +50,7 @@ func TestPrivateKeyManagerJWKsRotate(t *testing.T) {
 		Exponent: 65537,
 	}
 
-	k3 := generatePrivateRSAKeyStatic(t, 3)
+	k3 := generatePrivateKeyStatic(t, 3)
 	jwk3 := jose.JWK{
 		ID:       "3",
 		Type:     "RSA",
@@ -62,7 +62,7 @@ func TestPrivateKeyManagerJWKsRotate(t *testing.T) {
 
 	km := NewPrivateKeyManager()
 	err := km.Set(&PrivateKeySet{
-		keys:        []PrivateKey{k1, k2, k3},
+		keys:        []*PrivateKey{k1, k2, k3},
 		ActiveKeyID: k1.KeyID,
 		expiresAt:   time.Now().Add(time.Minute),
 	})
@@ -81,11 +81,11 @@ func TestPrivateKeyManagerJWKsRotate(t *testing.T) {
 }
 
 func TestPrivateKeyManagerSigner(t *testing.T) {
-	k := generatePrivateRSAKeyStatic(t, 13)
+	k := generatePrivateKeyStatic(t, 13)
 
 	km := NewPrivateKeyManager()
 	err := km.Set(&PrivateKeySet{
-		keys:        []PrivateKey{k},
+		keys:        []*PrivateKey{k},
 		ActiveKeyID: k.KeyID,
 		expiresAt:   time.Now().Add(time.Minute),
 	})
@@ -106,7 +106,7 @@ func TestPrivateKeyManagerSigner(t *testing.T) {
 }
 
 func TestPrivateKeyManagerHealthyFail(t *testing.T) {
-	keyFixture := generatePrivateRSAKeyStatic(t, 1)
+	keyFixture := generatePrivateKeyStatic(t, 1)
 	tests := []*privateKeyManager{
 		// keySet nil
 		&privateKeyManager{
@@ -116,7 +116,7 @@ func TestPrivateKeyManagerHealthyFail(t *testing.T) {
 		// zero keys
 		&privateKeyManager{
 			keySet: &PrivateKeySet{
-				keys:      []PrivateKey{},
+				keys:      []*PrivateKey{},
 				expiresAt: time.Now().Add(time.Minute),
 			},
 			clock: clockwork.NewRealClock(),
@@ -124,7 +124,7 @@ func TestPrivateKeyManagerHealthyFail(t *testing.T) {
 		// key set expired
 		&privateKeyManager{
 			keySet: &PrivateKeySet{
-				keys:      []PrivateKey{keyFixture},
+				keys:      []*PrivateKey{keyFixture},
 				expiresAt: time.Now().Add(-1 * time.Minute),
 			},
 			clock: clockwork.NewRealClock(),
@@ -152,7 +152,7 @@ func TestPrivateKeyManagerExpiresAt(t *testing.T) {
 	fc := clockwork.NewFakeClock()
 	now := fc.Now().UTC()
 
-	k := generatePrivateRSAKeyStatic(t, 17)
+	k := generatePrivateKeyStatic(t, 17)
 	km := &privateKeyManager{
 		clock: fc,
 	}
@@ -164,7 +164,7 @@ func TestPrivateKeyManagerExpiresAt(t *testing.T) {
 	}
 
 	err := km.Set(&PrivateKeySet{
-		keys:        []PrivateKey{k},
+		keys:        []*PrivateKey{k},
 		ActiveKeyID: k.KeyID,
 		expiresAt:   now.Add(2 * time.Minute),
 	})

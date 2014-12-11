@@ -42,13 +42,13 @@ func TestHTTPExchangeToken(t *testing.T) {
 	issuerURL := "http://server.example.com"
 	sm := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())
 
-	k, err := key.GeneratePrivateRSAKey()
+	k, err := key.GeneratePrivateKey()
 	if err != nil {
 		t.Fatalf("Unable to generate RSA key: %v", err)
 	}
 
 	km := key.NewPrivateKeyManager()
-	err = km.Set(key.NewPrivateKeySet([]key.PrivateKey{k}, time.Now().Add(time.Minute)))
+	err = km.Set(key.NewPrivateKeySet([]*key.PrivateKey{k}, time.Now().Add(time.Minute)))
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -130,13 +130,13 @@ func TestHTTPClientCredsToken(t *testing.T) {
 	cir := server.NewClientIdentityRepo([]oauth2.ClientIdentity{ci})
 	issuerURL := "http://server.example.com"
 
-	k, err := key.GeneratePrivateRSAKey()
+	k, err := key.GeneratePrivateKey()
 	if err != nil {
-		t.Fatalf("Unable to generate RSA key: %v", err)
+		t.Fatalf("Unable to generate private key: %v", err)
 	}
 
 	km := key.NewPrivateKeyManager()
-	err = km.Set(key.NewPrivateKeySet([]key.PrivateKey{k}, time.Now().Add(time.Minute)))
+	err = km.Set(key.NewPrivateKeySet([]*key.PrivateKey{k}, time.Now().Add(time.Minute)))
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}

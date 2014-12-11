@@ -18,14 +18,14 @@ func NewPrivateKeyRotator(repo PrivateKeySetRepo, ttl time.Duration) *PrivateKey
 		ttl:  ttl,
 
 		keep:        2,
-		generateKey: GeneratePrivateRSAKey,
+		generateKey: GeneratePrivateKey,
 		clock:       clockwork.NewRealClock(),
 	}
 }
 
 type PrivateKeyRotator struct {
 	repo        PrivateKeySetRepo
-	generateKey GeneratePrivateRSAKeyFunc
+	generateKey GeneratePrivateKeyFunc
 	clock       clockwork.Clock
 	keep        int
 	ttl         time.Duration
@@ -68,13 +68,13 @@ func (r *PrivateKeyRotator) Run() chan struct{} {
 	return stop
 }
 
-func rotatePrivateKeys(repo PrivateKeySetRepo, k PrivateKey, keep int, exp time.Time) error {
+func rotatePrivateKeys(repo PrivateKeySetRepo, k *PrivateKey, keep int, exp time.Time) error {
 	ks, err := repo.Get()
 	if err != nil {
 		return err
 	}
 
-	var keys []PrivateKey
+	var keys []*PrivateKey
 	if ks != nil {
 		pks, ok := ks.(*PrivateKeySet)
 		if !ok {
@@ -83,7 +83,7 @@ func rotatePrivateKeys(repo PrivateKeySetRepo, k PrivateKey, keep int, exp time.
 		keys = pks.Keys()
 	}
 
-	keys = append([]PrivateKey{k}, keys...)
+	keys = append([]*PrivateKey{k}, keys...)
 	if l := len(keys); l > keep {
 		keys = keys[0:keep]
 	}

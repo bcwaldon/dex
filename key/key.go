@@ -11,48 +11,40 @@ import (
 	josesig "github.com/coreos-inc/auth/jose/sig"
 )
 
-type PublicKey interface {
-	ID() string
-	Verifier() (josesig.Verifier, error)
-	JWK() jose.JWK
+func NewPublicKey(jwk jose.JWK) *PublicKey {
+	return &PublicKey{jwk: jwk}
 }
 
-type publicRSAKey struct {
+type PublicKey struct {
 	jwk jose.JWK
 }
 
-func (k *publicRSAKey) ID() string {
+func (k *PublicKey) ID() string {
 	return k.jwk.ID
 }
 
-func (k *publicRSAKey) JWK() jose.JWK {
+func (k *PublicKey) JWK() jose.JWK {
 	return k.jwk
 }
 
-func (k *publicRSAKey) Verifier() (josesig.Verifier, error) {
+func (k *PublicKey) Verifier() (josesig.Verifier, error) {
 	return josesig.NewVerifierRSA(k.jwk)
 }
 
-type PrivateKey interface {
-	ID() string
-	Signer() josesig.Signer
-	JWK() jose.JWK
-}
-
-type PrivateRSAKey struct {
+type PrivateKey struct {
 	KeyID      string
 	PrivateKey *rsa.PrivateKey
 }
 
-func (k *PrivateRSAKey) ID() string {
+func (k *PrivateKey) ID() string {
 	return k.KeyID
 }
 
-func (k *PrivateRSAKey) Signer() josesig.Signer {
+func (k *PrivateKey) Signer() josesig.Signer {
 	return josesig.NewSignerRSA(k.ID(), *k.PrivateKey)
 }
 
-func (k *PrivateRSAKey) JWK() jose.JWK {
+func (k *PrivateKey) JWK() jose.JWK {
 	return jose.JWK{
 		ID:       k.KeyID,
 		Type:     "RSA",
@@ -73,14 +65,10 @@ type PublicKeySet struct {
 	expiresAt time.Time
 }
 
-func NewPublicKey(jwk jose.JWK) PublicKey {
-	return &publicRSAKey{jwk: jwk}
-}
-
 func NewPublicKeySet(jwks []jose.JWK, exp time.Time) *PublicKeySet {
 	keys := make([]PublicKey, len(jwks))
 	for i, jwk := range jwks {
-		keys[i] = NewPublicKey(jwk)
+		keys[i] = *NewPublicKey(jwk)
 	}
 	return &PublicKeySet{
 		keys:      keys,
@@ -105,12 +93,12 @@ func (s *PublicKeySet) JWKs() []jose.JWK {
 }
 
 type PrivateKeySet struct {
-	keys        []PrivateKey
+	keys        []*PrivateKey
 	ActiveKeyID string
 	expiresAt   time.Time
 }
 
-func NewPrivateKeySet(keys []PrivateKey, exp time.Time) *PrivateKeySet {
+func NewPrivateKeySet(keys []*PrivateKey, exp time.Time) *PrivateKeySet {
 	return &PrivateKeySet{
 		keys:        keys,
 		ActiveKeyID: keys[0].ID(),
@@ -118,7 +106,7 @@ func NewPrivateKeySet(keys []PrivateKey, exp time.Time) *PrivateKeySet {
 	}
 }
 
-func (s *PrivateKeySet) Keys() []PrivateKey {
+func (s *PrivateKeySet) Keys() []*PrivateKey {
 	return s.keys
 }
 
@@ -126,10 +114,10 @@ func (s *PrivateKeySet) ExpiresAt() time.Time {
 	return s.expiresAt
 }
 
-func (s *PrivateKeySet) Active() PrivateKey {
+func (s *PrivateKeySet) Active() *PrivateKey {
 	for i, k := range s.keys {
 		if k.ID() == s.ActiveKeyID {
-			return PrivateKey(s.keys[i])
+			return s.keys[i]
 		}
 	}
 
@@ -144,15 +132,15 @@ func (s *PrivateKeySet) JWKs() []jose.JWK {
 	return jwks
 }
 
-type GeneratePrivateRSAKeyFunc func() (*PrivateRSAKey, error)
+type GeneratePrivateKeyFunc func() (*PrivateKey, error)
 
-func GeneratePrivateRSAKey() (*PrivateRSAKey, error) {
+func GeneratePrivateKey() (*PrivateKey, error) {
 	pk, err := rsa.GenerateKey(rand.Reader, 1024)
 	if err != nil {
 		return nil, err
 	}
 
-	k := PrivateRSAKey{
+	k := PrivateKey{
 		KeyID:      base64BigInt(pk.PublicKey.N),
 		PrivateKey: pk,
 	}

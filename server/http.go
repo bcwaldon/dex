@@ -30,7 +30,7 @@ var (
 	httpPathDiscovery = "/.well-known/openid-configuration"
 	httpPathToken     = "/token"
 	httpPathKeys      = "/keys"
-	HttpPathAuth      = "/auth"
+	httpPathAuth      = "/auth"
 	httpPathHealth    = "/health"
 )
 
@@ -178,7 +178,7 @@ func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idp
 		v := r.URL.Query()
 		v.Set("idpc_id", id)
 		v.Set("response_type", "code")
-		td.Links[n].URL = HttpPathAuth + "?" + v.Encode()
+		td.Links[n].URL = httpPathAuth + "?" + v.Encode()
 		n++
 	}
 

@@ -70,7 +70,7 @@ func staticGenerateCodeFunc(code string) session.GenerateCodeFunc {
 }
 
 func TestServerProviderConfig(t *testing.T) {
-	srv := &Server{IssuerURL: "http://server.example.com"}
+	srv := &Server{IssuerURL: url.URL{Scheme: "http", Host: "server.example.com"}}
 
 	want := oidc.ProviderConfig{
 		Issuer:                            "http://server.example.com",
@@ -159,7 +159,7 @@ func TestServerLogin(t *testing.T) {
 	}
 
 	srv := &Server{
-		IssuerURL:          "http://server.example.com",
+		IssuerURL:          url.URL{Scheme: "http", Host: "server.example.com"},
 		KeyManager:         km,
 		SessionManager:     sm,
 		ClientIdentityRepo: ciRepo,
@@ -191,7 +191,7 @@ func TestServerLoginUnrecognizedSessionKey(t *testing.T) {
 	}
 	sm := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())
 	srv := &Server{
-		IssuerURL:          "http://server.example.com",
+		IssuerURL:          url.URL{Scheme: "http", Host: "server.example.com"},
 		KeyManager:         km,
 		SessionManager:     sm,
 		ClientIdentityRepo: ciRepo,
@@ -217,7 +217,7 @@ func TestServerCodeToken(t *testing.T) {
 	sm := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())
 
 	srv := &Server{
-		IssuerURL:          "http://server.example.com",
+		IssuerURL:          url.URL{Scheme: "http", Host: "server.example.com"},
 		KeyManager:         km,
 		SessionManager:     sm,
 		ClientIdentityRepo: ciRepo,
@@ -255,7 +255,7 @@ func TestServerTokenUnrecognizedKey(t *testing.T) {
 	sm := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())
 
 	srv := &Server{
-		IssuerURL:          "http://server.example.com",
+		IssuerURL:          url.URL{Scheme: "http", Host: "server.example.com"},
 		KeyManager:         km,
 		SessionManager:     sm,
 		ClientIdentityRepo: ciRepo,
@@ -281,7 +281,7 @@ func TestServerTokenUnrecognizedKey(t *testing.T) {
 }
 
 func TestServerTokenFail(t *testing.T) {
-	issuerURL := "http://server.example.com"
+	issuerURL := url.URL{Scheme: "http", Host: "server.example.com"}
 	keyFixture := "goodkey"
 	ciFixture := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
 	signerFixture := &StaticSigner{sig: []byte("beer"), err: nil}

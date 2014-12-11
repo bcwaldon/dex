@@ -75,9 +75,9 @@ func (c *Client) OAuthClient() (*oauth2.Client, error) {
 	return oauth2.NewClient(c.getHTTPClient(), ocfg)
 }
 
-func (c *Client) SyncProviderConfig() chan struct{} {
+func (c *Client) SyncProviderConfig(discoveryURL string) chan struct{} {
 	rp := &providerConfigRepo{c}
-	r := NewHTTPProviderConfigGetter(c.getHTTPClient(), c.ProviderConfig.Issuer)
+	r := NewHTTPProviderConfigGetter(c.getHTTPClient(), discoveryURL)
 	return NewProviderConfigSyncer(r, rp).Run()
 }
 

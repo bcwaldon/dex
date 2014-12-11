@@ -93,7 +93,7 @@ func main() {
 		RedirectURL:    redirectURL.String(),
 	}
 
-	client.SyncProviderConfig()
+	client.SyncProviderConfig(*discovery)
 
 	client.SyncKeys()
 

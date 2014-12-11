@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/coreos-inc/auth/connector"
+	"github.com/coreos-inc/auth/jose"
 	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
@@ -41,13 +42,13 @@ func TestHTTPExchangeToken(t *testing.T) {
 	issuerURL := "http://server.example.com"
 	sm := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())
 
-	k, err := key.GeneratePrivateRSAKey()
+	k, err := key.GeneratePrivateKey()
 	if err != nil {
 		t.Fatalf("Unable to generate RSA key: %v", err)
 	}
 
 	km := key.NewPrivateKeyManager()
-	err = km.Set(key.NewPrivateKeySet([]key.PrivateKey{k}, time.Now().Add(time.Minute)))
+	err = km.Set(key.NewPrivateKeySet([]*key.PrivateKey{k}, time.Now().Add(time.Minute)))
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -78,14 +79,13 @@ func TestHTTPExchangeToken(t *testing.T) {
 		t.Fatalf("Failed to fetch provider config: %v", err)
 	}
 
+	ks := key.NewPublicKeySet([]jose.JWK{k.JWK()}, time.Now().Add(1*time.Hour))
 	cl := &oidc.Client{
 		HTTPClient:     sClient,
 		ProviderConfig: pcfg,
 		ClientIdentity: ci,
 		RedirectURL:    "http://client.example.com",
-		Keys: []key.PublicKey{
-			key.NewPublicKey(k.JWK()),
-		},
+		KeySet:         *ks,
 	}
 
 	m := http.NewServeMux()
@@ -130,13 +130,13 @@ func TestHTTPClientCredsToken(t *testing.T) {
 	cir := server.NewClientIdentityRepo([]oauth2.ClientIdentity{ci})
 	issuerURL := "http://server.example.com"
 
-	k, err := key.GeneratePrivateRSAKey()
+	k, err := key.GeneratePrivateKey()
 	if err != nil {
-		t.Fatalf("Unable to generate RSA key: %v", err)
+		t.Fatalf("Unable to generate private key: %v", err)
 	}
 
 	km := key.NewPrivateKeyManager()
-	err = km.Set(key.NewPrivateKeySet([]key.PrivateKey{k}, time.Now().Add(time.Minute)))
+	err = km.Set(key.NewPrivateKeySet([]*key.PrivateKey{k}, time.Now().Add(time.Minute)))
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -161,13 +161,12 @@ func TestHTTPClientCredsToken(t *testing.T) {
 		t.Fatalf("Failed to fetch provider config: %v", err)
 	}
 
+	ks := key.NewPublicKeySet([]jose.JWK{k.JWK()}, time.Now().Add(1*time.Hour))
 	cl := &oidc.Client{
 		HTTPClient:     sClient,
 		ProviderConfig: cfg,
 		ClientIdentity: ci,
-		Keys: []key.PublicKey{
-			key.NewPublicKey(k.JWK()),
-		},
+		KeySet:         *ks,
 	}
 
 	tok, err := cl.ClientCredsToken([]string{"openid"})

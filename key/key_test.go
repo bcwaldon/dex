@@ -15,7 +15,7 @@ func TestPrivateRSAKeyJWK(t *testing.T) {
 		panic("NewInt returned nil")
 	}
 
-	k := &PrivateRSAKey{
+	k := &PrivateKey{
 		KeyID: "foo",
 		PrivateKey: &rsa.PrivateKey{
 			PublicKey: rsa.PublicKey{N: n, E: 65537},

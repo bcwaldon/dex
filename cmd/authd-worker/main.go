@@ -155,11 +155,11 @@ func newKeyManagerFromFlags(fs *flag.FlagSet) (key.PrivateKeyManager, error) {
 		kRepo = key.NewPrivateKeySetRepo()
 
 		// WARNING: the following behavior is just for testing - do not rely on this
-		k, err := key.GeneratePrivateRSAKey()
+		k, err := key.GeneratePrivateKey()
 		if err != nil {
 			return nil, err
 		}
-		ks := key.NewPrivateKeySet([]key.PrivateKey{k}, time.Now().Add(24*time.Hour))
+		ks := key.NewPrivateKeySet([]*key.PrivateKey{k}, time.Now().Add(24*time.Hour))
 		if err = kRepo.Set(ks); err != nil {
 			return nil, err
 		}

@@ -20,13 +20,9 @@ func newPrivateKeySetModel(pks *key.PrivateKeySet) (*privateKeySetModel, error) 
 	pkeys := pks.Keys()
 	keys := make([]privateKeyModel, len(pkeys))
 	for i, pkey := range pkeys {
-		rkey, ok := pkey.(*key.PrivateRSAKey)
-		if !ok {
-			return nil, errors.New("unable to cast to PrivateRSAKey")
-		}
 		keys[i] = privateKeyModel{
 			ID:    pkey.ID(),
-			PKCS1: x509.MarshalPKCS1PrivateKey(rkey.PrivateKey),
+			PKCS1: x509.MarshalPKCS1PrivateKey(pkey.PrivateKey),
 		}
 	}
 
@@ -43,13 +39,13 @@ type privateKeyModel struct {
 	PKCS1 []byte `json:"pkcs1"`
 }
 
-func (m *privateKeyModel) PrivateRSAKey() (*key.PrivateRSAKey, error) {
+func (m *privateKeyModel) PrivateKey() (*key.PrivateKey, error) {
 	d, err := x509.ParsePKCS1PrivateKey(m.PKCS1)
 	if err != nil {
 		return nil, err
 	}
 
-	pk := key.PrivateRSAKey{
+	pk := key.PrivateKey{
 		KeyID:      m.ID,
 		PrivateKey: d,
 	}
@@ -63,13 +59,13 @@ type privateKeySetModel struct {
 }
 
 func (m *privateKeySetModel) PrivateKeySet() (*key.PrivateKeySet, error) {
-	keys := make([]key.PrivateKey, len(m.Keys))
+	keys := make([]*key.PrivateKey, len(m.Keys))
 	for i, pkm := range m.Keys {
-		rk, err := pkm.PrivateRSAKey()
+		pk, err := pkm.PrivateKey()
 		if err != nil {
 			return nil, err
 		}
-		keys[i] = key.PrivateKey(rk)
+		keys[i] = pk
 	}
 	return key.NewPrivateKeySet(keys, m.ExpiresAt), nil
 }

@@ -8,23 +8,23 @@ import (
 	"github.com/jonboulle/clockwork"
 )
 
-func generatePrivateRSAKeySerialFunc(t *testing.T) GeneratePrivateRSAKeyFunc {
+func generatePrivateKeySerialFunc(t *testing.T) GeneratePrivateKeyFunc {
 	var n int
-	return func() (*PrivateRSAKey, error) {
+	return func() (*PrivateKey, error) {
 		n++
-		return generatePrivateRSAKeyStatic(t, n), nil
+		return generatePrivateKeyStatic(t, n), nil
 	}
 }
 
 func TestRotate(t *testing.T) {
 	now := time.Now()
-	k1 := generatePrivateRSAKeyStatic(t, 1)
-	k2 := generatePrivateRSAKeyStatic(t, 2)
-	k3 := generatePrivateRSAKeyStatic(t, 3)
+	k1 := generatePrivateKeyStatic(t, 1)
+	k2 := generatePrivateKeyStatic(t, 2)
+	k3 := generatePrivateKeyStatic(t, 3)
 
 	tests := []struct {
 		start *PrivateKeySet
-		key   PrivateKey
+		key   *PrivateKey
 		keep  int
 		exp   time.Time
 		want  *PrivateKeySet
@@ -36,7 +36,7 @@ func TestRotate(t *testing.T) {
 			keep:  2,
 			exp:   now.Add(time.Second),
 			want: &PrivateKeySet{
-				keys:        []PrivateKey{k1},
+				keys:        []*PrivateKey{k1},
 				ActiveKeyID: k1.KeyID,
 				expiresAt:   now.Add(time.Second),
 			},
@@ -48,7 +48,7 @@ func TestRotate(t *testing.T) {
 			keep:  2,
 			exp:   now.Add(time.Second),
 			want: &PrivateKeySet{
-				keys:        []PrivateKey{k1},
+				keys:        []*PrivateKey{k1},
 				ActiveKeyID: k1.KeyID,
 				expiresAt:   now.Add(time.Second),
 			},
@@ -56,7 +56,7 @@ func TestRotate(t *testing.T) {
 		// add second key
 		{
 			start: &PrivateKeySet{
-				keys:        []PrivateKey{k1},
+				keys:        []*PrivateKey{k1},
 				ActiveKeyID: k1.KeyID,
 				expiresAt:   now,
 			},
@@ -64,7 +64,7 @@ func TestRotate(t *testing.T) {
 			keep: 2,
 			exp:  now.Add(time.Second),
 			want: &PrivateKeySet{
-				keys:        []PrivateKey{k2, k1},
+				keys:        []*PrivateKey{k2, k1},
 				ActiveKeyID: k2.KeyID,
 				expiresAt:   now.Add(time.Second),
 			},
@@ -72,7 +72,7 @@ func TestRotate(t *testing.T) {
 		// rotate in third key
 		{
 			start: &PrivateKeySet{
-				keys:        []PrivateKey{k2, k1},
+				keys:        []*PrivateKey{k2, k1},
 				ActiveKeyID: k2.KeyID,
 				expiresAt:   now,
 			},
@@ -80,7 +80,7 @@ func TestRotate(t *testing.T) {
 			keep: 2,
 			exp:  now.Add(time.Second),
 			want: &PrivateKeySet{
-				keys:        []PrivateKey{k3, k2},
+				keys:        []*PrivateKey{k3, k2},
 				ActiveKeyID: k3.KeyID,
 				expiresAt:   now.Add(time.Second),
 			},
@@ -106,34 +106,34 @@ func TestPrivateKeyRotatorRun(t *testing.T) {
 	fc := clockwork.NewFakeClock()
 	now := fc.Now().UTC()
 
-	k1 := generatePrivateRSAKeyStatic(t, 1)
-	k2 := generatePrivateRSAKeyStatic(t, 2)
-	k3 := generatePrivateRSAKeyStatic(t, 3)
-	k4 := generatePrivateRSAKeyStatic(t, 4)
+	k1 := generatePrivateKeyStatic(t, 1)
+	k2 := generatePrivateKeyStatic(t, 2)
+	k3 := generatePrivateKeyStatic(t, 3)
+	k4 := generatePrivateKeyStatic(t, 4)
 
 	kRepo := NewPrivateKeySetRepo()
 	krot := NewPrivateKeyRotator(kRepo, 4*time.Second)
 	krot.clock = fc
-	krot.generateKey = generatePrivateRSAKeySerialFunc(t)
+	krot.generateKey = generatePrivateKeySerialFunc(t)
 
 	steps := []*PrivateKeySet{
 		&PrivateKeySet{
-			keys:        []PrivateKey{k1},
+			keys:        []*PrivateKey{k1},
 			ActiveKeyID: k1.KeyID,
 			expiresAt:   now.Add(4 * time.Second),
 		},
 		&PrivateKeySet{
-			keys:        []PrivateKey{k2, k1},
+			keys:        []*PrivateKey{k2, k1},
 			ActiveKeyID: k2.KeyID,
 			expiresAt:   now.Add(6 * time.Second),
 		},
 		&PrivateKeySet{
-			keys:        []PrivateKey{k3, k2},
+			keys:        []*PrivateKey{k3, k2},
 			ActiveKeyID: k3.KeyID,
 			expiresAt:   now.Add(8 * time.Second),
 		},
 		&PrivateKeySet{
-			keys:        []PrivateKey{k4, k3},
+			keys:        []*PrivateKey{k4, k3},
 			ActiveKeyID: k4.KeyID,
 			expiresAt:   now.Add(10 * time.Second),
 		},

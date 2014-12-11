@@ -33,26 +33,16 @@
         font-size: 18px;
         font-weight: 500;
         margin-top: 0;
-        margin-bottom: 10px;
+        margin-bottom: 5px;
       }
       #container {
         margin: 45px auto;
         text-align: center;
-        width: 100%;
-      }
-      @media (min-width: 800px) {
-        #container {
-          width: 50%;
-        }
-      }
-      @media (min-width: 1200px) {
-        #container {
-          width: 40%;
-        }
+        width: 320px;
       }
       #panel {
         background-color: #fff;
-        padding: 40px 30px;
+        padding: 30px;
         box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.5);
       }
       #contact-link {
@@ -121,6 +111,9 @@
         margin-bottom: 10px;
         min-width: 200px;
       }
+      .instruction-block {
+        font-size: 14px;
+      }
       .detail-block {
         color: #777;
         font-size: 12px;
@@ -153,15 +146,14 @@
 
       <div id="panel">
         {{ if .Error }}
-          <h2 id="heading">Authentication Error</h2>
+          <h2 id="heading">{{ .Message }}</h2>
         {{ else }}
           <h2 id="heading">Verify Your Identity</h2>
         {{ end }}
         <div id="button-container">
 
           {{ if .Error }}
-            <div>{{ .Message }}</div>
-            <div>{{ .Instruction }}</div>
+            <div class="instruction-block">{{ .Instruction }}</div>
             <div class="detail-block">{{ .Detail }}</div>
           {{ else }}
             {{ range $c := .Links }}

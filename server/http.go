@@ -161,7 +161,7 @@ func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idp
 		td.Error = true
 		td.Message = "Server Error"
 		td.Instruction = "Unable to authenticate users at this time"
-		td.Detail = "Authencitcation service may be misconfigured"
+		td.Detail = "Authentication service may be misconfigured"
 		execTemplate(w, tpl, td)
 		return
 	}

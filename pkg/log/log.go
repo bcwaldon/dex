@@ -51,7 +51,7 @@ func Errorf(format string, v ...interface{}) {
 	logger.Output(calldepth, header("ERROR", fmt.Sprintf(format, v...)))
 }
 
-func Warning(format string, v ...interface{}) {
+func Warning(v ...interface{}) {
 	logger.Output(calldepth, header("WARN", fmt.Sprint(v...)))
 }
 

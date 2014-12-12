@@ -107,7 +107,7 @@ func (c *OIDCConnector) Sync() chan struct{} {
 func redirectError(w http.ResponseWriter, errorURL url.URL, q url.Values) {
 	redirectURL := phttp.MergeQuery(errorURL, q)
 	w.Header().Set("Location", redirectURL.String())
-	w.WriteHeader(http.StatusTemporaryRedirect)
+	w.WriteHeader(http.StatusSeeOther)
 }
 
 func (c *OIDCConnector) handleCallbackFunc(lf oidc.LoginFunc, errorURL url.URL) http.HandlerFunc {

@@ -66,3 +66,29 @@ func TestNewJWTHeaderTyp(t *testing.T) {
 	}
 
 }
+
+func TestNewJWTHeaderKeyID(t *testing.T) {
+	jwt, err := NewJWT(JOSEHeader{HeaderKeyID: "foo"}, Claims{})
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	want := "foo"
+	got, ok := jwt.KeyID()
+	if !ok {
+		t.Fatalf("KeyID not set")
+	} else if want != got {
+		t.Fatalf("KeyID incorrect: want=%s got=%s", want, got)
+	}
+}
+
+func TestNewJWTHeaderKeyIDNotSet(t *testing.T) {
+	jwt, err := NewJWT(JOSEHeader{}, Claims{})
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	if _, ok := jwt.KeyID(); ok {
+		t.Fatalf("KeyID set, but should not be")
+	}
+}

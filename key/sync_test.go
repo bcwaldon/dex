@@ -164,7 +164,7 @@ func TestSync(t *testing.T) {
 			t.Errorf("case %d: unexpected error: %v", i, err)
 			continue
 		}
-		exp, err := sync(from, to, fc)
+		exp, err := Sync(from, to, fc)
 		if err != nil {
 			t.Errorf("case %d: unexpected error: %v", i, err)
 			continue
@@ -194,7 +194,7 @@ func TestSyncFail(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	_, err = sync(from, to, fc)
+	_, err = Sync(from, to, fc)
 	if err == nil {
 		t.Fatal("expected non-nil error")
 	}

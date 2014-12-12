@@ -30,7 +30,7 @@ func (s *KeySetSyncer) Run() chan struct{} {
 		var failing bool
 		var next time.Duration
 		for {
-			exp, err := sync(s.readable, s.writable, s.clock)
+			exp, err := Sync(s.readable, s.writable, s.clock)
 			if err != nil {
 				if !failing {
 					failing = true
@@ -57,7 +57,7 @@ func (s *KeySetSyncer) Run() chan struct{} {
 	return stop
 }
 
-func sync(r ReadableKeySetRepo, w WritableKeySetRepo, clock clockwork.Clock) (exp time.Duration, err error) {
+func Sync(r ReadableKeySetRepo, w WritableKeySetRepo, clock clockwork.Clock) (exp time.Duration, err error) {
 	var ks KeySet
 	ks, err = r.Get()
 	if err != nil {

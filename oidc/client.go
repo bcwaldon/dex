@@ -137,10 +137,24 @@ func (r *clientKeyRepo) Set(ks key.KeySet) error {
 
 // verify if a JWT is valid or not
 func (c *Client) Verify(jwt jose.JWT) error {
+	var keys func() []key.PublicKey
+	if kID, ok := jwt.KeyID(); ok {
+		keys = func() (keys []key.PublicKey) {
+			if k := c.KeySet.Key(kID); k != nil {
+				keys = append(keys, *k)
+			}
+			return
+		}
+	} else {
+		keys = func() []key.PublicKey {
+			return c.KeySet.Keys()
+		}
+	}
+
 	jwtBytes := []byte(jwt.Data())
 
 	attempt := func() (bool, error) {
-		for _, k := range c.KeySet.Keys() {
+		for _, k := range keys() {
 			v, err := k.Verifier()
 			if err != nil {
 				return false, err

@@ -49,14 +49,6 @@ func (c *Client) Healthy() error {
 		return errors.New("oidc client provider config expired")
 	}
 
-	if c.KeySet.ExpiresAt().Before(now) {
-		return errors.New("oidc client keyset is expired")
-	}
-
-	if len(c.KeySet.Keys()) == 0 {
-		return errors.New("oidc client missing public keys")
-	}
-
 	return nil
 }
 

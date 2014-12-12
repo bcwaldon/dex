@@ -4,9 +4,6 @@ import (
 	"reflect"
 	"testing"
 	"time"
-
-	"github.com/coreos-inc/auth/jose"
-	"github.com/coreos-inc/auth/key"
 )
 
 func TestGetScopeDefault(t *testing.T) {
@@ -57,13 +54,6 @@ func TestGetScopeDefault(t *testing.T) {
 func TestHealthy(t *testing.T) {
 	now := time.Now().UTC()
 
-	k, err := key.GeneratePrivateKey()
-	if err != nil {
-		t.Fatalf("Unable to generate private key: %v", err)
-	}
-	okKS := key.NewPublicKeySet([]jose.JWK{k.JWK()}, now.Add(time.Hour))
-	expKS := key.NewPublicKeySet([]jose.JWK{k.JWK()}, now.Add(time.Hour*-1))
-
 	okCfg := ProviderConfig{
 		ExpiresAt: now.Add(time.Hour),
 	}
@@ -79,7 +69,6 @@ func TestHealthy(t *testing.T) {
 		{
 			c: &Client{
 				ProviderConfig: okCfg,
-				KeySet:         *okKS,
 			},
 			h: true,
 		},
@@ -87,33 +76,10 @@ func TestHealthy(t *testing.T) {
 		{
 			c: &Client{
 				ProviderConfig: expCfg,
-				KeySet:         *okKS,
-			},
-			h: false,
-		},
-		// expired keyset
-		{
-			c: &Client{
-				ProviderConfig: okCfg,
-				KeySet:         *expKS,
 			},
 			h: false,
 		},
 		// missing config
-		{
-			c: &Client{
-				KeySet: *okKS,
-			},
-			h: false,
-		},
-		// missing keyset
-		{
-			c: &Client{
-				ProviderConfig: okCfg,
-			},
-			h: false,
-		},
-		// empty client
 		{
 			c: &Client{},
 			h: false,
@@ -126,7 +92,7 @@ func TestHealthy(t *testing.T) {
 		got := (err == nil)
 
 		if want != got {
-			t.Errorf("case %d: want: healhty=%v, got: healhty=%v, err: %v", i, want, got, err)
+			t.Errorf("case %d: want: healthy=%v, got: healhty=%v, err: %v", i, want, got, err)
 		}
 	}
 }

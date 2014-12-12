@@ -4,9 +4,13 @@ import (
 	"database/sql"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/coopernurse/gorp"
 	_ "github.com/lib/pq"
+
+	"github.com/coreos-inc/auth/pkg/log"
+	ptime "github.com/coreos-inc/auth/pkg/time"
 )
 
 type table struct {
@@ -43,8 +47,14 @@ func NewConnection(dsn string) (*gorp.DbMap, error) {
 		dbm.AddTableWithName(t.model, t.name).SetKeys(t.autoinc, t.pkey)
 	}
 
-	if err := dbm.CreateTablesIfNotExists(); err != nil {
-		return nil, err
+	var sleep time.Duration
+	for {
+		if err = dbm.CreateTablesIfNotExists(); err == nil {
+			break
+		}
+		sleep = ptime.ExpBackoff(sleep, time.Minute)
+		log.Errorf("Unable to initialize database, retrying in %v: %v", sleep, err)
+		time.Sleep(sleep)
 	}
 
 	return &dbm, nil

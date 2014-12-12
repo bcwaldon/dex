@@ -95,8 +95,6 @@ func main() {
 
 	client.SyncProviderConfig(*discovery)
 
-	client.SyncKeys()
-
 	hdlr := NewClientHandler(client)
 	httpsrv := &http.Server{
 		Addr:    fmt.Sprintf(":%s", p),

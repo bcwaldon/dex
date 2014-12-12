@@ -99,7 +99,6 @@ func (c *OIDCConnector) Sync() chan struct{} {
 		log.Infof("Fetched provider config from %s: %#v", c.issuerURL, c.client.ProviderConfig)
 
 		c.client.SyncProviderConfig(c.issuerURL)
-		c.client.SyncKeys()
 	}()
 	return stop
 }

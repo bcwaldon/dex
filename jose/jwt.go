@@ -19,7 +19,7 @@ func NewJWT(header JOSEHeader, claims Claims) (jwt JWT, err error) {
 	jwt = JWT{}
 
 	jwt.Header = header
-	jwt.Header["typ"] = "JWT"
+	jwt.Header[HeaderMediaType] = "JWT"
 
 	claimBytes, err := marshalClaims(claims)
 	if err != nil {

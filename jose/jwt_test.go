@@ -16,8 +16,8 @@ func TestParseJWT(t *testing.T) {
 			// http://self-issued.info/docs/draft-ietf-oauth-json-web-token.html#ExampleJWT
 			"eyJ0eXAiOiJKV1QiLA0KICJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJqb2UiLA0KICJleHAiOjEzMDA4MTkzODAsDQogImh0dHA6Ly9leGFtcGxlLmNvbS9pc19yb290Ijp0cnVlfQ.dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
 			JOSEHeader{
-				"typ": "JWT",
-				"alg": "HS256",
+				HeaderMediaType:    "JWT",
+				HeaderKeyAlgorithm: "HS256",
 			},
 			Claims{
 				"iss": "joe",
@@ -60,9 +60,9 @@ func TestNewJWTHeaderTyp(t *testing.T) {
 	}
 
 	want := "JWT"
-	got := jwt.Header["typ"]
+	got := jwt.Header[HeaderMediaType]
 	if want != got {
-		t.Fatalf("Header typ incorrect: want=%s got=%s", want, got)
+		t.Fatalf("Header %q incorrect: want=%s got=%s", HeaderMediaType, want, got)
 	}
 
 }

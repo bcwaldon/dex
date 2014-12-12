@@ -3,15 +3,21 @@ package jose
 import (
 	"encoding/base64"
 	"encoding/json"
-	"errors"
+	"fmt"
 	"strings"
+)
+
+const (
+	HeaderMediaType    = "typ"
+	HeaderKeyAlgorithm = "alg"
+	HeaderKeyID        = "kid"
 )
 
 type JOSEHeader map[string]string
 
 func (j JOSEHeader) Validate() error {
-	if _, exists := j["alg"]; !exists {
-		return errors.New("header missing 'alg' parameter")
+	if _, exists := j[HeaderKeyAlgorithm]; !exists {
+		return fmt.Errorf("header missing %q parameter", HeaderKeyAlgorithm)
 	}
 
 	return nil

@@ -74,10 +74,6 @@ func main() {
 		ClientIdentity: ci,
 	}
 
-	// TODO(sym3tri): remove this hack once synchronous key-fetching is available.
-	client.SyncKeys()
-	time.Sleep(1 * time.Second)
-
 	tok, err := client.ClientCredsToken([]string{"openid"})
 	if err != nil {
 		fmt.Printf("unable to verify auth code with issuer: %v", err)

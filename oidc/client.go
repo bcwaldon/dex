@@ -4,13 +4,22 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
+
+	"github.com/jonboulle/clockwork"
 
 	"github.com/coreos-inc/auth/jose"
 	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oauth2"
 	phttp "github.com/coreos-inc/auth/pkg/http"
 	pnet "github.com/coreos-inc/auth/pkg/net"
+)
+
+const (
+	// amount of time that must pass after the last key sync
+	// completes before another attempt may begin
+	keySyncWindow = 5 * time.Second
 )
 
 var (
@@ -24,6 +33,9 @@ type Client struct {
 	RedirectURL    string
 	Scope          []string
 	KeySet         key.PublicKeySet
+
+	keySetSyncMutex sync.Mutex
+	lastKeySetSync  time.Time
 }
 
 func (c *Client) Healthy() error {
@@ -35,14 +47,6 @@ func (c *Client) Healthy() error {
 
 	if c.ProviderConfig.ExpiresAt.Before(now) {
 		return errors.New("oidc client provider config expired")
-	}
-
-	if c.KeySet.ExpiresAt().Before(now) {
-		return errors.New("oidc client keyset is expired")
-	}
-
-	if len(c.KeySet.Keys()) == 0 {
-		return errors.New("oidc client missing public keys")
 	}
 
 	return nil
@@ -75,16 +79,38 @@ func (c *Client) OAuthClient() (*oauth2.Client, error) {
 	return oauth2.NewClient(c.getHTTPClient(), ocfg)
 }
 
-func (c *Client) SyncProviderConfig() chan struct{} {
+func (c *Client) SyncProviderConfig(discoveryURL string) chan struct{} {
 	rp := &providerConfigRepo{c}
-	r := NewHTTPProviderConfigGetter(c.getHTTPClient(), c.ProviderConfig.Issuer)
+	r := NewHTTPProviderConfigGetter(c.getHTTPClient(), discoveryURL)
 	return NewProviderConfigSyncer(r, rp).Run()
 }
 
-func (c *Client) SyncKeys() chan struct{} {
+func (c *Client) maybeSyncKeys() error {
+	tooSoon := func() bool {
+		return time.Now().UTC().Before(c.lastKeySetSync.Add(keySyncWindow))
+	}
+
+	// ignore request to sync keys if a sync operation has been
+	// attempted too recently
+	if tooSoon() {
+		return nil
+	}
+
+	c.keySetSyncMutex.Lock()
+	defer c.keySetSyncMutex.Unlock()
+
+	// check again, as another goroutine may have been holding
+	// the lock while updating the keys
+	if tooSoon() {
+		return nil
+	}
+
 	r := NewRemotePublicKeyRepo(c.getHTTPClient(), c.ProviderConfig.KeysEndpoint)
 	w := &clientKeyRepo{client: c}
-	return key.NewKeySetSyncer(r, w).Run()
+	_, err := key.Sync(r, w, clockwork.NewRealClock())
+	c.lastKeySetSync = time.Now().UTC()
+
+	return err
 }
 
 type providerConfigRepo struct {
@@ -111,17 +137,61 @@ func (r *clientKeyRepo) Set(ks key.KeySet) error {
 
 // verify if a JWT is valid or not
 func (c *Client) Verify(jwt jose.JWT) error {
-	for _, k := range c.KeySet.Keys() {
-		v, err := k.Verifier()
-		if err != nil {
-			return err
+	var keys func() []key.PublicKey
+	if kID, ok := jwt.KeyID(); ok {
+		keys = func() (keys []key.PublicKey) {
+			if k := c.KeySet.Key(kID); k != nil {
+				keys = append(keys, *k)
+			}
+			return
 		}
-		if v.Verify(jwt.Signature, []byte(jwt.Data())) == nil {
-			return VerifyClaims(jwt, c.ProviderConfig.Issuer, c.ClientIdentity.ID)
+	} else {
+		keys = func() []key.PublicKey {
+			return c.KeySet.Keys()
 		}
 	}
 
-	return errors.New("could not verify JWT signature")
+	jwtBytes := []byte(jwt.Data())
+
+	attempt := func() (bool, error) {
+		for _, k := range keys() {
+			v, err := k.Verifier()
+			if err != nil {
+				return false, err
+			}
+			if v.Verify(jwt.Signature, jwtBytes) == nil {
+				return true, nil
+			}
+		}
+		return false, nil
+	}
+
+	reattempt := func() error {
+		ok, err := attempt()
+		if ok || err != nil {
+			return err
+		}
+
+		if err = c.maybeSyncKeys(); err != nil {
+			return err
+		}
+
+		ok, err = attempt()
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return errors.New("no matching keys")
+		}
+
+		return nil
+	}
+
+	if err := reattempt(); err != nil {
+		return fmt.Errorf("could not verify JWT signature: %v", err)
+	}
+
+	return VerifyClaims(jwt, c.ProviderConfig.Issuer, c.ClientIdentity.ID)
 }
 
 func (c *Client) ClientCredsToken(scope []string) (jose.JWT, error) {

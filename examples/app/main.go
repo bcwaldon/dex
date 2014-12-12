@@ -93,9 +93,7 @@ func main() {
 		RedirectURL:    redirectURL.String(),
 	}
 
-	client.SyncProviderConfig()
-
-	client.SyncKeys()
+	client.SyncProviderConfig(*discovery)
 
 	hdlr := NewClientHandler(client)
 	httpsrv := &http.Server{

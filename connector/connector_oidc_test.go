@@ -1,6 +1,8 @@
 package connector
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"reflect"
 	"testing"
@@ -108,5 +110,28 @@ func TestLoginURL(t *testing.T) {
 		if !reflect.DeepEqual(tt.v, got) {
 			t.Errorf("test: %d.\nwant: %v\ngot:  %v", i, tt.v, got)
 		}
+	}
+}
+
+func TestRedirectError(t *testing.T) {
+	eu := url.URL{
+		Scheme:   "http",
+		Host:     "example.com:9090",
+		Path:     "/login",
+		RawQuery: "foo=bar",
+	}
+	q := url.Values{"ping": []string{"pong"}}
+	rr := httptest.NewRecorder()
+	redirectError(rr, eu, q)
+
+	wantCode := http.StatusSeeOther
+	if wantCode != rr.Code {
+		t.Errorf("Incorrect code: want=%d got=%d", wantCode, rr.Code)
+	}
+
+	wantLoc := "http://example.com:9090/login?foo=bar&ping=pong"
+	gotLoc := rr.HeaderMap.Get("Location")
+	if wantLoc != gotLoc {
+		t.Errorf("Incorrect Location header: want=%s got=%s", wantLoc, gotLoc)
 	}
 }

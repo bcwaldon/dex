@@ -16,8 +16,8 @@ func TestParseJWT(t *testing.T) {
 			// http://self-issued.info/docs/draft-ietf-oauth-json-web-token.html#ExampleJWT
 			"eyJ0eXAiOiJKV1QiLA0KICJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJqb2UiLA0KICJleHAiOjEzMDA4MTkzODAsDQogImh0dHA6Ly9leGFtcGxlLmNvbS9pc19yb290Ijp0cnVlfQ.dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
 			JOSEHeader{
-				"typ": "JWT",
-				"alg": "HS256",
+				HeaderMediaType:    "JWT",
+				HeaderKeyAlgorithm: "HS256",
 			},
 			Claims{
 				"iss": "joe",
@@ -60,9 +60,35 @@ func TestNewJWTHeaderTyp(t *testing.T) {
 	}
 
 	want := "JWT"
-	got := jwt.Header["typ"]
+	got := jwt.Header[HeaderMediaType]
 	if want != got {
-		t.Fatalf("Header typ incorrect: want=%s got=%s", want, got)
+		t.Fatalf("Header %q incorrect: want=%s got=%s", HeaderMediaType, want, got)
 	}
 
+}
+
+func TestNewJWTHeaderKeyID(t *testing.T) {
+	jwt, err := NewJWT(JOSEHeader{HeaderKeyID: "foo"}, Claims{})
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	want := "foo"
+	got, ok := jwt.KeyID()
+	if !ok {
+		t.Fatalf("KeyID not set")
+	} else if want != got {
+		t.Fatalf("KeyID incorrect: want=%s got=%s", want, got)
+	}
+}
+
+func TestNewJWTHeaderKeyIDNotSet(t *testing.T) {
+	jwt, err := NewJWT(JOSEHeader{}, Claims{})
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	if _, ok := jwt.KeyID(); ok {
+		t.Fatalf("KeyID set, but should not be")
+	}
 }

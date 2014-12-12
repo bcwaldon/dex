@@ -123,20 +123,20 @@ func (s *ProviderConfigSyncer) Run() chan struct{} {
 
 type httpProviderConfigGetter struct {
 	hc        phttp.Client
-	discovery string
+	issuerURL string
 	clock     clockwork.Clock
 }
 
-func NewHTTPProviderConfigGetter(hc phttp.Client, discovery string) *httpProviderConfigGetter {
+func NewHTTPProviderConfigGetter(hc phttp.Client, issuerURL string) *httpProviderConfigGetter {
 	return &httpProviderConfigGetter{
 		hc:        hc,
-		discovery: discovery,
+		issuerURL: issuerURL,
 		clock:     clockwork.NewRealClock(),
 	}
 }
 
 func (r *httpProviderConfigGetter) Get() (cfg ProviderConfig, err error) {
-	req, err := http.NewRequest("GET", r.discovery+discoveryConfigPath, nil)
+	req, err := http.NewRequest("GET", r.issuerURL+discoveryConfigPath, nil)
 	if err != nil {
 		return
 	}
@@ -161,19 +161,19 @@ func (r *httpProviderConfigGetter) Get() (cfg ProviderConfig, err error) {
 
 	// The issuer value returned MUST be identical to the Issuer URL that was directly used to retrieve the configuration information.
 	// http://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfigurationValidation
-	if !pnet.URLEqual(cfg.Issuer, r.discovery) {
-		err = errors.New("issuer URL does not match discovery URL")
+	if !pnet.URLEqual(cfg.Issuer, r.issuerURL) {
+		err = errors.New(`"issuer" in config does not match actual issuer URL`)
 		return
 	}
 
 	return
 }
 
-func FetchProviderConfig(hc phttp.Client, discovery string) (ProviderConfig, error) {
+func FetchProviderConfig(hc phttp.Client, issuerURL string) (ProviderConfig, error) {
 	if hc == nil {
 		hc = http.DefaultClient
 	}
 
-	g := NewHTTPProviderConfigGetter(hc, discovery)
+	g := NewHTTPProviderConfigGetter(hc, issuerURL)
 	return g.Get()
 }

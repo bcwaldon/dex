@@ -57,16 +57,20 @@ type KeySet interface {
 
 type PublicKeySet struct {
 	keys      []PublicKey
+	index     map[string]*PublicKey
 	expiresAt time.Time
 }
 
 func NewPublicKeySet(jwks []jose.JWK, exp time.Time) *PublicKeySet {
 	keys := make([]PublicKey, len(jwks))
+	index := make(map[string]*PublicKey)
 	for i, jwk := range jwks {
 		keys[i] = *NewPublicKey(jwk)
+		index[keys[i].ID()] = &keys[i]
 	}
 	return &PublicKeySet{
 		keys:      keys,
+		index:     index,
 		expiresAt: exp,
 	}
 }
@@ -77,6 +81,10 @@ func (s *PublicKeySet) ExpiresAt() time.Time {
 
 func (s *PublicKeySet) Keys() []PublicKey {
 	return s.keys
+}
+
+func (s *PublicKeySet) Key(id string) *PublicKey {
+	return s.index[id]
 }
 
 type PrivateKeySet struct {

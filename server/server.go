@@ -183,12 +183,11 @@ func (s *Server) Login(ident oidc.Identity, key string) (string, error) {
 }
 
 func (s *Server) ClientCredsToken(clientID, clientSecret string) (*jose.JWT, error) {
-	ci, err := s.Client(clientID)
+	ok, err := s.ClientIdentityRepo.Authenticate(clientID, clientSecret)
 	if err != nil {
 		log.Errorf("Failed fetching client %s from repo: %v", clientID, err)
 		return nil, oauth2.NewError(oauth2.ErrorServerError)
-	}
-	if ci == nil || ci.Secret != clientSecret {
+	} else if !ok {
 		return nil, oauth2.NewError(oauth2.ErrorInvalidClient)
 	}
 
@@ -215,12 +214,11 @@ func (s *Server) ClientCredsToken(clientID, clientSecret string) (*jose.JWT, err
 }
 
 func (s *Server) CodeToken(clientID, clientSecret, sessionKey string) (*jose.JWT, error) {
-	ci, err := s.Client(clientID)
+	ok, err := s.ClientIdentityRepo.Authenticate(clientID, clientSecret)
 	if err != nil {
 		log.Errorf("Failed fetching client %s from repo: %v", clientID, err)
 		return nil, oauth2.NewError(oauth2.ErrorServerError)
-	}
-	if ci == nil || ci.Secret != clientSecret {
+	} else if !ok {
 		return nil, oauth2.NewError(oauth2.ErrorInvalidClient)
 	}
 
@@ -234,7 +232,7 @@ func (s *Server) CodeToken(clientID, clientSecret, sessionKey string) (*jose.JWT
 		return nil, oauth2.NewError(oauth2.ErrorInvalidRequest)
 	}
 
-	if ses.ClientID != ci.ID {
+	if ses.ClientID != clientID {
 		return nil, oauth2.NewError(oauth2.ErrorInvalidGrant)
 	}
 

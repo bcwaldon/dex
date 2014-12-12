@@ -212,6 +212,7 @@ func handleAuthFunc(srv OIDCServer, idpcs map[string]connector.Connector, tpl *t
 
 		acr, err := oauth2.ParseAuthCodeRequest(q)
 		if err != nil {
+			log.Debugf("Invalid auth request")
 			writeAuthError(w, err, acr.State)
 			return
 		}
@@ -222,7 +223,13 @@ func handleAuthFunc(srv OIDCServer, idpcs map[string]connector.Connector, tpl *t
 			writeAuthError(w, oauth2.NewError(oauth2.ErrorServerError), acr.State)
 			return
 		}
+		if ci == nil {
+			log.Debugf("Client %q not found", acr.ClientID)
+			writeAuthError(w, oauth2.NewError(oauth2.ErrorInvalidRequest), acr.State)
+			return
+		}
 		if ci == nil || (acr.RedirectURL != nil && !reflect.DeepEqual(ci.RedirectURL, *acr.RedirectURL)) {
+			log.Debugf("Mismatched redirect URL: want=%s got=%s", &ci.RedirectURL, acr.RedirectURL)
 			writeAuthError(w, oauth2.NewError(oauth2.ErrorInvalidRequest), acr.State)
 			return
 		}

@@ -13,7 +13,6 @@ import (
 	"github.com/coreos-inc/auth/db"
 	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/pkg/health"
-	"github.com/coreos-inc/auth/pkg/log"
 	"github.com/coreos-inc/auth/session"
 )
 
@@ -55,6 +54,11 @@ func (cfg *SingleServerConfig) Server() (*Server, error) {
 		return nil, fmt.Errorf("unable to read client identities from file %s: %v", cfg.ClientsFile, err)
 	}
 
+	cfgRepo, err := connector.NewConnectorConfigRepoFromFile(cfg.ConnectorsFile)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create ConnectorConfigRepo: %v", err)
+	}
+
 	sRepo := session.NewSessionRepo()
 	skRepo := session.NewSessionKeyRepo()
 	sm := session.NewSessionManager(sRepo, skRepo)
@@ -70,15 +74,16 @@ func (cfg *SingleServerConfig) Server() (*Server, error) {
 
 	km := key.NewPrivateKeyManager()
 	srv := Server{
-		IssuerURL:          *iu,
-		KeyManager:         km,
-		KeySetRepo:         kRepo,
-		SessionManager:     sm,
-		ClientIdentityRepo: ciRepo,
-		Templates:          tpl,
-		LoginTemplate:      ltpl,
-		HealthChecks:       []health.Checkable{km},
-		Connectors:         make(map[string]connector.Connector),
+		IssuerURL:           *iu,
+		KeyManager:          km,
+		KeySetRepo:          kRepo,
+		SessionManager:      sm,
+		ClientIdentityRepo:  ciRepo,
+		ConnectorConfigRepo: cfgRepo,
+		Templates:           tpl,
+		LoginTemplate:       ltpl,
+		HealthChecks:        []health.Checkable{km},
+		Connectors:          make(map[string]connector.Connector),
 	}
 
 	return &srv, nil
@@ -105,25 +110,20 @@ func (cfg *MultiServerConfig) Server() (*Server, error) {
 		return nil, err
 	}
 
-	kRepo, err := db.NewPrivateKeySetRepo(cfg.DatabaseURL, cfg.KeySecret)
+	dbc, err := db.NewConnection(cfg.DatabaseURL)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to initialize database connection: %v", err)
 	}
 
-	ciRepo, err := db.NewClientIdentityRepo(cfg.DatabaseURL)
+	kRepo, err := db.NewPrivateKeySetRepo(dbc, cfg.KeySecret)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to create PrivateKeySetRepo: %v", err)
 	}
 
-	sRepo, err := db.NewSessionRepo(cfg.DatabaseURL)
-	if err != nil {
-		return nil, fmt.Errorf("unable to create SessionRepo: %v", err)
-	}
-
-	skRepo, err := db.NewSessionKeyRepo(cfg.DatabaseURL)
-	if err != nil {
-		return nil, fmt.Errorf("unable to create SessionKeyRepo: %v", err)
-	}
+	ciRepo := db.NewClientIdentityRepo(dbc)
+	sRepo := db.NewSessionRepo(dbc)
+	skRepo := db.NewSessionKeyRepo(dbc)
+	cfgRepo := db.NewConnectorConfigRepo(dbc)
 
 	sm := session.NewSessionManager(sRepo, skRepo)
 
@@ -136,22 +136,19 @@ func (cfg *MultiServerConfig) Server() (*Server, error) {
 		return nil, err
 	}
 
-	dbh, err := db.NewHealthChecker(cfg.DatabaseURL)
-	if err != nil {
-		log.Fatalf("Unable to build DB health checker: %v", err)
-	}
-
+	dbh := db.NewHealthChecker(dbc)
 	km := key.NewPrivateKeyManager()
 	srv := Server{
-		IssuerURL:          *iu,
-		KeyManager:         km,
-		KeySetRepo:         kRepo,
-		SessionManager:     sm,
-		ClientIdentityRepo: ciRepo,
-		Templates:          tpl,
-		LoginTemplate:      ltpl,
-		HealthChecks:       []health.Checkable{km, dbh},
-		Connectors:         make(map[string]connector.Connector),
+		IssuerURL:           *iu,
+		KeyManager:          km,
+		KeySetRepo:          kRepo,
+		SessionManager:      sm,
+		ClientIdentityRepo:  ciRepo,
+		ConnectorConfigRepo: cfgRepo,
+		Templates:           tpl,
+		LoginTemplate:       ltpl,
+		HealthChecks:        []health.Checkable{km, dbh},
+		Connectors:          make(map[string]connector.Connector),
 	}
 
 	return &srv, nil

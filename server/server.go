@@ -35,15 +35,16 @@ type OIDCServer interface {
 }
 
 type Server struct {
-	IssuerURL          url.URL
-	KeyManager         key.PrivateKeyManager
-	KeySetRepo         key.PrivateKeySetRepo
-	SessionManager     *session.SessionManager
-	ClientIdentityRepo ClientIdentityRepo
-	Templates          *template.Template
-	LoginTemplate      *template.Template
-	HealthChecks       []health.Checkable
-	Connectors         map[string]connector.Connector
+	IssuerURL           url.URL
+	KeyManager          key.PrivateKeyManager
+	KeySetRepo          key.PrivateKeySetRepo
+	SessionManager      *session.SessionManager
+	ClientIdentityRepo  ClientIdentityRepo
+	ConnectorConfigRepo connector.ConnectorConfigRepo
+	Templates           *template.Template
+	LoginTemplate       *template.Template
+	HealthChecks        []health.Checkable
+	Connectors          map[string]connector.Connector
 }
 
 func (s *Server) Run() chan struct{} {

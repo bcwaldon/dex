@@ -73,6 +73,17 @@ func (r *clientIdentityRepo) Find(clientID string) (*oauth2.ClientIdentity, erro
 	return cim.ClientIdentity()
 }
 
+func (cr *clientIdentityRepo) Authenticate(clientID, clientSecret string) (bool, error) {
+	ci, err := cr.Find(clientID)
+	if err != nil {
+		return false, err
+	}
+	if ci == nil || ci.Secret != clientSecret {
+		return false, nil
+	}
+	return true, nil
+}
+
 func (r *clientIdentityRepo) Create(ci oauth2.ClientIdentity) error {
 	return r.dbMap.Insert(newClientIdentityModel(&ci))
 }

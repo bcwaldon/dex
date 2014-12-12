@@ -13,6 +13,12 @@ type ClientIdentityRepo interface {
 	// The returned error will be non-nil only if the repo was unable to
 	// determine ClientIdentity existence.
 	Find(clientID string) (*oauth2.ClientIdentity, error)
+
+	// Authenticate asserts that a client with the given ID exists and
+	// that the provided secret matches. If either of these assertions
+	// fail, (false, nil) will be returned. Only if the repo is unable
+	// to make these assertions will a non-nil error be returned.
+	Authenticate(clientID, clientSecret string) (bool, error)
 }
 
 func NewClientIdentityRepo(cs []oauth2.ClientIdentity) ClientIdentityRepo {
@@ -38,6 +44,17 @@ func (cr *memClientIdentityRepo) Find(clientID string) (*oauth2.ClientIdentity, 
 		return nil, nil
 	}
 	return &ci, nil
+}
+
+func (cr *memClientIdentityRepo) Authenticate(clientID, clientSecret string) (bool, error) {
+	ci, err := cr.Find(clientID)
+	if err != nil {
+		return false, err
+	}
+	if ci == nil || ci.Secret != clientSecret {
+		return false, nil
+	}
+	return true, nil
 }
 
 func newClientIdentityRepoFromReader(r io.Reader) (ClientIdentityRepo, error) {

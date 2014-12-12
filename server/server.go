@@ -29,8 +29,8 @@ type OIDCServer interface {
 	Client(string) (*oauth2.ClientIdentity, error)
 	NewSession(clientID, clientState string, redirectURL url.URL) (string, error)
 	Login(oidc.Identity, string) (string, error)
-	CodeToken(clientID, clientState, code string) (*jose.JWT, error)
-	ClientCredsToken(clientID, clientState string) (*jose.JWT, error)
+	CodeToken(clientID, clientSecret, sessionKey string) (*jose.JWT, error)
+	ClientCredsToken(clientID, clientSecret string) (*jose.JWT, error)
 	KillSession(string) error
 }
 
@@ -214,7 +214,7 @@ func (s *Server) ClientCredsToken(clientID, clientSecret string) (*jose.JWT, err
 	return jwt, nil
 }
 
-func (s *Server) CodeToken(clientID, clientSecret, key string) (*jose.JWT, error) {
+func (s *Server) CodeToken(clientID, clientSecret, sessionKey string) (*jose.JWT, error) {
 	ci, err := s.Client(clientID)
 	if err != nil {
 		log.Errorf("Failed fetching client %s from repo: %v", clientID, err)
@@ -224,7 +224,7 @@ func (s *Server) CodeToken(clientID, clientSecret, key string) (*jose.JWT, error
 		return nil, oauth2.NewError(oauth2.ErrorInvalidClient)
 	}
 
-	sessionID, err := s.SessionManager.ExchangeKey(key)
+	sessionID, err := s.SessionManager.ExchangeKey(sessionKey)
 	if err != nil {
 		return nil, oauth2.NewError(oauth2.ErrorInvalidGrant)
 	}

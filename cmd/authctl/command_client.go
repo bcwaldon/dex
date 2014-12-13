@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net"
 	"net/url"
@@ -41,30 +42,21 @@ func runNewClient(args []string) int {
 		return 1
 	}
 
-	clientID, err := randString(32)
+	clientID, err := genClientID(redirectURL.Host)
 	if err != nil {
-		stderr("Failed generating random client ID: %v", err)
+		stderr("Failed generating client ID: %v", err)
 		return 1
 	}
-	host := redirectURL.Host
-	if strings.Contains(host, ":") {
-		host, _, err = net.SplitHostPort(host)
-		if err != nil {
-			stderr("Failed parsing URL hostname: %v", err)
-			return 1
-		}
-	}
-	clientID = fmt.Sprintf("%s@%s", clientID, host)
 
-	clientSecret, err := randString(128)
+	clientSecret, err := randBytes(128)
 	if err != nil {
-		stderr("Failed generating random client ID: %v", err)
+		stderr("Failed generating client secret: %v", err)
 		return 1
 	}
 
 	ci := oauth2.ClientIdentity{
 		ID:          clientID,
-		Secret:      clientSecret,
+		Secret:      string(clientSecret),
 		RedirectURL: *redirectURL,
 	}
 
@@ -80,4 +72,23 @@ func runNewClient(args []string) int {
 	stdout("RedirectURL: %s", ci.RedirectURL.String())
 
 	return 0
+}
+
+func genClientID(hostport string) (string, error) {
+	b, err := randBytes(32)
+	if err != nil {
+		return "", err
+	}
+
+	var host string
+	if strings.Contains(hostport, ":") {
+		host, _, err = net.SplitHostPort(hostport)
+		if err != nil {
+			return "", err
+		}
+	} else {
+		host = hostport
+	}
+
+	return fmt.Sprintf("%s@%s", base64.URLEncoding.EncodeToString(b), host), nil
 }

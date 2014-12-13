@@ -2,7 +2,7 @@ package main
 
 import (
 	"crypto/rand"
-	"encoding/base64"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -22,12 +22,13 @@ func stdout(format string, args ...interface{}) {
 	fmt.Fprintf(os.Stdout, format, args...)
 }
 
-func randString(n int) (string, error) {
+func randBytes(n int) ([]byte, error) {
 	b := make([]byte, n)
-	_, err := rand.Read(b)
+	got, err := rand.Read(b)
 	if err != nil {
-		return "", err
+		return nil, err
+	} else if n != got {
+		return nil, errors.New("unable to generate enough random data")
 	}
-	enc := base64.URLEncoding.EncodeToString(b)
-	return strings.TrimSuffix(enc, "="), nil
+	return b, nil
 }

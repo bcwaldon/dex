@@ -19,7 +19,7 @@ import (
 const (
 	clientIdentityTableName = "clientidentity"
 
-	bcryptHashCost  = 10
+	bcryptHashCost = 10
 
 	// Blowfish, the algorithm underlying bcrypt, has a maximum
 	// password length of 72. We explicitly track and check this
@@ -105,15 +105,6 @@ func (r *clientIdentityRepo) Metadata(clientID string) (*oidc.ClientMetadata, er
 }
 
 func (r *clientIdentityRepo) Authenticate(creds oauth2.ClientCredentials) (bool, error) {
-	dec, err := base64.URLEncoding.DecodeString(creds.Secret)
-	if err != nil {
-		return false, err
-	}
-
-	if len(dec) > maxSecretLength {
-		return false, nil
-	}
-
 	m, err := r.dbMap.Get(clientIdentityModel{}, creds.ID)
 	if m == nil || err != nil {
 		return false, err
@@ -122,6 +113,15 @@ func (r *clientIdentityRepo) Authenticate(creds oauth2.ClientCredentials) (bool,
 	cim, ok := m.(*clientIdentityModel)
 	if !ok {
 		return false, errors.New("unrecognized model")
+	}
+
+	dec, err := base64.URLEncoding.DecodeString(creds.Secret)
+	if err != nil {
+		return false, nil
+	}
+
+	if len(dec) > maxSecretLength {
+		return false, nil
 	}
 
 	ok = bcrypt.CompareHashAndPassword(cim.Secret, dec) == nil

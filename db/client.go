@@ -1,8 +1,14 @@
 package db
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
+	"fmt"
+	"net"
 	"net/url"
+	"reflect"
+	"strings"
 
 	"github.com/coopernurse/gorp"
 
@@ -23,11 +29,11 @@ func init() {
 	})
 }
 
-func newClientIdentityModel(ci *oidc.ClientIdentity) *clientIdentityModel {
+func newClientIdentityModel(id string, secret []byte, meta *oidc.ClientMetadata) *clientIdentityModel {
 	return &clientIdentityModel{
-		ID:          ci.Credentials.ID,
-		Secret:      []byte(ci.Credentials.Secret),
-		RedirectURL: ci.Metadata.RedirectURL.String(),
+		ID:          id,
+		Secret:      secret,
+		RedirectURL: meta.RedirectURL.String(),
 	}
 }
 
@@ -84,6 +90,11 @@ func (r *clientIdentityRepo) Metadata(clientID string) (*oidc.ClientMetadata, er
 }
 
 func (r *clientIdentityRepo) Authenticate(clientID, clientSecret string) (bool, error) {
+	dec, err := base64.URLEncoding.DecodeString(clientSecret)
+	if err != nil {
+		return false, err
+	}
+
 	m, err := r.dbMap.Get(clientIdentityModel{}, clientID)
 	if m == nil || err != nil {
 		return false, err
@@ -94,13 +105,63 @@ func (r *clientIdentityRepo) Authenticate(clientID, clientSecret string) (bool, 
 		return false, errors.New("unrecognized model")
 	}
 
-	if cim == nil || string(cim.Secret) != clientSecret {
+	if cim == nil || !reflect.DeepEqual(cim.Secret, dec) {
 		return false, nil
 	}
 
 	return true, nil
 }
 
-func (r *clientIdentityRepo) Create(ci oidc.ClientIdentity) error {
-	return r.dbMap.Insert(newClientIdentityModel(&ci))
+func (r *clientIdentityRepo) New(meta oidc.ClientMetadata) (*oauth2.ClientCredentials, error) {
+	id, err := genClientID(meta.RedirectURL.Host)
+	if err != nil {
+		return nil, err
+	}
+
+	secret, err := randBytes(128)
+	if err != nil {
+		return nil, err
+	}
+
+	cim := newClientIdentityModel(id, secret, &meta)
+	if err := r.dbMap.Insert(cim); err != nil {
+		return nil, err
+	}
+
+	cc := oauth2.ClientCredentials{
+		ID:     id,
+		Secret: base64.URLEncoding.EncodeToString(secret),
+	}
+
+	return &cc, nil
+}
+
+func randBytes(n int) ([]byte, error) {
+	b := make([]byte, n)
+	got, err := rand.Read(b)
+	if err != nil {
+		return nil, err
+	} else if n != got {
+		return nil, errors.New("unable to generate enough random data")
+	}
+	return b, nil
+}
+
+func genClientID(hostport string) (string, error) {
+	b, err := randBytes(32)
+	if err != nil {
+		return "", err
+	}
+
+	var host string
+	if strings.Contains(hostport, ":") {
+		host, _, err = net.SplitHostPort(hostport)
+		if err != nil {
+			return "", err
+		}
+	} else {
+		host = hostport
+	}
+
+	return fmt.Sprintf("%s@%s", base64.URLEncoding.EncodeToString(b), host), nil
 }

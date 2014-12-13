@@ -1,14 +1,9 @@
 package main
 
 import (
-	"encoding/base64"
-	"fmt"
-	"net"
 	"net/url"
-	"strings"
 
 	"github.com/coreos-inc/auth/db"
-	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 )
 
@@ -43,57 +38,17 @@ func runNewClient(args []string) int {
 		return 1
 	}
 
-	clientID, err := genClientID(redirectURL.Host)
-	if err != nil {
-		stderr("Failed generating client ID: %v", err)
-		return 1
-	}
-
-	clientSecret, err := randBytes(128)
-	if err != nil {
-		stderr("Failed generating client secret: %v", err)
-		return 1
-	}
-
-	ci := oidc.ClientIdentity{
-		Credentials: oauth2.ClientCredentials{
-			ID:     clientID,
-			Secret: base64.URLEncoding.EncodeToString(clientSecret),
-		},
-		Metadata: oidc.ClientMetadata{
-			RedirectURL: *redirectURL,
-		},
-	}
-
 	r := db.NewClientIdentityRepo(dbc)
-	if err := r.Create(ci); err != nil {
-		stderr(err.Error())
+	cc, err := r.New(oidc.ClientMetadata{RedirectURL: *redirectURL})
+	if err != nil {
+		stderr("Failed creating new client: %v", err)
 		return 1
 	}
 
 	stdout("Added new client:")
-	stdout("ID:          %s", ci.Credentials.ID)
-	stdout("Secret:      %s", ci.Credentials.Secret)
-	stdout("RedirectURL: %s", ci.Metadata.RedirectURL.String())
+	stdout("ID:          %s", cc.ID)
+	stdout("Secret:      %s", cc.Secret)
+	stdout("RedirectURL: %s", redirectURL.String())
 
 	return 0
-}
-
-func genClientID(hostport string) (string, error) {
-	b, err := randBytes(32)
-	if err != nil {
-		return "", err
-	}
-
-	var host string
-	if strings.Contains(hostport, ":") {
-		host, _, err = net.SplitHostPort(hostport)
-		if err != nil {
-			return "", err
-		}
-	} else {
-		host = hostport
-	}
-
-	return fmt.Sprintf("%s@%s", base64.URLEncoding.EncodeToString(b), host), nil
 }

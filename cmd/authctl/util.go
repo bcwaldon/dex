@@ -1,8 +1,6 @@
 package main
 
 import (
-	"crypto/rand"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -20,15 +18,4 @@ func stdout(format string, args ...interface{}) {
 		format = format + "\n"
 	}
 	fmt.Fprintf(os.Stdout, format, args...)
-}
-
-func randBytes(n int) ([]byte, error) {
-	b := make([]byte, n)
-	got, err := rand.Read(b)
-	if err != nil {
-		return nil, err
-	} else if n != got {
-		return nil, errors.New("unable to generate enough random data")
-	}
-	return b, nil
 }

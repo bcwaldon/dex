@@ -2,17 +2,19 @@ package server
 
 import (
 	"encoding/json"
-	"github.com/coreos-inc/auth/oauth2"
 	"io"
 	"io/ioutil"
 	"net/url"
+
+	"github.com/coreos-inc/auth/oauth2"
+	"github.com/coreos-inc/auth/oidc"
 )
 
 type ClientIdentityRepo interface {
-	// Find returns one matching ClientIdentity if exists, otherwise nil.
-	// The returned error will be non-nil only if the repo was unable to
-	// determine ClientIdentity existence.
-	Find(clientID string) (*oauth2.ClientIdentity, error)
+	// Metadata returns one matching ClientMetadata if the given client
+	// exists, otherwise nil. The returned error will be non-nil only
+	// if the repo was unable to determine client existence.
+	Metadata(clientID string) (*oidc.ClientMetadata, error)
 
 	// Authenticate asserts that a client with the given ID exists and
 	// that the provided secret matches. If either of these assertions
@@ -21,40 +23,35 @@ type ClientIdentityRepo interface {
 	Authenticate(clientID, clientSecret string) (bool, error)
 }
 
-func NewClientIdentityRepo(cs []oauth2.ClientIdentity) ClientIdentityRepo {
+func NewClientIdentityRepo(cs []oidc.ClientIdentity) ClientIdentityRepo {
 	cr := memClientIdentityRepo{
-		idents: make(map[string]oauth2.ClientIdentity, len(cs)),
+		idents: make(map[string]oidc.ClientIdentity, len(cs)),
 	}
 
 	for _, c := range cs {
 		c := c
-		cr.idents[c.ID] = c
+		cr.idents[c.Credentials.ID] = c
 	}
 
 	return &cr
 }
 
 type memClientIdentityRepo struct {
-	idents map[string]oauth2.ClientIdentity
+	idents map[string]oidc.ClientIdentity
 }
 
-func (cr *memClientIdentityRepo) Find(clientID string) (*oauth2.ClientIdentity, error) {
+func (cr *memClientIdentityRepo) Metadata(clientID string) (*oidc.ClientMetadata, error) {
 	ci, ok := cr.idents[clientID]
 	if !ok {
 		return nil, nil
 	}
-	return &ci, nil
+	return &ci.Metadata, nil
 }
 
 func (cr *memClientIdentityRepo) Authenticate(clientID, clientSecret string) (bool, error) {
-	ci, err := cr.Find(clientID)
-	if err != nil {
-		return false, err
-	}
-	if ci == nil || ci.Secret != clientSecret {
-		return false, nil
-	}
-	return true, nil
+	ci, ok := cr.idents[clientID]
+	ok = ok && ci.Credentials.Secret == clientSecret
+	return ok, nil
 }
 
 func newClientIdentityRepoFromReader(r io.Reader) (ClientIdentityRepo, error) {
@@ -68,15 +65,15 @@ func newClientIdentityRepoFromReader(r io.Reader) (ClientIdentityRepo, error) {
 		return nil, err
 	}
 
-	ocs := make([]oauth2.ClientIdentity, len(cs))
+	ocs := make([]oidc.ClientIdentity, len(cs))
 	for i, c := range cs {
-		ocs[i] = oauth2.ClientIdentity(c)
+		ocs[i] = oidc.ClientIdentity(c)
 	}
 
 	return NewClientIdentityRepo(ocs), nil
 }
 
-type clientIdentity oauth2.ClientIdentity
+type clientIdentity oidc.ClientIdentity
 
 func (ci *clientIdentity) UnmarshalJSON(data []byte) error {
 	c := struct {
@@ -94,9 +91,13 @@ func (ci *clientIdentity) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	ci.ID = c.ID
-	ci.Secret = c.Secret
-	ci.RedirectURL = *ru
+	ci.Credentials = oauth2.ClientCredentials{
+		ID:     c.ID,
+		Secret: c.Secret,
+	}
+	ci.Metadata = oidc.ClientMetadata{
+		RedirectURL: *ru,
+	}
 
 	return nil
 }

@@ -31,12 +31,14 @@ func TestHTTPExchangeToken(t *testing.T) {
 		Users: []connector.LocalUser{user},
 	}
 
-	ci := oauth2.ClientIdentity{
-		ID:     "72de74a9",
-		Secret: "XXX",
+	ci := oidc.ClientIdentity{
+		Credentials: oauth2.ClientCredentials{
+			ID:     "72de74a9",
+			Secret: "XXX",
+		},
 	}
 
-	cir := server.NewClientIdentityRepo([]oauth2.ClientIdentity{ci})
+	cir := server.NewClientIdentityRepo([]oidc.ClientIdentity{ci})
 
 	issuerURL := url.URL{Scheme: "http", Host: "server.example.com"}
 	sm := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())
@@ -75,7 +77,7 @@ func TestHTTPExchangeToken(t *testing.T) {
 	cl := &oidc.Client{
 		HTTPClient:     sClient,
 		ProviderConfig: pcfg,
-		ClientIdentity: ci,
+		Credentials:    ci.Credentials,
 		RedirectURL:    "http://client.example.com",
 		KeySet:         *ks,
 	}
@@ -86,7 +88,7 @@ func TestHTTPExchangeToken(t *testing.T) {
 
 	// this will actually happen due to some interaction between the
 	// end-user and a remote identity provider
-	sessionID, err := sm.NewSession(ci.ID, "bogus", url.URL{})
+	sessionID, err := sm.NewSession(ci.Credentials.ID, "bogus", url.URL{})
 	if err != nil {
 		t.Fatalf("Unexpected err: %v", err)
 	}
@@ -115,11 +117,13 @@ func TestHTTPExchangeToken(t *testing.T) {
 }
 
 func TestHTTPClientCredsToken(t *testing.T) {
-	ci := oauth2.ClientIdentity{
-		ID:     "72de74a9",
-		Secret: "XXX",
+	ci := oidc.ClientIdentity{
+		Credentials: oauth2.ClientCredentials{
+			ID:     "72de74a9",
+			Secret: "XXX",
+		},
 	}
-	cir := server.NewClientIdentityRepo([]oauth2.ClientIdentity{ci})
+	cir := server.NewClientIdentityRepo([]oidc.ClientIdentity{ci})
 	issuerURL := url.URL{Scheme: "http", Host: "server.example.com"}
 
 	k, err := key.GeneratePrivateKey()
@@ -156,7 +160,7 @@ func TestHTTPClientCredsToken(t *testing.T) {
 	cl := &oidc.Client{
 		HTTPClient:     sClient,
 		ProviderConfig: cfg,
-		ClientIdentity: ci,
+		Credentials:    ci.Credentials,
 		KeySet:         *ks,
 	}
 
@@ -170,16 +174,16 @@ func TestHTTPClientCredsToken(t *testing.T) {
 		t.Fatalf("Failed parsing claims from client token: %v", err)
 	}
 
-	if aud := claims["aud"].(string); aud != ci.ID {
-		t.Fatalf("unexpected claim value for aud, got=%v, want=%v", aud, ci.ID)
+	if aud := claims["aud"].(string); aud != ci.Credentials.ID {
+		t.Fatalf("unexpected claim value for aud, got=%v, want=%v", aud, ci.Credentials.ID)
 	}
 
-	if sub := claims["sub"].(string); sub != ci.ID {
-		t.Fatalf("unexpected claim value for sub, got=%v, want=%v", sub, ci.ID)
+	if sub := claims["sub"].(string); sub != ci.Credentials.ID {
+		t.Fatalf("unexpected claim value for sub, got=%v, want=%v", sub, ci.Credentials.ID)
 	}
 
-	if name := claims["name"].(string); name != ci.ID {
-		t.Fatalf("unexpected claim value for name, got=%v, want=%v", name, ci.ID)
+	if name := claims["name"].(string); name != ci.Credentials.ID {
+		t.Fatalf("unexpected claim value for name, got=%v, want=%v", name, ci.Credentials.ID)
 	}
 
 	if iss := claims["iss"].(string); iss != issuerURL.String() {

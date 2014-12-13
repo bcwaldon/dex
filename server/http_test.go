@@ -73,14 +73,18 @@ func TestHandleAuthFuncResponses(t *testing.T) {
 	srv := &Server{
 		IssuerURL:      url.URL{Scheme: "http", Host: "server.example.com"},
 		SessionManager: session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo()),
-		ClientIdentityRepo: NewClientIdentityRepo([]oauth2.ClientIdentity{
-			oauth2.ClientIdentity{
-				ID:     "XXX",
-				Secret: "secrete",
-				RedirectURL: url.URL{
-					Scheme: "http",
-					Host:   "client.example.com",
-					Path:   "/callback",
+		ClientIdentityRepo: NewClientIdentityRepo([]oidc.ClientIdentity{
+			oidc.ClientIdentity{
+				Credentials: oauth2.ClientCredentials{
+					ID:     "XXX",
+					Secret: "secrete",
+				},
+				Metadata: oidc.ClientMetadata{
+					RedirectURL: url.URL{
+						Scheme: "http",
+						Host:   "client.example.com",
+						Path:   "/callback",
+					},
 				},
 			},
 		}),

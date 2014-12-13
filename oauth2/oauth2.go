@@ -24,36 +24,35 @@ const (
 )
 
 type Config struct {
-	ClientID     string
-	ClientSecret string
-	Scope        []string
-	RedirectURL  string
-	AuthURL      string
-	TokenURL     string
+	Credentials ClientCredentials
+	Scope       []string
+	RedirectURL string
+	AuthURL     string
+	TokenURL    string
 }
 
 type Client struct {
 	hc          phttp.Client
-	identity    ClientIdentity
+	creds       ClientCredentials
+	secret      string
 	scope       []string
-	redirectURL *url.URL
 	authURL     *url.URL
+	redirectURL *url.URL
 	tokenURL    *url.URL
 }
 
-type ClientIdentity struct {
-	ID          string
-	Secret      string
-	RedirectURL url.URL
+type ClientCredentials struct {
+	ID     string
+	Secret string
 }
 
 func NewClient(hc phttp.Client, cfg Config) (c *Client, err error) {
-	if cfg.ClientID == "" {
+	if len(cfg.Credentials.ID) == 0 {
 		err = errors.New("missing client id")
 		return
 	}
 
-	if cfg.ClientSecret == "" {
+	if len(cfg.Credentials.Secret) == 0 {
 		err = errors.New("missing client secret")
 		return
 	}
@@ -74,15 +73,12 @@ func NewClient(hc phttp.Client, cfg Config) (c *Client, err error) {
 	}
 
 	c = &Client{
-		identity: ClientIdentity{
-			ID:          cfg.ClientID,
-			Secret:      cfg.ClientSecret,
-			RedirectURL: *ru,
-		},
-		scope:    cfg.Scope,
-		authURL:  au,
-		tokenURL: tu,
-		hc:       hc,
+		creds:       cfg.Credentials,
+		scope:       cfg.Scope,
+		redirectURL: ru,
+		authURL:     au,
+		tokenURL:    tu,
+		hc:          hc,
 	}
 
 	return
@@ -112,9 +108,9 @@ func (c *Client) AuthCodeURL(state, accessType, prompt string) string {
 
 func (c *Client) commonURLValues() url.Values {
 	return url.Values{
-		"redirect_uri": {c.identity.RedirectURL.String()},
+		"redirect_uri": {c.redirectURL.String()},
 		"scope":        {strings.Join(c.scope, " ")},
-		"client_id":    {c.identity.ID},
+		"client_id":    {c.creds.ID},
 	}
 }
 
@@ -131,7 +127,7 @@ func (c *Client) ClientCredsToken(scope []string) (result TokenResponse, err err
 		return
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.SetBasicAuth(c.identity.ID, c.identity.Secret)
+	req.SetBasicAuth(c.creds.ID, c.creds.Secret)
 
 	resp, err := c.hc.Do(req)
 	if err != nil {
@@ -147,7 +143,7 @@ func (c *Client) Exchange(code string) (result TokenResponse, err error) {
 	v := c.commonURLValues()
 	v.Set("grant_type", GrantTypeAuthCode)
 	v.Set("code", code)
-	v.Set("client_secret", c.identity.Secret)
+	v.Set("client_secret", c.secret)
 
 	req, err := http.NewRequest("POST", c.tokenURL.String(), strings.NewReader(v.Encode()))
 	if err != nil {
@@ -155,7 +151,7 @@ func (c *Client) Exchange(code string) (result TokenResponse, err error) {
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	req.SetBasicAuth(c.identity.ID, c.identity.Secret)
+	req.SetBasicAuth(c.creds.ID, c.creds.Secret)
 	resp, err := c.hc.Do(req)
 	if err != nil {
 		return

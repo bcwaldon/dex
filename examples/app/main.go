@@ -68,7 +68,7 @@ func main() {
 	redirectURL := l
 	redirectURL.Path = path.Join(redirectURL.Path, pathCallback)
 
-	ci := oauth2.ClientIdentity{
+	cc := oauth2.ClientCredentials{
 		ID:     *clientID,
 		Secret: *clientSecret,
 	}
@@ -89,7 +89,7 @@ func main() {
 
 	client := &oidc.Client{
 		ProviderConfig: cfg,
-		ClientIdentity: ci,
+		Credentials:    cc,
 		RedirectURL:    redirectURL.String(),
 	}
 

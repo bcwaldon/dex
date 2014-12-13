@@ -87,9 +87,9 @@ func TestLoginURL(t *testing.T) {
 
 	for i, tt := range tests {
 		cl := &o.Client{
-			ClientIdentity: oauth2.ClientIdentity{ID: tt.cid, Secret: "fake-client-secret"},
-			RedirectURL:    tt.redir,
-			Scope:          tt.scope,
+			Credentials: oauth2.ClientCredentials{ID: tt.cid, Secret: "fake-client-secret"},
+			RedirectURL: tt.redir,
+			Scope:       tt.scope,
 		}
 		cn := &OIDCConnector{
 			loginFunc: lf,

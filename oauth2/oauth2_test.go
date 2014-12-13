@@ -131,10 +131,9 @@ func TestParseAuthCodeRequest(t *testing.T) {
 func TestClientCredsToken(t *testing.T) {
 	hc := &phttp.RequestRecorder{}
 	cfg := Config{
-		ClientID:     "cid",
-		ClientSecret: "csecret",
-		Scope:        []string{"foo-scope", "bar-scope"},
-		TokenURL:     "http://example.com/token",
+		Credentials: ClientCredentials{ID: "cid", Secret: "csecret"},
+		Scope:       []string{"foo-scope", "bar-scope"},
+		TokenURL:    "http://example.com/token",
 	}
 
 	c, err := NewClient(hc, cfg)
@@ -163,12 +162,12 @@ func TestClientCredsToken(t *testing.T) {
 		t.Error("unexpected error parsing basic auth")
 	}
 
-	if cfg.ClientID != cid {
-		t.Errorf("wrong client ID, want=%v, got=%v", cfg.ClientID, cid)
+	if cfg.Credentials.ID != cid {
+		t.Errorf("wrong client ID, want=%v, got=%v", cfg.Credentials.ID, cid)
 	}
 
-	if cfg.ClientSecret != secret {
-		t.Errorf("wrong client secret, want=%v, got=%v", cfg.ClientSecret, secret)
+	if cfg.Credentials.Secret != secret {
+		t.Errorf("wrong client secret, want=%v, got=%v", cfg.Credentials.Secret, secret)
 	}
 
 	err = hc.Request.ParseForm()

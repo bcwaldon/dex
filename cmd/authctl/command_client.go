@@ -9,6 +9,7 @@ import (
 
 	"github.com/coreos-inc/auth/db"
 	"github.com/coreos-inc/auth/oauth2"
+	"github.com/coreos-inc/auth/oidc"
 )
 
 var (
@@ -54,10 +55,14 @@ func runNewClient(args []string) int {
 		return 1
 	}
 
-	ci := oauth2.ClientIdentity{
-		ID:          clientID,
-		Secret:      string(clientSecret),
-		RedirectURL: *redirectURL,
+	ci := oidc.ClientIdentity{
+		Credentials: oauth2.ClientCredentials{
+			ID:     clientID,
+			Secret: base64.URLEncoding.EncodeToString(clientSecret),
+		},
+		Metadata: oidc.ClientMetadata{
+			RedirectURL: *redirectURL,
+		},
 	}
 
 	r := db.NewClientIdentityRepo(dbc)
@@ -67,9 +72,9 @@ func runNewClient(args []string) int {
 	}
 
 	stdout("Added new client:")
-	stdout("ID:          %s", ci.ID)
-	stdout("Secret:      %s", ci.Secret)
-	stdout("RedirectURL: %s", ci.RedirectURL.String())
+	stdout("ID:          %s", ci.Credentials.ID)
+	stdout("Secret:      %s", ci.Credentials.Secret)
+	stdout("RedirectURL: %s", ci.Metadata.RedirectURL.String())
 
 	return 0
 }

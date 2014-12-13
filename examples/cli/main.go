@@ -48,7 +48,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	ci := oauth2.ClientIdentity{
+	cc := oauth2.ClientCredentials{
 		ID:     *clientID,
 		Secret: *clientSecret,
 	}
@@ -71,7 +71,7 @@ func main() {
 
 	client := &oidc.Client{
 		ProviderConfig: cfg,
-		ClientIdentity: ci,
+		Credentials:    cc,
 	}
 
 	tok, err := client.ClientCredsToken([]string{"openid"})

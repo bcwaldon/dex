@@ -7,6 +7,7 @@ import (
 	"github.com/coopernurse/gorp"
 
 	"github.com/coreos-inc/auth/oauth2"
+	"github.com/coreos-inc/auth/oidc"
 )
 
 const (
@@ -22,11 +23,11 @@ func init() {
 	})
 }
 
-func newClientIdentityModel(ci *oauth2.ClientIdentity) *clientIdentityModel {
+func newClientIdentityModel(ci *oidc.ClientIdentity) *clientIdentityModel {
 	return &clientIdentityModel{
-		ID:          ci.ID,
-		Secret:      []byte(ci.Secret),
-		RedirectURL: ci.RedirectURL.String(),
+		ID:          ci.Credentials.ID,
+		Secret:      []byte(ci.Credentials.Secret),
+		RedirectURL: ci.Metadata.RedirectURL.String(),
 	}
 }
 
@@ -36,16 +37,20 @@ type clientIdentityModel struct {
 	RedirectURL string `db:"redirectURL"`
 }
 
-func (m *clientIdentityModel) ClientIdentity() (*oauth2.ClientIdentity, error) {
+func (m *clientIdentityModel) ClientIdentity() (*oidc.ClientIdentity, error) {
 	u, err := url.Parse(m.RedirectURL)
 	if err != nil {
 		return nil, err
 	}
 
-	ci := oauth2.ClientIdentity{
-		ID:          m.ID,
-		Secret:      string(m.Secret),
-		RedirectURL: *u,
+	ci := oidc.ClientIdentity{
+		Credentials: oauth2.ClientCredentials{
+			ID:     m.ID,
+			Secret: string(m.Secret),
+		},
+		Metadata: oidc.ClientMetadata{
+			RedirectURL: *u,
+		},
 	}
 
 	return &ci, nil
@@ -59,7 +64,7 @@ type clientIdentityRepo struct {
 	dbMap *gorp.DbMap
 }
 
-func (r *clientIdentityRepo) Find(clientID string) (*oauth2.ClientIdentity, error) {
+func (r *clientIdentityRepo) Metadata(clientID string) (*oidc.ClientMetadata, error) {
 	m, err := r.dbMap.Get(clientIdentityModel{}, clientID)
 	if m == nil || err != nil {
 		return nil, err
@@ -70,7 +75,12 @@ func (r *clientIdentityRepo) Find(clientID string) (*oauth2.ClientIdentity, erro
 		return nil, errors.New("unrecognized model")
 	}
 
-	return cim.ClientIdentity()
+	ci, err := cim.ClientIdentity()
+	if err != nil {
+		return nil, err
+	}
+
+	return &ci.Metadata, nil
 }
 
 func (r *clientIdentityRepo) Authenticate(clientID, clientSecret string) (bool, error) {
@@ -91,6 +101,6 @@ func (r *clientIdentityRepo) Authenticate(clientID, clientSecret string) (bool, 
 	return true, nil
 }
 
-func (r *clientIdentityRepo) Create(ci oauth2.ClientIdentity) error {
+func (r *clientIdentityRepo) Create(ci oidc.ClientIdentity) error {
 	return r.dbMap.Insert(newClientIdentityModel(&ci))
 }

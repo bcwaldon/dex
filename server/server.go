@@ -26,7 +26,7 @@ const (
 )
 
 type OIDCServer interface {
-	Client(string) (*oauth2.ClientIdentity, error)
+	ClientMetadata(string) (*oidc.ClientMetadata, error)
 	NewSession(clientID, clientState string, redirectURL url.URL) (string, error)
 	Login(oidc.Identity, string) (string, error)
 	CodeToken(clientID, clientSecret, sessionKey string) (*jose.JWT, error)
@@ -141,8 +141,8 @@ func (s *Server) HTTPHandler() http.Handler {
 	return mux
 }
 
-func (s *Server) Client(clientID string) (*oauth2.ClientIdentity, error) {
-	return s.ClientIdentityRepo.Find(clientID)
+func (s *Server) ClientMetadata(clientID string) (*oidc.ClientMetadata, error) {
+	return s.ClientIdentityRepo.Metadata(clientID)
 }
 
 func (s *Server) NewSession(clientID, clientState string, redirectURL url.URL) (string, error) {

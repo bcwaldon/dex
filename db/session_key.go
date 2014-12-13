@@ -16,6 +16,15 @@ const (
 	sessionKeyTableName = "sessionkey"
 )
 
+func init() {
+	register(table{
+		name:    sessionKeyTableName,
+		model:   sessionKeyModel{},
+		autoinc: false,
+		pkey:    "key",
+	})
+}
+
 type sessionKeyModel struct {
 	Key       string    `db:"key"`
 	SessionID string    `db:"sessionID"`
@@ -23,21 +32,8 @@ type sessionKeyModel struct {
 	Stale     bool      `db:"stale"`
 }
 
-func NewSessionKeyRepo(dsn string) (*SessionKeyRepo, error) {
-	dbm, err := dbMap(dsn)
-	if err != nil {
-		return nil, err
-	}
-
-	dbm.AddTableWithName(sessionKeyModel{}, sessionKeyTableName).SetKeys(false, "key")
-	if err := dbm.CreateTablesIfNotExists(); err != nil {
-		return nil, err
-	}
-
-	r := &SessionKeyRepo{
-		dbMap: dbm,
-	}
-	return r, nil
+func NewSessionKeyRepo(dbm *gorp.DbMap) *SessionKeyRepo {
+	return &SessionKeyRepo{dbMap: dbm}
 }
 
 type SessionKeyRepo struct {

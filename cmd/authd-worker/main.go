@@ -7,8 +7,6 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/coreos-inc/auth/connector"
-	"github.com/coreos-inc/auth/db"
 	pflag "github.com/coreos-inc/auth/pkg/flag"
 	"github.com/coreos-inc/auth/pkg/log"
 	"github.com/coreos-inc/auth/server"
@@ -62,9 +60,10 @@ func main() {
 	if *noDB {
 		log.Warning("Running in-process without external database or key rotation")
 		scfg = &server.SingleServerConfig{
-			IssuerURL:   *issuer,
-			TemplateDir: *templates,
-			ClientsFile: *clients,
+			IssuerURL:      *issuer,
+			TemplateDir:    *templates,
+			ClientsFile:    *clients,
+			ConnectorsFile: *connectors,
 		}
 	} else {
 		scfg = &server.MultiServerConfig{
@@ -80,14 +79,7 @@ func main() {
 		log.Fatalf("Unable to build Server: %v", err)
 	}
 
-	var cfgRepo connector.ConnectorConfigRepo
-	if *noDB {
-		cfgRepo, err = connector.NewConnectorConfigRepoFromFile(*connectors)
-	} else {
-		cfgRepo, err = db.NewConnectorConfigRepo(*dbURL)
-	}
-
-	cfgs, err := cfgRepo.All()
+	cfgs, err := srv.ConnectorConfigRepo.All()
 	if err != nil {
 		log.Fatalf("Unable to fetch connector configs from repo: %v", err)
 	}

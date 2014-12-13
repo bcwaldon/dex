@@ -45,13 +45,14 @@ func runSetConnectorConfigs(args []string) int {
 		return 1
 	}
 
-	rdb, err := db.NewConnectorConfigRepo(global.dbURL)
+	dbc, err := db.NewConnection(global.dbURL)
 	if err != nil {
 		stderr("Failed initializing connection with database: %v", err)
 		return 1
 	}
 
-	if err := rdb.Set(cfgs); err != nil {
+	r := db.NewConnectorConfigRepo(dbc)
+	if err := r.Set(cfgs); err != nil {
 		stderr(err.Error())
 		return 1
 	}
@@ -67,12 +68,13 @@ func runGetConnectorConfigs(args []string) int {
 		return 2
 	}
 
-	r, err := db.NewConnectorConfigRepo(global.dbURL)
+	dbc, err := db.NewConnection(global.dbURL)
 	if err != nil {
 		stderr("Failed initializing connection with database: %v", err)
 		return 1
 	}
 
+	r := db.NewConnectorConfigRepo(dbc)
 	cfgs, err := r.All()
 	if err != nil {
 		stderr("Unable to retrieve configs from repo: %v", err)

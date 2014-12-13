@@ -3,6 +3,7 @@ package db
 import (
 	"time"
 
+	"github.com/coopernurse/gorp"
 	"github.com/jonboulle/clockwork"
 
 	"github.com/coreos-inc/auth/pkg/log"
@@ -18,19 +19,10 @@ type namedPurger struct {
 	purger
 }
 
-func NewGarbageCollector(dsn string, ival time.Duration) (*GarbageCollector, error) {
-	sRepo, err := NewSessionRepo(dsn)
-	if err != nil {
-		return nil, err
-	}
-	skRepo, err := NewSessionKeyRepo(dsn)
-	if err != nil {
-		return nil, err
-	}
-	cache, err := NewConnectorCache(dsn)
-	if err != nil {
-		return nil, err
-	}
+func NewGarbageCollector(dbm *gorp.DbMap, ival time.Duration) *GarbageCollector {
+	sRepo := NewSessionRepo(dbm)
+	skRepo := NewSessionKeyRepo(dbm)
+	cache := NewConnectorCache(dbm)
 
 	purgers := []namedPurger{
 		namedPurger{
@@ -53,7 +45,7 @@ func NewGarbageCollector(dsn string, ival time.Duration) (*GarbageCollector, err
 		clock:    clockwork.NewRealClock(),
 	}
 
-	return &gc, nil
+	return &gc
 }
 
 type GarbageCollector struct {

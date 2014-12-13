@@ -15,6 +15,15 @@ const (
 	connectorConfigTableName = "connectorconfig"
 )
 
+func init() {
+	register(table{
+		name:    connectorConfigTableName,
+		model:   connectorConfigModel{},
+		autoinc: false,
+		pkey:    "id",
+	})
+}
+
 func newConnectorConfigModel(cfg connector.ConnectorConfig) (*connectorConfigModel, error) {
 	b, err := json.Marshal(cfg)
 	if err != nil {
@@ -49,21 +58,8 @@ func (m *connectorConfigModel) ConnectorConfig() (connector.ConnectorConfig, err
 	return cfg, nil
 }
 
-func NewConnectorConfigRepo(dsn string) (*connectorConfigRepo, error) {
-	dbm, err := dbMap(dsn)
-	if err != nil {
-		return nil, err
-	}
-
-	dbm.AddTableWithName(connectorConfigModel{}, connectorConfigTableName).SetKeys(false, "id")
-	if err := dbm.CreateTablesIfNotExists(); err != nil {
-		return nil, err
-	}
-
-	r := &connectorConfigRepo{
-		dbMap: dbm,
-	}
-	return r, nil
+func NewConnectorConfigRepo(dbm *gorp.DbMap) *connectorConfigRepo {
+	return &connectorConfigRepo{dbMap: dbm}
 }
 
 type connectorConfigRepo struct {

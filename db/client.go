@@ -13,6 +13,15 @@ const (
 	clientIdentityTableName = "clientidentity"
 )
 
+func init() {
+	register(table{
+		name:    clientIdentityTableName,
+		model:   clientIdentityModel{},
+		autoinc: false,
+		pkey:    "id",
+	})
+}
+
 func newClientIdentityModel(ci *oauth2.ClientIdentity) *clientIdentityModel {
 	return &clientIdentityModel{
 		ID:          ci.ID,
@@ -42,21 +51,8 @@ func (m *clientIdentityModel) ClientIdentity() (*oauth2.ClientIdentity, error) {
 	return &ci, nil
 }
 
-func NewClientIdentityRepo(dsn string) (*clientIdentityRepo, error) {
-	dbm, err := dbMap(dsn)
-	if err != nil {
-		return nil, err
-	}
-
-	dbm.AddTableWithName(clientIdentityModel{}, clientIdentityTableName).SetKeys(false, "id")
-	if err := dbm.CreateTablesIfNotExists(); err != nil {
-		return nil, err
-	}
-
-	r := &clientIdentityRepo{
-		dbMap: dbm,
-	}
-	return r, nil
+func NewClientIdentityRepo(dbm *gorp.DbMap) *clientIdentityRepo {
+	return &clientIdentityRepo{dbMap: dbm}
 }
 
 type clientIdentityRepo struct {

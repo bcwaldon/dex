@@ -19,6 +19,15 @@ const (
 	sessionTableName = "session"
 )
 
+func init() {
+	register(table{
+		name:    sessionTableName,
+		model:   sessionModel{},
+		autoinc: false,
+		pkey:    "id",
+	})
+}
+
 type sessionModel struct {
 	ID          string    `db:"id"`
 	State       string    `db:"state"`
@@ -75,22 +84,8 @@ func newSessionModel(s *session.Session) (*sessionModel, error) {
 	return &sm, nil
 }
 
-func NewSessionRepo(dsn string) (*SessionRepo, error) {
-	dbm, err := dbMap(dsn)
-	if err != nil {
-		return nil, err
-	}
-
-	dbm.AddTableWithName(sessionModel{}, sessionTableName).SetKeys(false, "id")
-	if err := dbm.CreateTablesIfNotExists(); err != nil {
-		return nil, err
-	}
-
-	r := &SessionRepo{
-		dbMap: dbm,
-	}
-
-	return r, nil
+func NewSessionRepo(dbm *gorp.DbMap) *SessionRepo {
+	return &SessionRepo{dbMap: dbm}
 }
 
 type SessionRepo struct {

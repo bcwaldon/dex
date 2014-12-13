@@ -35,7 +35,7 @@ func runNewClient(args []string) int {
 		return 1
 	}
 
-	r, err := db.NewClientIdentityRepo(global.dbURL)
+	dbc, err := db.NewConnection(global.dbURL)
 	if err != nil {
 		stderr("Failed initializing connection with database: %v", err)
 		return 1
@@ -68,6 +68,7 @@ func runNewClient(args []string) int {
 		RedirectURL: *redirectURL,
 	}
 
+	r := db.NewClientIdentityRepo(dbc)
 	if err := r.Create(ci); err != nil {
 		stderr(err.Error())
 		return 1

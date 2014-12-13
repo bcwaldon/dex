@@ -43,17 +43,18 @@ func main() {
 		log.Fatalf("--key-secret unset")
 	}
 
-	kRepo, err := db.NewPrivateKeySetRepo(*dbURL, *secret)
+	dbc, err := db.NewConnection(*dbURL)
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
 
+	gc := db.NewGarbageCollector(dbc, *gcInterval)
+
+	kRepo, err := db.NewPrivateKeySetRepo(dbc, *secret)
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
 	krot := key.NewPrivateKeyRotator(kRepo, *keyPeriod)
-
-	gc, err := db.NewGarbageCollector(*dbURL, *gcInterval)
-	if err != nil {
-		log.Fatalf(err.Error())
-	}
 
 	gc.Run()
 	<-krot.Run()

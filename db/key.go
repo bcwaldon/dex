@@ -16,6 +16,15 @@ const (
 	keyTableName = "key"
 )
 
+func init() {
+	register(table{
+		name:    keyTableName,
+		model:   privateKeySetBlob{},
+		autoinc: false,
+		pkey:    "value",
+	})
+}
+
 func newPrivateKeySetModel(pks *key.PrivateKeySet) (*privateKeySetModel, error) {
 	pkeys := pks.Keys()
 	keys := make([]privateKeyModel, len(pkeys))
@@ -74,20 +83,10 @@ type privateKeySetBlob struct {
 	Value []byte `db:"value"`
 }
 
-func NewPrivateKeySetRepo(dsn, secret string) (*PrivateKeySetRepo, error) {
+func NewPrivateKeySetRepo(dbm *gorp.DbMap, secret string) (*PrivateKeySetRepo, error) {
 	bsecret := []byte(secret)
 	if len(bsecret) != 32 {
 		return nil, errors.New("expected 32-byte secret")
-	}
-
-	dbm, err := dbMap(dsn)
-	if err != nil {
-		return nil, err
-	}
-
-	dbm.AddTableWithName(privateKeySetBlob{}, keyTableName).SetKeys(false, "value")
-	if err := dbm.CreateTablesIfNotExists(); err != nil {
-		return nil, err
 	}
 
 	r := &PrivateKeySetRepo{

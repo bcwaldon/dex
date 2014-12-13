@@ -6,13 +6,8 @@ import (
 	"github.com/coopernurse/gorp"
 )
 
-func NewHealthChecker(dsn string) (*healthChecker, error) {
-	dbm, err := dbMap(dsn)
-	if err != nil {
-		return nil, err
-	}
-
-	return &healthChecker{dbMap: dbm}, nil
+func NewHealthChecker(dbm *gorp.DbMap) *healthChecker {
+	return &healthChecker{dbMap: dbm}
 }
 
 type healthChecker struct {

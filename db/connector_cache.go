@@ -15,6 +15,15 @@ const (
 	connectorCacheTableName = "connectorcache"
 )
 
+func init() {
+	register(table{
+		name:    connectorCacheTableName,
+		model:   connectorCacheModel{},
+		pkey:    "id",
+		autoinc: true,
+	})
+}
+
 func newConnectorCacheModel(cID, key string, val interface{}, cr, exp time.Time) (*connectorCacheModel, error) {
 	enc, err := json.Marshal(val)
 	if err != nil {
@@ -45,21 +54,8 @@ func (m *connectorCacheModel) Decode(val interface{}) error {
 	return json.Unmarshal([]byte(m.Value), val)
 }
 
-func NewConnectorCache(dsn string) (*connectorCache, error) {
-	dbm, err := dbMap(dsn)
-	if err != nil {
-		return nil, err
-	}
-
-	dbm.AddTableWithName(connectorCacheModel{}, connectorCacheTableName).SetKeys(true, "id")
-	if err := dbm.CreateTablesIfNotExists(); err != nil {
-		return nil, err
-	}
-
-	r := &connectorCache{
-		dbMap: dbm,
-	}
-	return r, nil
+func NewConnectorCache(dbm *gorp.DbMap) *connectorCache {
+	return &connectorCache{dbMap: dbm}
 }
 
 type connectorCache struct {

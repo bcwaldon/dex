@@ -285,6 +285,8 @@ func handleTokenFunc(srv OIDCServer) http.HandlerFunc {
 			return
 		}
 
+		creds := oauth2.ClientCredentials{ID: user, Secret: password}
+
 		var jwt *jose.JWT
 		grantType := r.PostForm.Get("grant_type")
 
@@ -296,13 +298,13 @@ func handleTokenFunc(srv OIDCServer) http.HandlerFunc {
 				return
 			}
 
-			jwt, err = srv.CodeToken(user, password, code)
+			jwt, err = srv.CodeToken(creds, code)
 			if err != nil {
 				writeTokenError(w, err, state)
 				return
 			}
 		case oauth2.GrantTypeClientCreds:
-			jwt, err = srv.ClientCredsToken(user, password)
+			jwt, err = srv.ClientCredsToken(creds)
 			if err != nil {
 				writeTokenError(w, err, state)
 				return

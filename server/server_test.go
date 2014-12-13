@@ -254,7 +254,7 @@ func TestServerCodeToken(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	jwt, err := srv.CodeToken(ci.Credentials.ID, ci.Credentials.Secret, key)
+	jwt, err := srv.CodeToken(ci.Credentials, key)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -293,7 +293,7 @@ func TestServerTokenUnrecognizedKey(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	jwt, err := srv.CodeToken(ci.Credentials.ID, ci.Credentials.Secret, "foo")
+	jwt, err := srv.CodeToken(ci.Credentials, "foo")
 	if err == nil {
 		t.Fatalf("Expected non-nil error")
 	}
@@ -381,7 +381,7 @@ func TestServerTokenFail(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		jwt, err := srv.CodeToken(tt.argCC.ID, tt.argCC.Secret, tt.argKey)
+		jwt, err := srv.CodeToken(tt.argCC, tt.argKey)
 		if tt.err == "" {
 			if err != nil {
 				t.Errorf("case %d: got non-nil error: %v", i, err)

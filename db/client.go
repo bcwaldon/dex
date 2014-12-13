@@ -12,7 +12,6 @@ import (
 	"github.com/coopernurse/gorp"
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 )
 
@@ -65,7 +64,7 @@ func (m *clientIdentityModel) ClientIdentity() (*oidc.ClientIdentity, error) {
 	}
 
 	ci := oidc.ClientIdentity{
-		Credentials: oauth2.ClientCredentials{
+		Credentials: oidc.ClientCredentials{
 			ID:     m.ID,
 			Secret: string(m.Secret),
 		},
@@ -104,7 +103,7 @@ func (r *clientIdentityRepo) Metadata(clientID string) (*oidc.ClientMetadata, er
 	return &ci.Metadata, nil
 }
 
-func (r *clientIdentityRepo) Authenticate(creds oauth2.ClientCredentials) (bool, error) {
+func (r *clientIdentityRepo) Authenticate(creds oidc.ClientCredentials) (bool, error) {
 	m, err := r.dbMap.Get(clientIdentityModel{}, creds.ID)
 	if m == nil || err != nil {
 		return false, err
@@ -128,7 +127,7 @@ func (r *clientIdentityRepo) Authenticate(creds oauth2.ClientCredentials) (bool,
 	return ok, nil
 }
 
-func (r *clientIdentityRepo) New(meta oidc.ClientMetadata) (*oauth2.ClientCredentials, error) {
+func (r *clientIdentityRepo) New(meta oidc.ClientMetadata) (*oidc.ClientCredentials, error) {
 	id, err := genClientID(meta.RedirectURL.Host)
 	if err != nil {
 		return nil, err
@@ -148,7 +147,7 @@ func (r *clientIdentityRepo) New(meta oidc.ClientMetadata) (*oauth2.ClientCreden
 		return nil, err
 	}
 
-	cc := oauth2.ClientCredentials{
+	cc := oidc.ClientCredentials{
 		ID:     id,
 		Secret: base64.URLEncoding.EncodeToString(secret),
 	}

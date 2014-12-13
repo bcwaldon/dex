@@ -98,7 +98,7 @@ func TestServerNewSession(t *testing.T) {
 
 	state := "pants"
 	ci := oidc.ClientIdentity{
-		Credentials: oauth2.ClientCredentials{
+		Credentials: oidc.ClientCredentials{
 			ID:     "XXX",
 			Secret: "secrete",
 		},
@@ -141,7 +141,7 @@ func TestServerNewSession(t *testing.T) {
 
 func TestServerLogin(t *testing.T) {
 	ci := oidc.ClientIdentity{
-		Credentials: oauth2.ClientCredentials{
+		Credentials: oidc.ClientCredentials{
 			ID:     "XXX",
 			Secret: "secrete",
 		},
@@ -193,7 +193,7 @@ func TestServerLogin(t *testing.T) {
 func TestServerLoginUnrecognizedSessionKey(t *testing.T) {
 	ciRepo := NewClientIdentityRepo([]oidc.ClientIdentity{
 		oidc.ClientIdentity{
-			Credentials: oauth2.ClientCredentials{
+			Credentials: oidc.ClientCredentials{
 				ID: "XXX", Secret: "secrete",
 			},
 		},
@@ -222,7 +222,7 @@ func TestServerLoginUnrecognizedSessionKey(t *testing.T) {
 
 func TestServerCodeToken(t *testing.T) {
 	ci := oidc.ClientIdentity{
-		Credentials: oauth2.ClientCredentials{
+		Credentials: oidc.ClientCredentials{
 			ID:     "XXX",
 			Secret: "secrete",
 		},
@@ -265,7 +265,7 @@ func TestServerCodeToken(t *testing.T) {
 
 func TestServerTokenUnrecognizedKey(t *testing.T) {
 	ci := oidc.ClientIdentity{
-		Credentials: oauth2.ClientCredentials{
+		Credentials: oidc.ClientCredentials{
 			ID:     "XXX",
 			Secret: "secrete",
 		},
@@ -305,7 +305,7 @@ func TestServerTokenUnrecognizedKey(t *testing.T) {
 func TestServerTokenFail(t *testing.T) {
 	issuerURL := url.URL{Scheme: "http", Host: "server.example.com"}
 	keyFixture := "goodkey"
-	ccFixture := oauth2.ClientCredentials{
+	ccFixture := oidc.ClientCredentials{
 		ID:     "XXX",
 		Secret: "secrete",
 	}
@@ -313,7 +313,7 @@ func TestServerTokenFail(t *testing.T) {
 
 	tests := []struct {
 		signer josesig.Signer
-		argCC  oauth2.ClientCredentials
+		argCC  oidc.ClientCredentials
 		argKey string
 		err    string
 	}{
@@ -335,7 +335,7 @@ func TestServerTokenFail(t *testing.T) {
 		// unrecognized client
 		{
 			signer: signerFixture,
-			argCC:  oauth2.ClientCredentials{ID: "YYY"},
+			argCC:  oidc.ClientCredentials{ID: "YYY"},
 			argKey: keyFixture,
 			err:    oauth2.ErrorInvalidClient,
 		},

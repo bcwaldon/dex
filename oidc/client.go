@@ -27,25 +27,27 @@ var (
 	DefaultScope = []string{"openid", "email", "profile"}
 )
 
+type ClientCredentials oauth2.ClientCredentials
+
+type ClientIdentity struct {
+	Credentials ClientCredentials
+	Metadata    ClientMetadata
+}
+
+type ClientMetadata struct {
+	RedirectURL url.URL
+}
+
 type Client struct {
 	HTTPClient     phttp.Client
 	ProviderConfig ProviderConfig
-	Credentials    oauth2.ClientCredentials
+	Credentials    ClientCredentials
 	RedirectURL    string
 	Scope          []string
 	KeySet         key.PublicKeySet
 
 	keySetSyncMutex sync.Mutex
 	lastKeySetSync  time.Time
-}
-
-type ClientIdentity struct {
-	Credentials oauth2.ClientCredentials
-	Metadata    ClientMetadata
-}
-
-type ClientMetadata struct {
-	RedirectURL url.URL
 }
 
 func (c *Client) Healthy() error {
@@ -78,7 +80,7 @@ func (c *Client) getScope() []string {
 
 func (c *Client) OAuthClient() (*oauth2.Client, error) {
 	ocfg := oauth2.Config{
-		Credentials: c.Credentials,
+		Credentials: oauth2.ClientCredentials(c.Credentials),
 		RedirectURL: c.RedirectURL,
 		AuthURL:     c.ProviderConfig.AuthEndpoint,
 		TokenURL:    c.ProviderConfig.TokenEndpoint,

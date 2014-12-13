@@ -12,7 +12,6 @@ import (
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/jose"
 	"github.com/coreos-inc/auth/key"
-	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 	phttp "github.com/coreos-inc/auth/pkg/http"
 	"github.com/coreos-inc/auth/server"
@@ -32,7 +31,7 @@ func TestHTTPExchangeToken(t *testing.T) {
 	}
 
 	ci := oidc.ClientIdentity{
-		Credentials: oauth2.ClientCredentials{
+		Credentials: oidc.ClientCredentials{
 			ID:     "72de74a9",
 			Secret: "XXX",
 		},
@@ -118,7 +117,7 @@ func TestHTTPExchangeToken(t *testing.T) {
 
 func TestHTTPClientCredsToken(t *testing.T) {
 	ci := oidc.ClientIdentity{
-		Credentials: oauth2.ClientCredentials{
+		Credentials: oidc.ClientCredentials{
 			ID:     "72de74a9",
 			Secret: "XXX",
 		},

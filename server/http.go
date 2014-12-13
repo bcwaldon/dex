@@ -285,7 +285,7 @@ func handleTokenFunc(srv OIDCServer) http.HandlerFunc {
 			return
 		}
 
-		creds := oauth2.ClientCredentials{ID: user, Secret: password}
+		creds := oidc.ClientCredentials{ID: user, Secret: password}
 
 		var jwt *jose.JWT
 		grantType := r.PostForm.Get("grant_type")

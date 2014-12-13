@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"net/url"
 
-	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 )
 
@@ -20,7 +19,7 @@ type ClientIdentityRepo interface {
 	// that the provided secret matches. If either of these assertions
 	// fail, (false, nil) will be returned. Only if the repo is unable
 	// to make these assertions will a non-nil error be returned.
-	Authenticate(creds oauth2.ClientCredentials) (bool, error)
+	Authenticate(creds oidc.ClientCredentials) (bool, error)
 }
 
 func NewClientIdentityRepo(cs []oidc.ClientIdentity) ClientIdentityRepo {
@@ -48,7 +47,7 @@ func (cr *memClientIdentityRepo) Metadata(clientID string) (*oidc.ClientMetadata
 	return &ci.Metadata, nil
 }
 
-func (cr *memClientIdentityRepo) Authenticate(creds oauth2.ClientCredentials) (bool, error) {
+func (cr *memClientIdentityRepo) Authenticate(creds oidc.ClientCredentials) (bool, error) {
 	ci, ok := cr.idents[creds.ID]
 	ok = ok && ci.Credentials.Secret == creds.Secret
 	return ok, nil
@@ -91,7 +90,7 @@ func (ci *clientIdentity) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	ci.Credentials = oauth2.ClientCredentials{
+	ci.Credentials = oidc.ClientCredentials{
 		ID:     c.ID,
 		Secret: c.Secret,
 	}

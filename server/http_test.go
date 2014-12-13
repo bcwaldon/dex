@@ -75,7 +75,7 @@ func TestHandleAuthFuncResponses(t *testing.T) {
 		SessionManager: session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo()),
 		ClientIdentityRepo: NewClientIdentityRepo([]oidc.ClientIdentity{
 			oidc.ClientIdentity{
-				Credentials: oauth2.ClientCredentials{
+				Credentials: oidc.ClientCredentials{
 					ID:     "XXX",
 					Secret: "secrete",
 				},

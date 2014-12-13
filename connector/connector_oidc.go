@@ -53,7 +53,7 @@ func (cfg *OIDCConnectorConfig) Connector(ns url.URL, lf oidc.LoginFunc, tpls *t
 		loginFunc: lf,
 		client: &oidc.Client{
 			RedirectURL: ns.String(),
-			Credentials: oauth2.ClientCredentials{
+			Credentials: oidc.ClientCredentials{
 				ID:     cfg.ClientID,
 				Secret: cfg.ClientSecret,
 			},

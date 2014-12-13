@@ -7,7 +7,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 	pflag "github.com/coreos-inc/auth/pkg/flag"
 	"github.com/coreos-inc/auth/pkg/log"
@@ -48,7 +47,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	cc := oauth2.ClientCredentials{
+	cc := oidc.ClientCredentials{
 		ID:     *clientID,
 		Secret: *clientSecret,
 	}

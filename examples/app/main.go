@@ -10,7 +10,6 @@ import (
 	"path"
 	"time"
 
-	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 	pflag "github.com/coreos-inc/auth/pkg/flag"
 	phttp "github.com/coreos-inc/auth/pkg/http"
@@ -68,7 +67,7 @@ func main() {
 	redirectURL := l
 	redirectURL.Path = path.Join(redirectURL.Path, pathCallback)
 
-	cc := oauth2.ClientCredentials{
+	cc := oidc.ClientCredentials{
 		ID:     *clientID,
 		Secret: *clientSecret,
 	}

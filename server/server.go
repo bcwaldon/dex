@@ -29,8 +29,8 @@ type OIDCServer interface {
 	ClientMetadata(string) (*oidc.ClientMetadata, error)
 	NewSession(clientID, clientState string, redirectURL url.URL) (string, error)
 	Login(oidc.Identity, string) (string, error)
-	CodeToken(creds oauth2.ClientCredentials, sessionKey string) (*jose.JWT, error)
-	ClientCredsToken(creds oauth2.ClientCredentials) (*jose.JWT, error)
+	CodeToken(creds oidc.ClientCredentials, sessionKey string) (*jose.JWT, error)
+	ClientCredsToken(creds oidc.ClientCredentials) (*jose.JWT, error)
 	KillSession(string) error
 }
 
@@ -182,7 +182,7 @@ func (s *Server) Login(ident oidc.Identity, key string) (string, error) {
 	return ru.String(), nil
 }
 
-func (s *Server) ClientCredsToken(creds oauth2.ClientCredentials) (*jose.JWT, error) {
+func (s *Server) ClientCredsToken(creds oidc.ClientCredentials) (*jose.JWT, error) {
 	ok, err := s.ClientIdentityRepo.Authenticate(creds)
 	if err != nil {
 		log.Errorf("Failed fetching client %s from repo: %v", creds.ID, err)
@@ -213,7 +213,7 @@ func (s *Server) ClientCredsToken(creds oauth2.ClientCredentials) (*jose.JWT, er
 	return jwt, nil
 }
 
-func (s *Server) CodeToken(creds oauth2.ClientCredentials, sessionKey string) (*jose.JWT, error) {
+func (s *Server) CodeToken(creds oidc.ClientCredentials, sessionKey string) (*jose.JWT, error) {
 	ok, err := s.ClientIdentityRepo.Authenticate(creds)
 	if err != nil {
 		log.Errorf("Failed fetching client %s from repo: %v", creds.ID, err)

@@ -25,14 +25,14 @@ func init() {
 func newClientIdentityModel(ci *oauth2.ClientIdentity) *clientIdentityModel {
 	return &clientIdentityModel{
 		ID:          ci.ID,
-		Secret:      ci.Secret,
+		Secret:      []byte(ci.Secret),
 		RedirectURL: ci.RedirectURL.String(),
 	}
 }
 
 type clientIdentityModel struct {
 	ID          string `db:"id"`
-	Secret      string `db:"secret"`
+	Secret      []byte `db:"secret"`
 	RedirectURL string `db:"redirectURL"`
 }
 
@@ -44,7 +44,7 @@ func (m *clientIdentityModel) ClientIdentity() (*oauth2.ClientIdentity, error) {
 
 	ci := oauth2.ClientIdentity{
 		ID:          m.ID,
-		Secret:      m.Secret,
+		Secret:      string(m.Secret),
 		RedirectURL: *u,
 	}
 

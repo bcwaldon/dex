@@ -20,7 +20,7 @@ type ClientIdentityRepo interface {
 	// that the provided secret matches. If either of these assertions
 	// fail, (false, nil) will be returned. Only if the repo is unable
 	// to make these assertions will a non-nil error be returned.
-	Authenticate(clientID, clientSecret string) (bool, error)
+	Authenticate(creds oauth2.ClientCredentials) (bool, error)
 }
 
 func NewClientIdentityRepo(cs []oidc.ClientIdentity) ClientIdentityRepo {
@@ -48,9 +48,9 @@ func (cr *memClientIdentityRepo) Metadata(clientID string) (*oidc.ClientMetadata
 	return &ci.Metadata, nil
 }
 
-func (cr *memClientIdentityRepo) Authenticate(clientID, clientSecret string) (bool, error) {
-	ci, ok := cr.idents[clientID]
-	ok = ok && ci.Credentials.Secret == clientSecret
+func (cr *memClientIdentityRepo) Authenticate(creds oauth2.ClientCredentials) (bool, error) {
+	ci, ok := cr.idents[creds.ID]
+	ok = ok && ci.Credentials.Secret == creds.Secret
 	return ok, nil
 }
 

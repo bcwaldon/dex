@@ -183,7 +183,7 @@ func (s *Server) Login(ident oidc.Identity, key string) (string, error) {
 }
 
 func (s *Server) ClientCredsToken(clientID, clientSecret string) (*jose.JWT, error) {
-	ok, err := s.ClientIdentityRepo.Authenticate(clientID, clientSecret)
+	ok, err := s.ClientIdentityRepo.Authenticate(oauth2.ClientCredentials{ID: clientID, Secret: clientSecret})
 	if err != nil {
 		log.Errorf("Failed fetching client %s from repo: %v", clientID, err)
 		return nil, oauth2.NewError(oauth2.ErrorServerError)
@@ -214,7 +214,7 @@ func (s *Server) ClientCredsToken(clientID, clientSecret string) (*jose.JWT, err
 }
 
 func (s *Server) CodeToken(clientID, clientSecret, sessionKey string) (*jose.JWT, error) {
-	ok, err := s.ClientIdentityRepo.Authenticate(clientID, clientSecret)
+	ok, err := s.ClientIdentityRepo.Authenticate(oauth2.ClientCredentials{ID: clientID, Secret: clientSecret})
 	if err != nil {
 		log.Errorf("Failed fetching client %s from repo: %v", clientID, err)
 		return nil, oauth2.NewError(oauth2.ErrorServerError)

@@ -89,13 +89,13 @@ func (r *clientIdentityRepo) Metadata(clientID string) (*oidc.ClientMetadata, er
 	return &ci.Metadata, nil
 }
 
-func (r *clientIdentityRepo) Authenticate(clientID, clientSecret string) (bool, error) {
-	dec, err := base64.URLEncoding.DecodeString(clientSecret)
+func (r *clientIdentityRepo) Authenticate(creds oauth2.ClientCredentials) (bool, error) {
+	dec, err := base64.URLEncoding.DecodeString(creds.Secret)
 	if err != nil {
 		return false, err
 	}
 
-	m, err := r.dbMap.Get(clientIdentityModel{}, clientID)
+	m, err := r.dbMap.Get(clientIdentityModel{}, creds.ID)
 	if m == nil || err != nil {
 		return false, err
 	}

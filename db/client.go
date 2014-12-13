@@ -73,14 +73,21 @@ func (r *clientIdentityRepo) Find(clientID string) (*oauth2.ClientIdentity, erro
 	return cim.ClientIdentity()
 }
 
-func (cr *clientIdentityRepo) Authenticate(clientID, clientSecret string) (bool, error) {
-	ci, err := cr.Find(clientID)
-	if err != nil {
+func (r *clientIdentityRepo) Authenticate(clientID, clientSecret string) (bool, error) {
+	m, err := r.dbMap.Get(clientIdentityModel{}, clientID)
+	if m == nil || err != nil {
 		return false, err
 	}
-	if ci == nil || ci.Secret != clientSecret {
+
+	cim, ok := m.(*clientIdentityModel)
+	if !ok {
+		return false, errors.New("unrecognized model")
+	}
+
+	if cim == nil || string(cim.Secret) != clientSecret {
 		return false, nil
 	}
+
 	return true, nil
 }
 

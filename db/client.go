@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"net"
 	"net/url"
-	"reflect"
 	"strings"
 
 	"github.com/coopernurse/gorp"
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
@@ -18,6 +18,8 @@ import (
 
 const (
 	clientIdentityTableName = "clientidentity"
+
+	bcryptHashCost = 10
 )
 
 func init() {
@@ -29,12 +31,19 @@ func init() {
 	})
 }
 
-func newClientIdentityModel(id string, secret []byte, meta *oidc.ClientMetadata) *clientIdentityModel {
-	return &clientIdentityModel{
+func newClientIdentityModel(id string, secret []byte, meta *oidc.ClientMetadata) (*clientIdentityModel, error) {
+	hashed, err := bcrypt.GenerateFromPassword(secret, bcryptHashCost)
+	if err != nil {
+		return nil, err
+	}
+
+	cim := clientIdentityModel{
 		ID:          id,
-		Secret:      secret,
+		Secret:      hashed,
 		RedirectURL: meta.RedirectURL.String(),
 	}
+
+	return &cim, nil
 }
 
 type clientIdentityModel struct {
@@ -105,11 +114,8 @@ func (r *clientIdentityRepo) Authenticate(creds oauth2.ClientCredentials) (bool,
 		return false, errors.New("unrecognized model")
 	}
 
-	if cim == nil || !reflect.DeepEqual(cim.Secret, dec) {
-		return false, nil
-	}
-
-	return true, nil
+	ok = bcrypt.CompareHashAndPassword(cim.Secret, dec) == nil
+	return ok, nil
 }
 
 func (r *clientIdentityRepo) New(meta oidc.ClientMetadata) (*oauth2.ClientCredentials, error) {
@@ -123,7 +129,11 @@ func (r *clientIdentityRepo) New(meta oidc.ClientMetadata) (*oauth2.ClientCreden
 		return nil, err
 	}
 
-	cim := newClientIdentityModel(id, secret, &meta)
+	cim, err := newClientIdentityModel(id, secret, &meta)
+	if err != nil {
+		return nil, err
+	}
+
 	if err := r.dbMap.Insert(cim); err != nil {
 		return nil, err
 	}

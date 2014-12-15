@@ -1,6 +1,7 @@
 package http
 
 import (
+	"net/http"
 	"net/url"
 	"reflect"
 	"testing"
@@ -215,6 +216,84 @@ func TestExpiresFail(t *testing.T) {
 		_, _, err := expires(tt.date, tt.exp)
 		if err == nil {
 			t.Errorf("case %d: expected non-nil error", i)
+		}
+	}
+}
+
+func TestCacheablePass(t *testing.T) {
+	tests := []struct {
+		headers http.Header
+		wantTTL time.Duration
+		wantOK  bool
+	}{
+		// valid Cache-Control
+		{
+			headers: http.Header{
+				"Cache-Control": []string{"max-age=100"},
+			},
+			wantTTL: 100 * time.Second,
+			wantOK:  true,
+		},
+		// valid Date/Expires
+		{
+			headers: http.Header{
+				"Date":    []string{"Thu, 01 Dec 1983 22:00:00 GMT"},
+				"Expires": []string{"Fri, 02 Dec 1983 01:00:00 GMT"},
+			},
+			wantTTL: 10800 * time.Second,
+			wantOK:  true,
+		},
+		// Cache-Control supersedes Date/Expires
+		{
+			headers: http.Header{
+				"Cache-Control": []string{"max-age=100"},
+				"Date":          []string{"Thu, 01 Dec 1983 22:00:00 GMT"},
+				"Expires":       []string{"Fri, 02 Dec 1983 01:00:00 GMT"},
+			},
+			wantTTL: 100 * time.Second,
+			wantOK:  true,
+		},
+		// no caching headers
+		{
+			headers: http.Header{},
+			wantOK:  false,
+		},
+	}
+
+	for i, tt := range tests {
+		ttl, ok, err := Cacheable(tt.headers)
+		if err != nil {
+			t.Errorf("case %d: err=%v", i, err)
+			continue
+		}
+		if tt.wantTTL != ttl {
+			t.Errorf("case %d: want=%d got=%d", i, tt.wantTTL, ttl)
+		}
+		if tt.wantOK != ok {
+			t.Errorf("case %d: incorrect ok value: want=%t got=%t", i, tt.wantOK, ok)
+		}
+	}
+}
+
+func TestCacheableFail(t *testing.T) {
+	tests := []http.Header{
+		// invalid Cache-Control short-circuits
+		http.Header{
+			"Cache-Control": []string{"max-age"},
+			"Date":          []string{"Thu, 01 Dec 1983 22:00:00 GMT"},
+			"Expires":       []string{"Fri, 02 Dec 1983 01:00:00 GMT"},
+		},
+		// no Cache-Control, invalid Expires
+		http.Header{
+			"Date":    []string{"Thu, 01 Dec 1983 22:00:00 GMT"},
+			"Expires": []string{"boo"},
+		},
+	}
+
+	for i, tt := range tests {
+		_, _, err := Cacheable(tt)
+		if err == nil {
+			t.Errorf("case %d: want non-nil err", i)
 		}
 	}
 }

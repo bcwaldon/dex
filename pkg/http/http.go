@@ -106,6 +106,15 @@ func expires(date, expires string) (time.Duration, bool, error) {
 	return ttl, true, nil
 }
 
+func Cacheable(hdr http.Header) (time.Duration, bool, error) {
+	ttl, ok, err := CacheControlMaxAge(hdr.Get("Cache-Control"))
+	if err != nil || ok {
+		return ttl, ok, err
+	}
+
+	return expires(hdr.Get("Date"), hdr.Get("Expires"))
+}
+
 // MergeQuery appends additional query values to an existing URL.
 func MergeQuery(u url.URL, q url.Values) url.URL {
 	uv := u.Query()

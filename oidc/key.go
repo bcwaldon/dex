@@ -43,15 +43,15 @@ func (r *remotePublicKeyRepo) Get() (key.KeySet, error) {
 		return nil, errors.New("zero keys in response")
 	}
 
-	maxAge, ok, err := phttp.CacheControlMaxAge(resp.Header.Get("Cache-Control"))
+	ttl, ok, err := phttp.Cacheable(resp.Header)
 	if err != nil {
 		return nil, err
 	}
 	if !ok {
-		return nil, errors.New("max-age not set")
+		return nil, errors.New("HTTP cache headers not set")
 	}
 
-	exp := time.Now().UTC().Add(maxAge)
+	exp := time.Now().UTC().Add(ttl)
 	ks := key.NewPublicKeySet(d.Keys, exp)
 	return ks, nil
 }

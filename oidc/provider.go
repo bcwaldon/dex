@@ -151,12 +151,16 @@ func (r *httpProviderConfigGetter) Get() (cfg ProviderConfig, err error) {
 		return
 	}
 
-	maxAge, ok, err := phttp.CacheControlMaxAge(resp.Header.Get("Cache-Control"))
-	if err != nil || !ok {
-		err = errors.New("provider config missing cache headers")
+	var ttl time.Duration
+	var ok bool
+	ttl, ok, err = phttp.Cacheable(resp.Header)
+	if err != nil {
+		return
+	} else if !ok {
+		err = errors.New("HTTP cache headers not set")
 		return
 	}
-	cfg.ExpiresAt = r.clock.Now().UTC().Add(maxAge)
+	cfg.ExpiresAt = r.clock.Now().UTC().Add(ttl)
 
 	// The issuer value returned MUST be identical to the Issuer URL that was directly used to retrieve the configuration information.
 	// http://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfigurationValidation

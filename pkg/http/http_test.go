@@ -126,3 +126,95 @@ func TestMergeQuery(t *testing.T) {
 		}
 	}
 }
+
+func TestExpiresPass(t *testing.T) {
+	tests := []struct {
+		date    string
+		exp     string
+		wantTTL time.Duration
+		wantOK  bool
+	}{
+		// Expires and Date properly set
+		{
+			date:    "Thu, 01 Dec 1983 22:00:00 GMT",
+			exp:     "Fri, 02 Dec 1983 01:00:00 GMT",
+			wantTTL: 10800 * time.Second,
+			wantOK:  true,
+		},
+		// empty headers
+		{
+			date:   "",
+			exp:    "",
+			wantOK: false,
+		},
+		// lack of Expirs short-ciruits Date parsing
+		{
+			date:   "foo",
+			exp:    "",
+			wantOK: false,
+		},
+		// lack of Date short-ciruits Expires parsing
+		{
+			date:   "",
+			exp:    "foo",
+			wantOK: false,
+		},
+		// no Date
+		{
+			exp:     "Thu, 01 Dec 1983 22:00:00 GMT",
+			wantTTL: 0,
+			wantOK:  false,
+		},
+		// no Expires
+		{
+			date:    "Thu, 01 Dec 1983 22:00:00 GMT",
+			wantTTL: 0,
+			wantOK:  false,
+		},
+		// Expires < Date
+		{
+			date:    "Fri, 02 Dec 1983 01:00:00 GMT",
+			exp:     "Thu, 01 Dec 1983 22:00:00 GMT",
+			wantTTL: 0,
+			wantOK:  false,
+		},
+	}
+
+	for i, tt := range tests {
+		ttl, ok, err := expires(tt.date, tt.exp)
+		if err != nil {
+			t.Errorf("case %d: err=%v", i, err)
+		}
+		if tt.wantTTL != ttl {
+			t.Errorf("case %d: want=%d got=%d", i, tt.wantTTL, ttl)
+		}
+		if tt.wantOK != ok {
+			t.Errorf("case %d: incorrect ok value: want=%t got=%t", i, tt.wantOK, ok)
+		}
+	}
+}
+
+func TestExpiresFail(t *testing.T) {
+	tests := []struct {
+		date string
+		exp  string
+	}{
+		// malformed Date header
+		{
+			date: "foo",
+			exp:  "Fri, 02 Dec 1983 01:00:00 GMT",
+		},
+		// malformed exp header
+		{
+			date: "Fri, 02 Dec 1983 01:00:00 GMT",
+			exp:  "bar",
+		},
+	}
+
+	for i, tt := range tests {
+		_, _, err := expires(tt.date, tt.exp)
+		if err == nil {
+			t.Errorf("case %d: expected non-nil error", i)
+		}
+	}
+}

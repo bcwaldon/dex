@@ -80,6 +80,32 @@ func CacheControlMaxAge(hdr string) (time.Duration, bool, error) {
 	return 0, false, nil
 }
 
+func expires(date, expires string) (time.Duration, bool, error) {
+	if date == "" || expires == "" {
+		return 0, false, nil
+	}
+
+	te, err := time.Parse(time.RFC1123, expires)
+	if err != nil {
+		return 0, false, err
+	}
+
+	td, err := time.Parse(time.RFC1123, date)
+	if err != nil {
+		return 0, false, err
+	}
+
+	ttl := te.Sub(td)
+
+	// headers indicate data already expired, caller should not
+	// have to care about this case
+	if ttl <= 0 {
+		return 0, false, nil
+	}
+
+	return ttl, true, nil
+}
+
 // MergeQuery appends additional query values to an existing URL.
 func MergeQuery(u url.URL, q url.Values) url.URL {
 	uv := u.Query()

@@ -151,12 +151,11 @@ func (r *httpProviderConfigGetter) Get() (cfg ProviderConfig, err error) {
 		return
 	}
 
-	ttl, ok, err := phttp.CacheControlMaxAge(resp.Header.Get("Cache-Control"))
+	maxAge, ok, err := phttp.CacheControlMaxAge(resp.Header.Get("Cache-Control"))
 	if err != nil || !ok {
 		err = errors.New("provider config missing cache headers")
 		return
 	}
-	maxAge := time.Duration(ttl) * time.Second
 	cfg.ExpiresAt = r.clock.Now().UTC().Add(maxAge)
 
 	// The issuer value returned MUST be identical to the Issuer URL that was directly used to retrieve the configuration information.

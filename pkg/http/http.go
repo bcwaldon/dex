@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/coreos-inc/auth/pkg/log"
 )
@@ -51,7 +52,7 @@ func BasicAuth(r *http.Request) (username, password string, ok bool) {
 	return cs[:s], cs[s+1:], true
 }
 
-func CacheControlMaxAge(hdr string) (int, bool, error) {
+func CacheControlMaxAge(hdr string) (time.Duration, bool, error) {
 	for _, field := range strings.Split(hdr, ",") {
 		parts := strings.SplitN(strings.TrimSpace(field), "=", 2)
 		k := strings.ToLower(strings.TrimSpace(parts[0]))
@@ -73,7 +74,7 @@ func CacheControlMaxAge(hdr string) (int, bool, error) {
 			return 0, true, err
 		}
 
-		return age, true, nil
+		return time.Duration(age) * time.Second, true, nil
 	}
 
 	return 0, false, nil

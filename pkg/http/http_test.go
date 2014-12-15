@@ -4,27 +4,28 @@ import (
 	"net/url"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestCacheControlMaxAgeSuccess(t *testing.T) {
 	tests := []struct {
 		hdr     string
-		wantAge int
+		wantAge time.Duration
 		wantOK  bool
 	}{
-		{"max-age=12", 12, true},
-		{"public, max-age=12", 12, true},
-		{"public, max-age=40192, must-revalidate", 40192, true},
-		{"public, not-max-age=12, must-revalidate", 0, false},
+		{"max-age=12", 12 * time.Second, true},
+		{"public, max-age=12", 12 * time.Second, true},
+		{"public, max-age=40192, must-revalidate", 40192 * time.Second, true},
+		{"public, not-max-age=12, must-revalidate", time.Duration(0), false},
 	}
 
 	for i, tt := range tests {
-		age, ok, err := CacheControlMaxAge(tt.hdr)
+		maxAge, ok, err := CacheControlMaxAge(tt.hdr)
 		if err != nil {
 			t.Errorf("case %d: err=%v", i, err)
 		}
-		if tt.wantAge != age {
-			t.Errorf("case %d: want=%d got=%d", i, tt.wantAge, age)
+		if tt.wantAge != maxAge {
+			t.Errorf("case %d: want=%d got=%d", i, tt.wantAge, maxAge)
 		}
 		if tt.wantOK != ok {
 			t.Errorf("case %d: incorrect ok value: want=%t got=%t", i, tt.wantOK, ok)

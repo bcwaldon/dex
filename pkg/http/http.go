@@ -52,7 +52,7 @@ func BasicAuth(r *http.Request) (username, password string, ok bool) {
 	return cs[:s], cs[s+1:], true
 }
 
-func CacheControlMaxAge(hdr string) (time.Duration, bool, error) {
+func cacheControlMaxAge(hdr string) (time.Duration, bool, error) {
 	for _, field := range strings.Split(hdr, ",") {
 		parts := strings.SplitN(strings.TrimSpace(field), "=", 2)
 		k := strings.ToLower(strings.TrimSpace(parts[0]))
@@ -107,7 +107,7 @@ func expires(date, expires string) (time.Duration, bool, error) {
 }
 
 func Cacheable(hdr http.Header) (time.Duration, bool, error) {
-	ttl, ok, err := CacheControlMaxAge(hdr.Get("Cache-Control"))
+	ttl, ok, err := cacheControlMaxAge(hdr.Get("Cache-Control"))
 	if err != nil || ok {
 		return ttl, ok, err
 	}

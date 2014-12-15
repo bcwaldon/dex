@@ -21,7 +21,7 @@ func TestCacheControlMaxAgeSuccess(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		maxAge, ok, err := CacheControlMaxAge(tt.hdr)
+		maxAge, ok, err := cacheControlMaxAge(tt.hdr)
 		if err != nil {
 			t.Errorf("case %d: err=%v", i, err)
 		}
@@ -42,7 +42,7 @@ func TestCacheControlMaxAgeFail(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		_, _, err := CacheControlMaxAge(tt)
+		_, _, err := cacheControlMaxAge(tt)
 		if err == nil {
 			t.Errorf("case %d: want non-nil err", i)
 		}

@@ -97,17 +97,21 @@ func TestServerNewSession(t *testing.T) {
 	}
 
 	state := "pants"
-	ci := oauth2.ClientIdentity{
-		ID:     "XXX",
-		Secret: "secrete",
-		RedirectURL: url.URL{
-			Scheme: "http",
-			Host:   "client.example.com",
-			Path:   "/callback",
+	ci := oidc.ClientIdentity{
+		Credentials: oidc.ClientCredentials{
+			ID:     "XXX",
+			Secret: "secrete",
+		},
+		Metadata: oidc.ClientMetadata{
+			RedirectURL: url.URL{
+				Scheme: "http",
+				Host:   "client.example.com",
+				Path:   "/callback",
+			},
 		},
 	}
 
-	key, err := srv.NewSession(ci.ID, state, ci.RedirectURL)
+	key, err := srv.NewSession(ci.Credentials.ID, state, ci.Metadata.RedirectURL)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -122,12 +126,12 @@ func TestServerNewSession(t *testing.T) {
 		t.Fatalf("Unable to add Identity to Session: %v", err)
 	}
 
-	if !reflect.DeepEqual(ci.RedirectURL, ses.RedirectURL) {
-		t.Fatalf("Session created with incorrect RedirectURL: want=%#v got=%#v", ci.RedirectURL, ses.RedirectURL)
+	if !reflect.DeepEqual(ci.Metadata.RedirectURL, ses.RedirectURL) {
+		t.Fatalf("Session created with incorrect RedirectURL: want=%#v got=%#v", ci.Metadata.RedirectURL, ses.RedirectURL)
 	}
 
-	if ci.ID != ses.ClientID {
-		t.Fatalf("Session created with incorrect ClientID: want=%q got=%q", ci.ID, ses.ClientID)
+	if ci.Credentials.ID != ses.ClientID {
+		t.Fatalf("Session created with incorrect ClientID: want=%q got=%q", ci.Credentials.ID, ses.ClientID)
 	}
 
 	if state != ses.ClientState {
@@ -136,16 +140,20 @@ func TestServerNewSession(t *testing.T) {
 }
 
 func TestServerLogin(t *testing.T) {
-	ci := oauth2.ClientIdentity{
-		ID:     "XXX",
-		Secret: "secrete",
-		RedirectURL: url.URL{
-			Scheme: "http",
-			Host:   "client.example.com",
-			Path:   "/callback",
+	ci := oidc.ClientIdentity{
+		Credentials: oidc.ClientCredentials{
+			ID:     "XXX",
+			Secret: "secrete",
+		},
+		Metadata: oidc.ClientMetadata{
+			RedirectURL: url.URL{
+				Scheme: "http",
+				Host:   "client.example.com",
+				Path:   "/callback",
+			},
 		},
 	}
-	ciRepo := NewClientIdentityRepo([]oauth2.ClientIdentity{ci})
+	ciRepo := NewClientIdentityRepo([]oidc.ClientIdentity{ci})
 
 	km := &StaticKeyManager{
 		signer: &StaticSigner{sig: []byte("beer"), err: nil},
@@ -153,7 +161,7 @@ func TestServerLogin(t *testing.T) {
 
 	sm := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())
 	sm.GenerateCode = staticGenerateCodeFunc("fakecode")
-	sessionID, err := sm.NewSession(ci.ID, "bogus", ci.RedirectURL)
+	sessionID, err := sm.NewSession(ci.Credentials.ID, "bogus", ci.Metadata.RedirectURL)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -183,8 +191,12 @@ func TestServerLogin(t *testing.T) {
 }
 
 func TestServerLoginUnrecognizedSessionKey(t *testing.T) {
-	ciRepo := NewClientIdentityRepo([]oauth2.ClientIdentity{
-		oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"},
+	ciRepo := NewClientIdentityRepo([]oidc.ClientIdentity{
+		oidc.ClientIdentity{
+			Credentials: oidc.ClientCredentials{
+				ID: "XXX", Secret: "secrete",
+			},
+		},
 	})
 	km := &StaticKeyManager{
 		signer: &StaticSigner{sig: nil, err: errors.New("fail")},
@@ -209,8 +221,13 @@ func TestServerLoginUnrecognizedSessionKey(t *testing.T) {
 }
 
 func TestServerCodeToken(t *testing.T) {
-	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
-	ciRepo := NewClientIdentityRepo([]oauth2.ClientIdentity{ci})
+	ci := oidc.ClientIdentity{
+		Credentials: oidc.ClientCredentials{
+			ID:     "XXX",
+			Secret: "secrete",
+		},
+	}
+	ciRepo := NewClientIdentityRepo([]oidc.ClientIdentity{ci})
 	km := &StaticKeyManager{
 		signer: &StaticSigner{sig: []byte("beer"), err: nil},
 	}
@@ -223,7 +240,7 @@ func TestServerCodeToken(t *testing.T) {
 		ClientIdentityRepo: ciRepo,
 	}
 
-	sessionID, err := sm.NewSession(ci.ID, "bogus", url.URL{})
+	sessionID, err := sm.NewSession(ci.Credentials.ID, "bogus", url.URL{})
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -237,7 +254,7 @@ func TestServerCodeToken(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	jwt, err := srv.CodeToken(ci.ID, ci.Secret, key)
+	jwt, err := srv.CodeToken(ci.Credentials, key)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -247,8 +264,13 @@ func TestServerCodeToken(t *testing.T) {
 }
 
 func TestServerTokenUnrecognizedKey(t *testing.T) {
-	ci := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
-	ciRepo := NewClientIdentityRepo([]oauth2.ClientIdentity{ci})
+	ci := oidc.ClientIdentity{
+		Credentials: oidc.ClientCredentials{
+			ID:     "XXX",
+			Secret: "secrete",
+		},
+	}
+	ciRepo := NewClientIdentityRepo([]oidc.ClientIdentity{ci})
 	km := &StaticKeyManager{
 		signer: &StaticSigner{sig: []byte("beer"), err: nil},
 	}
@@ -261,7 +283,7 @@ func TestServerTokenUnrecognizedKey(t *testing.T) {
 		ClientIdentityRepo: ciRepo,
 	}
 
-	sessionID, err := sm.NewSession(ci.ID, "bogus", url.URL{})
+	sessionID, err := sm.NewSession(ci.Credentials.ID, "bogus", url.URL{})
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -271,7 +293,7 @@ func TestServerTokenUnrecognizedKey(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	jwt, err := srv.CodeToken(ci.ID, ci.Secret, "foo")
+	jwt, err := srv.CodeToken(ci.Credentials, "foo")
 	if err == nil {
 		t.Fatalf("Expected non-nil error")
 	}
@@ -283,26 +305,29 @@ func TestServerTokenUnrecognizedKey(t *testing.T) {
 func TestServerTokenFail(t *testing.T) {
 	issuerURL := url.URL{Scheme: "http", Host: "server.example.com"}
 	keyFixture := "goodkey"
-	ciFixture := oauth2.ClientIdentity{ID: "XXX", Secret: "secrete"}
+	ccFixture := oidc.ClientCredentials{
+		ID:     "XXX",
+		Secret: "secrete",
+	}
 	signerFixture := &StaticSigner{sig: []byte("beer"), err: nil}
 
 	tests := []struct {
 		signer josesig.Signer
-		argCI  oauth2.ClientIdentity
+		argCC  oidc.ClientCredentials
 		argKey string
 		err    string
 	}{
 		// control test case to make sure fixtures check out
 		{
 			signer: signerFixture,
-			argCI:  ciFixture,
+			argCC:  ccFixture,
 			argKey: keyFixture,
 		},
 
 		// unrecognized key
 		{
 			signer: signerFixture,
-			argCI:  ciFixture,
+			argCC:  ccFixture,
 			argKey: "foo",
 			err:    oauth2.ErrorInvalidGrant,
 		},
@@ -310,7 +335,7 @@ func TestServerTokenFail(t *testing.T) {
 		// unrecognized client
 		{
 			signer: signerFixture,
-			argCI:  oauth2.ClientIdentity{ID: "YYY"},
+			argCC:  oidc.ClientCredentials{ID: "YYY"},
 			argKey: keyFixture,
 			err:    oauth2.ErrorInvalidClient,
 		},
@@ -318,7 +343,7 @@ func TestServerTokenFail(t *testing.T) {
 		// signing operation fails
 		{
 			signer: &StaticSigner{sig: nil, err: errors.New("fail")},
-			argCI:  ciFixture,
+			argCC:  ccFixture,
 			argKey: keyFixture,
 			err:    oauth2.ErrorServerError,
 		},
@@ -328,7 +353,7 @@ func TestServerTokenFail(t *testing.T) {
 		sm := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())
 		sm.GenerateCode = func() (string, error) { return keyFixture, nil }
 
-		sessionID, err := sm.NewSession(ciFixture.ID, "bogus", ciFixture.RedirectURL)
+		sessionID, err := sm.NewSession(ccFixture.ID, "bogus", url.URL{})
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -341,7 +366,9 @@ func TestServerTokenFail(t *testing.T) {
 		km := &StaticKeyManager{
 			signer: tt.signer,
 		}
-		ciRepo := NewClientIdentityRepo([]oauth2.ClientIdentity{ciFixture})
+		ciRepo := NewClientIdentityRepo([]oidc.ClientIdentity{
+			oidc.ClientIdentity{Credentials: ccFixture},
+		})
 		srv := &Server{
 			IssuerURL:          issuerURL,
 			KeyManager:         km,
@@ -354,7 +381,7 @@ func TestServerTokenFail(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		jwt, err := srv.CodeToken(tt.argCI.ID, tt.argCI.Secret, tt.argKey)
+		jwt, err := srv.CodeToken(tt.argCC, tt.argKey)
 		if tt.err == "" {
 			if err != nil {
 				t.Errorf("case %d: got non-nil error: %v", i, err)

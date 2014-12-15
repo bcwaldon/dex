@@ -26,11 +26,11 @@ const (
 )
 
 type OIDCServer interface {
-	Client(string) (*oauth2.ClientIdentity, error)
+	ClientMetadata(string) (*oidc.ClientMetadata, error)
 	NewSession(clientID, clientState string, redirectURL url.URL) (string, error)
 	Login(oidc.Identity, string) (string, error)
-	CodeToken(clientID, clientState, code string) (*jose.JWT, error)
-	ClientCredsToken(clientID, clientState string) (*jose.JWT, error)
+	CodeToken(creds oidc.ClientCredentials, sessionKey string) (*jose.JWT, error)
+	ClientCredsToken(creds oidc.ClientCredentials) (*jose.JWT, error)
 	KillSession(string) error
 }
 
@@ -141,8 +141,8 @@ func (s *Server) HTTPHandler() http.Handler {
 	return mux
 }
 
-func (s *Server) Client(clientID string) (*oauth2.ClientIdentity, error) {
-	return s.ClientIdentityRepo.Find(clientID)
+func (s *Server) ClientMetadata(clientID string) (*oidc.ClientMetadata, error) {
+	return s.ClientIdentityRepo.Metadata(clientID)
 }
 
 func (s *Server) NewSession(clientID, clientState string, redirectURL url.URL) (string, error) {
@@ -182,13 +182,12 @@ func (s *Server) Login(ident oidc.Identity, key string) (string, error) {
 	return ru.String(), nil
 }
 
-func (s *Server) ClientCredsToken(clientID, clientSecret string) (*jose.JWT, error) {
-	ci, err := s.Client(clientID)
+func (s *Server) ClientCredsToken(creds oidc.ClientCredentials) (*jose.JWT, error) {
+	ok, err := s.ClientIdentityRepo.Authenticate(creds)
 	if err != nil {
-		log.Errorf("Failed fetching client %s from repo: %v", clientID, err)
+		log.Errorf("Failed fetching client %s from repo: %v", creds.ID, err)
 		return nil, oauth2.NewError(oauth2.ErrorServerError)
-	}
-	if ci == nil || ci.Secret != clientSecret {
+	} else if !ok {
 		return nil, oauth2.NewError(oauth2.ErrorInvalidClient)
 	}
 
@@ -200,8 +199,8 @@ func (s *Server) ClientCredsToken(clientID, clientSecret string) (*jose.JWT, err
 
 	now := time.Now()
 	exp := now.Add(s.SessionManager.ValidityWindow)
-	claims := oidc.NewClaims(s.IssuerURL.String(), clientID, clientID, now, exp)
-	claims.Add("name", clientID)
+	claims := oidc.NewClaims(s.IssuerURL.String(), creds.ID, creds.ID, now, exp)
+	claims.Add("name", creds.ID)
 
 	jwt, err := josesig.NewSignedJWT(claims, signer)
 	if err != nil {
@@ -209,22 +208,21 @@ func (s *Server) ClientCredsToken(clientID, clientSecret string) (*jose.JWT, err
 		return nil, oauth2.NewError(oauth2.ErrorServerError)
 	}
 
-	log.Infof("Client token sent: clientID=%s", clientID)
+	log.Infof("Client token sent: clientID=%s", creds.ID)
 
 	return jwt, nil
 }
 
-func (s *Server) CodeToken(clientID, clientSecret, key string) (*jose.JWT, error) {
-	ci, err := s.Client(clientID)
+func (s *Server) CodeToken(creds oidc.ClientCredentials, sessionKey string) (*jose.JWT, error) {
+	ok, err := s.ClientIdentityRepo.Authenticate(creds)
 	if err != nil {
-		log.Errorf("Failed fetching client %s from repo: %v", clientID, err)
+		log.Errorf("Failed fetching client %s from repo: %v", creds.ID, err)
 		return nil, oauth2.NewError(oauth2.ErrorServerError)
-	}
-	if ci == nil || ci.Secret != clientSecret {
+	} else if !ok {
 		return nil, oauth2.NewError(oauth2.ErrorInvalidClient)
 	}
 
-	sessionID, err := s.SessionManager.ExchangeKey(key)
+	sessionID, err := s.SessionManager.ExchangeKey(sessionKey)
 	if err != nil {
 		return nil, oauth2.NewError(oauth2.ErrorInvalidGrant)
 	}
@@ -234,7 +232,7 @@ func (s *Server) CodeToken(clientID, clientSecret, key string) (*jose.JWT, error
 		return nil, oauth2.NewError(oauth2.ErrorInvalidRequest)
 	}
 
-	if ses.ClientID != ci.ID {
+	if ses.ClientID != creds.ID {
 		return nil, oauth2.NewError(oauth2.ErrorInvalidGrant)
 	}
 
@@ -250,7 +248,7 @@ func (s *Server) CodeToken(clientID, clientSecret, key string) (*jose.JWT, error
 		return nil, oauth2.NewError(oauth2.ErrorServerError)
 	}
 
-	log.Infof("Session %s token sent: clientID=%s", sessionID, clientID)
+	log.Infof("Session %s token sent: clientID=%s", sessionID, creds.ID)
 
 	return jwt, nil
 }

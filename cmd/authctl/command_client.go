@@ -1,13 +1,10 @@
 package main
 
 import (
-	"fmt"
-	"net"
 	"net/url"
-	"strings"
 
 	"github.com/coreos-inc/auth/db"
-	"github.com/coreos-inc/auth/oauth2"
+	"github.com/coreos-inc/auth/oidc"
 )
 
 var (
@@ -41,43 +38,17 @@ func runNewClient(args []string) int {
 		return 1
 	}
 
-	clientID, err := randString(32)
-	if err != nil {
-		stderr("Failed generating random client ID: %v", err)
-		return 1
-	}
-	host := redirectURL.Host
-	if strings.Contains(host, ":") {
-		host, _, err = net.SplitHostPort(host)
-		if err != nil {
-			stderr("Failed parsing URL hostname: %v", err)
-			return 1
-		}
-	}
-	clientID = fmt.Sprintf("%s@%s", clientID, host)
-
-	clientSecret, err := randString(128)
-	if err != nil {
-		stderr("Failed generating random client ID: %v", err)
-		return 1
-	}
-
-	ci := oauth2.ClientIdentity{
-		ID:          clientID,
-		Secret:      clientSecret,
-		RedirectURL: *redirectURL,
-	}
-
 	r := db.NewClientIdentityRepo(dbc)
-	if err := r.Create(ci); err != nil {
-		stderr(err.Error())
+	cc, err := r.New(oidc.ClientMetadata{RedirectURL: *redirectURL})
+	if err != nil {
+		stderr("Failed creating new client: %v", err)
 		return 1
 	}
 
 	stdout("Added new client:")
-	stdout("ID:          %s", ci.ID)
-	stdout("Secret:      %s", ci.Secret)
-	stdout("RedirectURL: %s", ci.RedirectURL.String())
+	stdout("ID:          %s", cc.ID)
+	stdout("Secret:      %s", cc.Secret)
+	stdout("RedirectURL: %s", redirectURL.String())
 
 	return 0
 }

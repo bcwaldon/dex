@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
@@ -26,10 +27,21 @@ var (
 	DefaultScope = []string{"openid", "email", "profile"}
 )
 
+type ClientCredentials oauth2.ClientCredentials
+
+type ClientIdentity struct {
+	Credentials ClientCredentials
+	Metadata    ClientMetadata
+}
+
+type ClientMetadata struct {
+	RedirectURL url.URL
+}
+
 type Client struct {
 	HTTPClient     phttp.Client
 	ProviderConfig ProviderConfig
-	ClientIdentity oauth2.ClientIdentity
+	Credentials    ClientCredentials
 	RedirectURL    string
 	Scope          []string
 	KeySet         key.PublicKeySet
@@ -68,12 +80,11 @@ func (c *Client) getScope() []string {
 
 func (c *Client) OAuthClient() (*oauth2.Client, error) {
 	ocfg := oauth2.Config{
-		RedirectURL:  c.RedirectURL,
-		ClientID:     c.ClientIdentity.ID,
-		ClientSecret: c.ClientIdentity.Secret,
-		AuthURL:      c.ProviderConfig.AuthEndpoint,
-		TokenURL:     c.ProviderConfig.TokenEndpoint,
-		Scope:        c.getScope(),
+		Credentials: oauth2.ClientCredentials(c.Credentials),
+		RedirectURL: c.RedirectURL,
+		AuthURL:     c.ProviderConfig.AuthEndpoint,
+		TokenURL:    c.ProviderConfig.TokenEndpoint,
+		Scope:       c.getScope(),
 	}
 
 	return oauth2.NewClient(c.getHTTPClient(), ocfg)
@@ -191,7 +202,7 @@ func (c *Client) Verify(jwt jose.JWT) error {
 		return fmt.Errorf("could not verify JWT signature: %v", err)
 	}
 
-	return VerifyClaims(jwt, c.ProviderConfig.Issuer, c.ClientIdentity.ID)
+	return VerifyClaims(jwt, c.ProviderConfig.Issuer, c.Credentials.ID)
 }
 
 func (c *Client) ClientCredsToken(scope []string) (jose.JWT, error) {

@@ -7,12 +7,11 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/coreos-inc/auth/oauth2"
-	o "github.com/coreos-inc/auth/oidc"
+	"github.com/coreos-inc/auth/oidc"
 )
 
 func TestLoginURL(t *testing.T) {
-	lf := func(ident o.Identity, sessionKey string) (redirectURL string, err error) { return }
+	lf := func(ident oidc.Identity, sessionKey string) (redirectURL string, err error) { return }
 
 	tests := []struct {
 		cid    string
@@ -86,10 +85,10 @@ func TestLoginURL(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		cl := &o.Client{
-			ClientIdentity: oauth2.ClientIdentity{ID: tt.cid, Secret: "fake-client-secret"},
-			RedirectURL:    tt.redir,
-			Scope:          tt.scope,
+		cl := &oidc.Client{
+			Credentials: oidc.ClientCredentials{ID: tt.cid, Secret: "fake-client-secret"},
+			RedirectURL: tt.redir,
+			Scope:       tt.scope,
 		}
 		cn := &OIDCConnector{
 			loginFunc: lf,

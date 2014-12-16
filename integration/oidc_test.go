@@ -59,7 +59,7 @@ func TestHTTPExchangeToken(t *testing.T) {
 		SessionManager:     sm,
 		ClientIdentityRepo: cir,
 		Templates:          template.New(connector.LoginPageTemplateName),
-		Connectors:         make(map[string]connector.Connector),
+		Connectors:         []connector.Connector{},
 	}
 
 	if err = srv.AddConnector(cfg); err != nil {

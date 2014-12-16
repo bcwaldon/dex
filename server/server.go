@@ -44,7 +44,7 @@ type Server struct {
 	Templates           *template.Template
 	LoginTemplate       *template.Template
 	HealthChecks        []health.Checkable
-	Connectors          map[string]connector.Connector
+	Connectors          []connector.Connector
 }
 
 func (s *Server) Run() chan struct{} {
@@ -107,7 +107,7 @@ func (s *Server) AddConnector(cfg connector.ConnectorConfig) error {
 		return err
 	}
 
-	s.Connectors[idpcID] = idpc
+	s.Connectors = append(s.Connectors, idpc)
 
 	log.Infof("Loaded IdP connector: id=%s type=%s", idpcID, cfg.ConnectorType())
 	return nil
@@ -130,8 +130,8 @@ func (s *Server) HTTPHandler() http.Handler {
 	mux.HandleFunc(httpPathHealth, handleHealthFunc(checks))
 
 	pcfg := s.ProviderConfig()
-	for id, idpc := range s.Connectors {
-		errorURL, err := url.Parse(fmt.Sprintf("%s?idpc_id=%s", pcfg.AuthEndpoint, id))
+	for _, idpc := range s.Connectors {
+		errorURL, err := url.Parse(fmt.Sprintf("%s?idpc_id=%s", pcfg.AuthEndpoint, idpc.ID()))
 		if err != nil {
 			log.Fatal(err)
 		}

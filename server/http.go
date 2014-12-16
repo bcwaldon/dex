@@ -109,7 +109,7 @@ func execTemplate(w http.ResponseWriter, tpl *template.Template, td templateData
 	}
 }
 
-func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idpcs map[string]connector.Connector, tpl *template.Template) {
+func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idpcs []connector.Connector, tpl *template.Template) {
 	if tpl == nil {
 		phttp.WriteError(w, http.StatusInternalServerError, "error loading login page")
 		return
@@ -172,11 +172,11 @@ func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idp
 	}, len(idpcs))
 
 	n := 0
-	for id := range idpcs {
-		td.Links[n].ID = id
+	for _, idpc := range idpcs {
+		td.Links[n].ID = idpc.ID()
 
 		v := r.URL.Query()
-		v.Set("idpc_id", id)
+		v.Set("idpc_id", idpc.ID())
 		v.Set("response_type", "code")
 		td.Links[n].URL = httpPathAuth + "?" + v.Encode()
 		n++
@@ -185,7 +185,13 @@ func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idp
 	execTemplate(w, tpl, td)
 }
 
-func handleAuthFunc(srv OIDCServer, idpcs map[string]connector.Connector, tpl *template.Template) http.HandlerFunc {
+func handleAuthFunc(srv OIDCServer, idpcs []connector.Connector, tpl *template.Template) http.HandlerFunc {
+	idx := make(map[string]connector.Connector, len(idpcs))
+	for _, idpc := range idpcs {
+		idpc := idpc
+		idx[idpc.ID()] = idpc
+	}
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			w.Header().Set("Allow", "GET")
@@ -204,7 +210,7 @@ func handleAuthFunc(srv OIDCServer, idpcs map[string]connector.Connector, tpl *t
 			return
 		}
 
-		idpc, ok := idpcs[q.Get("idpc_id")]
+		idpc, ok := idx[q.Get("idpc_id")]
 		if !ok {
 			renderLoginPage(w, r, srv, idpcs, tpl)
 			return

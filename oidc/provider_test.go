@@ -255,14 +255,6 @@ func TestProviderConfigSyncerSyncFailure(t *testing.T) {
 			to:   &staticProviderConfigSetter{},
 			want: nil,
 		},
-
-		// Get succeeds, but ProviderConfig already expired
-		{
-			from: &staticProviderConfigGetter{cfg: ProviderConfig{ExpiresAt: fc.Now().Add(-1 * time.Minute)}},
-			to:   &staticProviderConfigSetter{},
-			want: nil,
-		},
-
 		// generic Set failure
 		{
 			from: &staticProviderConfigGetter{cfg: ProviderConfig{ExpiresAt: fc.Now().Add(time.Minute)}},

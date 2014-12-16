@@ -99,18 +99,13 @@ func (s *ProviderConfigSyncer) sync() (time.Duration, error) {
 		return 0, err
 	}
 
-	diff := cfg.ExpiresAt.Sub(s.clock.Now().UTC())
-	if diff <= 0 {
-		return 0, errors.New("fetched provider config is already expired")
-	}
-
 	if err = s.to.Set(cfg); err != nil {
 		return 0, fmt.Errorf("error setting provider config: %v", err)
 	}
 
 	log.Infof("Updating provider config: config=%#v", cfg)
 
-	return diff, nil
+	return cfg.ExpiresAt.Sub(s.clock.Now().UTC()), nil
 }
 
 type pcsStepFunc func() (time.Duration, error)

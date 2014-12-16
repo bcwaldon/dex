@@ -84,13 +84,13 @@ func (s *ProviderConfigSyncer) Run() chan struct{} {
 	stop := make(chan struct{})
 
 	var next pcsStepper
-	next = &pcsStepNext{fn: s.sync, aft: time.Duration(0)}
+	next = &pcsStepNext{aft: time.Duration(0)}
 
 	go func() {
 		for {
 			select {
 			case <-s.clock.After(next.after()):
-				next = next.step()
+				next = next.step(s.sync)
 			case <-stop:
 				return
 			}
@@ -119,11 +119,10 @@ type pcsStepFunc func() (time.Duration, error)
 
 type pcsStepper interface {
 	after() time.Duration
-	step() pcsStepper
+	step(pcsStepFunc) pcsStepper
 }
 
 type pcsStepNext struct {
-	fn  pcsStepFunc
 	aft time.Duration
 }
 
@@ -131,20 +130,19 @@ func (n *pcsStepNext) after() time.Duration {
 	return n.aft
 }
 
-func (n *pcsStepNext) step() (next pcsStepper) {
-	ttl, err := n.fn()
+func (n *pcsStepNext) step(fn pcsStepFunc) (next pcsStepper) {
+	ttl, err := fn()
 	if err == nil {
-		next = &pcsStepNext{fn: n.fn, aft: ttl}
+		next = &pcsStepNext{aft: ttl}
 		log.Debugf("Synced provider config, next attempt in %v", next.after())
 	} else {
-		next = &pcsStepRetry{fn: n.fn, aft: time.Second}
+		next = &pcsStepRetry{aft: time.Second}
 		log.Errorf("Provider config sync failed, retrying in %v: %v", next.after(), err)
 	}
 	return
 }
 
 type pcsStepRetry struct {
-	fn  pcsStepFunc
 	aft time.Duration
 }
 
@@ -152,13 +150,13 @@ func (r *pcsStepRetry) after() time.Duration {
 	return r.aft
 }
 
-func (r *pcsStepRetry) step() (next pcsStepper) {
-	ttl, err := r.fn()
+func (r *pcsStepRetry) step(fn pcsStepFunc) (next pcsStepper) {
+	ttl, err := fn()
 	if err == nil {
-		next = &pcsStepNext{fn: r.fn, aft: ttl}
+		next = &pcsStepNext{aft: ttl}
 		log.Infof("Provider config sync no longer failing")
 	} else {
-		next = &pcsStepRetry{fn: r.fn, aft: ptime.ExpBackoff(r.aft, time.Minute)}
+		next = &pcsStepRetry{aft: ptime.ExpBackoff(r.aft, time.Minute)}
 		log.Errorf("Provider config sync still failing, retrying in %v: %v", next.after(), err)
 	}
 	return

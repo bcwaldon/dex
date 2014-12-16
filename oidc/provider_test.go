@@ -327,3 +327,56 @@ func TestProviderConfigEmpty(t *testing.T) {
 		t.Fatalf("Non-empty provider config reports empty")
 	}
 }
+
+func TestPCSStepAfter(t *testing.T) {
+	pass := func() (time.Duration, error) { return 7 * time.Second, nil }
+	fail := func() (time.Duration, error) { return 0, errors.New("fail") }
+
+	tests := []struct {
+		stepper  pcsStepper
+		stepFunc pcsStepFunc
+		want     pcsStepper
+	}{
+		// good step results in retry at TTL
+		{
+			stepper:  &pcsStepNext{},
+			stepFunc: pass,
+			want:     &pcsStepNext{aft: 7 * time.Second},
+		},
+
+		// good step after failed step results results in retry at TTL
+		{
+			stepper:  &pcsStepRetry{aft: 2 * time.Second},
+			stepFunc: pass,
+			want:     &pcsStepNext{aft: 7 * time.Second},
+		},
+
+		// failed step results in a retry in 1s
+		{
+			stepper:  &pcsStepNext{},
+			stepFunc: fail,
+			want:     &pcsStepRetry{aft: time.Second},
+		},
+
+		// failed retry backs off by a factor of 2
+		{
+			stepper:  &pcsStepRetry{aft: time.Second},
+			stepFunc: fail,
+			want:     &pcsStepRetry{aft: 2 * time.Second},
+		},
+
+		// failed retry backs off by a factor of 2, up to 1m
+		{
+			stepper:  &pcsStepRetry{aft: 32 * time.Second},
+			stepFunc: fail,
+			want:     &pcsStepRetry{aft: 60 * time.Second},
+		},
+	}
+
+	for i, tt := range tests {
+		got := tt.stepper.step(tt.stepFunc)
+		if !reflect.DeepEqual(tt.want, got) {
+			t.Errorf("case %d: want=%#v got=%#v", i, tt.want, got)
+		}
+	}
+}

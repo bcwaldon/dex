@@ -76,42 +76,14 @@ func NewProviderConfigSyncer(from ProviderConfigGetter, to ProviderConfigSetter)
 func (s *ProviderConfigSyncer) Run() chan struct{} {
 	stop := make(chan struct{})
 
+	var next pcsStepper
+	next = &pcsStepNext{fn: s.sync, aft: time.Duration(0)}
+
 	go func() {
-		var failing bool
-		var next time.Duration
-
-		fail := func(err error) {
-			if !failing {
-				failing = true
-				next = time.Second
-			} else {
-				next = ptime.ExpBackoff(next, time.Minute)
-			}
-			log.Errorf("Error syncing provider config, retrying in %v: %v", next, err)
-		}
-
 		for {
-			cfg, err := s.from.Get()
-			if err != nil {
-				fail(err)
-			} else {
-				diff := cfg.ExpiresAt.Sub(s.clock.Now().UTC())
-				if diff <= 0 {
-					fail(errors.New("fetched provider config is already expired"))
-				} else {
-					failing = false
-					next = diff / 2
-					if err = s.to.Set(cfg); err != nil {
-						fail(fmt.Errorf("error setting provider config: %v", err))
-					} else {
-						log.Infof("Updating provider config in %v: config=%#v", next, cfg)
-					}
-				}
-			}
-
 			select {
-			case <-s.clock.After(next):
-				continue
+			case <-s.clock.After(next.after()):
+				next = next.step()
 			case <-stop:
 				return
 			}
@@ -119,6 +91,74 @@ func (s *ProviderConfigSyncer) Run() chan struct{} {
 	}()
 
 	return stop
+}
+
+func (s *ProviderConfigSyncer) sync() (time.Duration, error) {
+	cfg, err := s.from.Get()
+	if err != nil {
+		return 0, err
+	}
+
+	diff := cfg.ExpiresAt.Sub(s.clock.Now().UTC())
+	if diff <= 0 {
+		return 0, errors.New("fetched provider config is already expired")
+	}
+
+	if err = s.to.Set(cfg); err != nil {
+		return 0, fmt.Errorf("error setting provider config: %v", err)
+	}
+
+	log.Infof("Updating provider config: config=%#v", cfg)
+
+	return diff, nil
+}
+
+type pcsStepFunc func() (time.Duration, error)
+
+type pcsStepper interface {
+	after() time.Duration
+	step() pcsStepper
+}
+
+type pcsStepNext struct {
+	fn  pcsStepFunc
+	aft time.Duration
+}
+
+func (n *pcsStepNext) after() time.Duration {
+	return n.aft
+}
+
+func (n *pcsStepNext) step() (next pcsStepper) {
+	exp, err := n.fn()
+	if err == nil {
+		next = &pcsStepNext{fn: n.fn, aft: exp / 2}
+	} else {
+		next = &pcsStepRetry{fn: n.fn, aft: time.Second}
+		log.Errorf("Provider config sync failed, retrying in %v: %v", next.after(), err)
+	}
+	return
+}
+
+type pcsStepRetry struct {
+	fn  pcsStepFunc
+	aft time.Duration
+}
+
+func (r *pcsStepRetry) after() time.Duration {
+	return r.aft
+}
+
+func (r *pcsStepRetry) step() (next pcsStepper) {
+	exp, err := r.fn()
+	if err == nil {
+		next = &pcsStepNext{fn: r.fn, aft: exp / 2}
+		log.Infof("Provider config sync no longer failing")
+	} else {
+		next = &pcsStepRetry{fn: r.fn, aft: ptime.ExpBackoff(r.aft, time.Minute)}
+		log.Errorf("Provider config sync still failing, retrying in %v: %v", next.after(), err)
+	}
+	return
 }
 
 type httpProviderConfigGetter struct {

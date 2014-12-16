@@ -287,9 +287,10 @@ func TestNextSyncAfter(t *testing.T) {
 			exp:  fc.Now().Add(time.Hour),
 			want: 30 * time.Minute,
 		},
+		// override large values with the maximum
 		{
 			exp:  fc.Now().Add(168 * time.Hour), // one week
-			want: 84 * time.Hour,
+			want: 24 * time.Hour,
 		},
 		{
 			exp:  fc.Now(),

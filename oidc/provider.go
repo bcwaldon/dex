@@ -17,6 +17,8 @@ import (
 )
 
 const (
+	MaximumProviderConfigSyncInterval = 24 * time.Hour
+
 	discoveryConfigPath = "/.well-known/openid-configuration"
 )
 
@@ -157,7 +159,11 @@ func (r *pcsStepRetry) step() (next pcsStepper) {
 }
 
 func nextSyncAfter(exp time.Time, clock clockwork.Clock) time.Duration {
-	return exp.Sub(clock.Now()) / 2
+	t := exp.Sub(clock.Now()) / 2
+	if t > MaximumProviderConfigSyncInterval {
+		t = MaximumProviderConfigSyncInterval
+	}
+	return t
 }
 
 type httpProviderConfigGetter struct {

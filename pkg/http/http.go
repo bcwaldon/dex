@@ -61,17 +61,17 @@ func cacheControlMaxAge(hdr string) (time.Duration, bool, error) {
 		}
 
 		if len(parts) == 1 {
-			return 0, true, errors.New("max-age has no value")
+			return 0, false, errors.New("max-age has no value")
 		}
 
 		v := strings.TrimSpace(parts[1])
 		if v == "" {
-			return 0, true, errors.New("max-age has empty value")
+			return 0, false, errors.New("max-age has empty value")
 		}
 
 		age, err := strconv.Atoi(v)
 		if err != nil {
-			return 0, true, err
+			return 0, false, err
 		}
 
 		return time.Duration(age) * time.Second, true, nil

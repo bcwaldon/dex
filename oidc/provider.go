@@ -36,6 +36,10 @@ type ProviderConfig struct {
 	ExpiresAt                         time.Time `json:"-"`
 }
 
+func (p ProviderConfig) Empty() bool {
+	return p.Issuer == ""
+}
+
 func (p ProviderConfig) SupportsGrantType(grantType string) bool {
 	var supported []string
 	if len(p.GrantTypesSupported) == 0 {

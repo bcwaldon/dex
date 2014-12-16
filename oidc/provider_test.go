@@ -311,3 +311,14 @@ func TestNextSyncAfter(t *testing.T) {
 		}
 	}
 }
+
+func TestProviderConfigEmpty(t *testing.T) {
+	cfg := ProviderConfig{}
+	if !cfg.Empty() {
+		t.Fatalf("Empty provider config reports non-empty")
+	}
+	cfg = ProviderConfig{Issuer: "http://example.com"}
+	if cfg.Empty() {
+		t.Fatalf("Non-empty provider config reports empty")
+	}
+}

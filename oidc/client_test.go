@@ -54,13 +54,6 @@ func TestGetScopeDefault(t *testing.T) {
 func TestHealthy(t *testing.T) {
 	now := time.Now().UTC()
 
-	okCfg := ProviderConfig{
-		ExpiresAt: now.Add(time.Hour),
-	}
-	expCfg := ProviderConfig{
-		ExpiresAt: now.Add(time.Hour * -1),
-	}
-
 	tests := []struct {
 		c *Client
 		h bool
@@ -68,18 +61,24 @@ func TestHealthy(t *testing.T) {
 		// all ok
 		{
 			c: &Client{
-				ProviderConfig: okCfg,
+				ProviderConfig: ProviderConfig{
+					Issuer:    "http://example.com",
+					ExpiresAt: now.Add(time.Hour),
+				},
 			},
 			h: true,
 		},
-		// expired config
+		// expired ProviderConfig
 		{
 			c: &Client{
-				ProviderConfig: expCfg,
+				ProviderConfig: ProviderConfig{
+					Issuer:    "http://example.com",
+					ExpiresAt: now.Add(time.Hour * -1),
+				},
 			},
 			h: false,
 		},
-		// missing config
+		// empty ProviderConfig
 		{
 			c: &Client{},
 			h: false,

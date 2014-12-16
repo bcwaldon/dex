@@ -53,6 +53,10 @@ type Client struct {
 func (c *Client) Healthy() error {
 	now := time.Now().UTC()
 
+	if c.ProviderConfig.Empty() {
+		return errors.New("oidc client provider config empty")
+	}
+
 	if c.ProviderConfig.ExpiresAt.IsZero() {
 		return errors.New("oidc client provider config not initialized")
 	}

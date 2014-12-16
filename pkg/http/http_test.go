@@ -15,6 +15,8 @@ func TestCacheControlMaxAgeSuccess(t *testing.T) {
 		wantOK  bool
 	}{
 		{"max-age=12", 12 * time.Second, true},
+		{"max-age=-12", 0, false},
+		{"max-age=0", 0, false},
 		{"public, max-age=12", 12 * time.Second, true},
 		{"public, max-age=40192, must-revalidate", 40192 * time.Second, true},
 		{"public, not-max-age=12, must-revalidate", time.Duration(0), false},

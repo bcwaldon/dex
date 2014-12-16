@@ -74,6 +74,10 @@ func cacheControlMaxAge(hdr string) (time.Duration, bool, error) {
 			return 0, false, err
 		}
 
+		if age <= 0 {
+			return 0, false, nil
+		}
+
 		return time.Duration(age) * time.Second, true, nil
 	}
 

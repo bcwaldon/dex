@@ -275,3 +275,32 @@ func TestProviderConfigSyncerSyncFailure(t *testing.T) {
 		}
 	}
 }
+
+func TestNextSyncAfter(t *testing.T) {
+	fc := clockwork.NewFakeClock()
+
+	tests := []struct {
+		exp  time.Time
+		want time.Duration
+	}{
+		{
+			exp:  fc.Now().Add(time.Hour),
+			want: 30 * time.Minute,
+		},
+		{
+			exp:  fc.Now().Add(168 * time.Hour), // one week
+			want: 84 * time.Hour,
+		},
+		{
+			exp:  fc.Now(),
+			want: time.Duration(0),
+		},
+	}
+
+	for i, tt := range tests {
+		got := nextSyncAfter(tt.exp, fc)
+		if tt.want != got {
+			t.Errorf("case %d: want=%v got=%v", i, tt.want, got)
+		}
+	}
+}

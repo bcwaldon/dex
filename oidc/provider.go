@@ -18,6 +18,7 @@ import (
 
 const (
 	MaximumProviderConfigSyncInterval = 24 * time.Hour
+	MinimumProviderConfigSyncInterval = time.Minute
 
 	discoveryConfigPath = "/.well-known/openid-configuration"
 )
@@ -162,6 +163,8 @@ func nextSyncAfter(exp time.Time, clock clockwork.Clock) time.Duration {
 	t := exp.Sub(clock.Now()) / 2
 	if t > MaximumProviderConfigSyncInterval {
 		t = MaximumProviderConfigSyncInterval
+	} else if t < MinimumProviderConfigSyncInterval {
+		t = MinimumProviderConfigSyncInterval
 	}
 	return t
 }

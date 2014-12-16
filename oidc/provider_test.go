@@ -139,31 +139,31 @@ func TestProviderConfigSyncerRun(t *testing.T) {
 		secondExp time.Duration
 		count     int
 	}{
-		// exp is 10s, should have same config after 1s
+		// exp is 10m, should have same config after 1s
 		{
 			first:     c1,
-			firstExp:  time.Duration(10 * time.Second),
-			advance:   time.Second,
+			firstExp:  time.Duration(10 * time.Minute),
+			advance:   time.Minute,
 			second:    c1,
-			secondExp: time.Duration(10 * time.Second),
+			secondExp: time.Duration(10 * time.Minute),
 			count:     1,
 		},
-		// exp is 10s, should have new config after 10/2 = 5s
+		// exp is 10m, should have new config after 10/2 = 5m
 		{
 			first:     c1,
-			firstExp:  time.Duration(10 * time.Second),
-			advance:   time.Duration(5 * time.Second),
+			firstExp:  time.Duration(10 * time.Minute),
+			advance:   time.Duration(5 * time.Minute),
 			second:    c2,
-			secondExp: time.Duration(10 * time.Second),
+			secondExp: time.Duration(10 * time.Minute),
 			count:     2,
 		},
-		// exp is 20s, should have new config after 20/2 = 10s
+		// exp is 20m, should have new config after 20/2 = 10m
 		{
 			first:     c1,
-			firstExp:  time.Duration(20 * time.Second),
-			advance:   time.Duration(10 * time.Second),
+			firstExp:  time.Duration(20 * time.Minute),
+			advance:   time.Duration(10 * time.Minute),
 			second:    c2,
-			secondExp: time.Duration(30 * time.Second),
+			secondExp: time.Duration(30 * time.Minute),
 			count:     2,
 		},
 	}
@@ -292,9 +292,15 @@ func TestNextSyncAfter(t *testing.T) {
 			exp:  fc.Now().Add(168 * time.Hour), // one week
 			want: 24 * time.Hour,
 		},
+		// override "now" values with the minimum
 		{
 			exp:  fc.Now(),
-			want: time.Duration(0),
+			want: time.Minute,
+		},
+		// override negative values with the minimum
+		{
+			exp:  fc.Now().Add(-1 * time.Minute),
+			want: time.Minute,
 		},
 	}
 

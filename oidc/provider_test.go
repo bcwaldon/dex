@@ -238,9 +238,6 @@ func (s *staticProviderConfigSetter) Set(cfg ProviderConfig) error {
 func TestProviderConfigSyncerSyncFailure(t *testing.T) {
 	fc := clockwork.NewFakeClock()
 
-	// advance past a time that fulfills IsZero
-	fc.Advance(time.Hour)
-
 	tests := []struct {
 		from *staticProviderConfigGetter
 		to   *staticProviderConfigSetter

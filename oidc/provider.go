@@ -165,12 +165,17 @@ func (r *pcsStepRetry) step() (next pcsStepper) {
 }
 
 func nextSyncAfter(exp time.Time, clock clockwork.Clock) time.Duration {
+	if exp.IsZero() {
+		return MaximumProviderConfigSyncInterval
+	}
+
 	t := exp.Sub(clock.Now()) / 2
 	if t > MaximumProviderConfigSyncInterval {
 		t = MaximumProviderConfigSyncInterval
 	} else if t < MinimumProviderConfigSyncInterval {
 		t = MinimumProviderConfigSyncInterval
 	}
+
 	return t
 }
 
@@ -209,11 +214,9 @@ func (r *httpProviderConfigGetter) Get() (cfg ProviderConfig, err error) {
 	ttl, ok, err = phttp.Cacheable(resp.Header)
 	if err != nil {
 		return
-	} else if !ok {
-		err = errors.New("HTTP cache headers not set")
-		return
+	} else if ok {
+		cfg.ExpiresAt = r.clock.Now().UTC().Add(ttl)
 	}
-	cfg.ExpiresAt = r.clock.Now().UTC().Add(ttl)
 
 	// The issuer value returned MUST be identical to the Issuer URL that was directly used to retrieve the configuration information.
 	// http://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfigurationValidation

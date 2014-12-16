@@ -68,6 +68,15 @@ func TestHealthy(t *testing.T) {
 			},
 			h: true,
 		},
+		// zero-value ProviderConfig.ExpiresAt
+		{
+			c: &Client{
+				ProviderConfig: ProviderConfig{
+					Issuer: "http://example.com",
+				},
+			},
+			h: true,
+		},
 		// expired ProviderConfig
 		{
 			c: &Client{

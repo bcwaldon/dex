@@ -57,11 +57,7 @@ func (c *Client) Healthy() error {
 		return errors.New("oidc client provider config empty")
 	}
 
-	if c.ProviderConfig.ExpiresAt.IsZero() {
-		return errors.New("oidc client provider config not initialized")
-	}
-
-	if c.ProviderConfig.ExpiresAt.Before(now) {
+	if !c.ProviderConfig.ExpiresAt.IsZero() && c.ProviderConfig.ExpiresAt.Before(now) {
 		return errors.New("oidc client provider config expired")
 	}
 

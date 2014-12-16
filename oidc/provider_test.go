@@ -87,14 +87,14 @@ func TestHTTPProviderConfigGetter(t *testing.T) {
 			},
 			ok: false,
 		},
-		// missing cache header
+		// missing cache header results in zero ExpiresAt
 		{
 			dsc: "https://example.com",
 			age: -1,
 			cfg: ProviderConfig{
 				Issuer: "https://example.com",
 			},
-			ok: false,
+			ok: true,
 		},
 	}
 
@@ -301,6 +301,11 @@ func TestNextSyncAfter(t *testing.T) {
 		{
 			exp:  fc.Now().Add(-1 * time.Minute),
 			want: time.Minute,
+		},
+		// zero-value Time results in maximum sync interval
+		{
+			exp:  time.Time{},
+			want: 24 * time.Hour,
 		},
 	}
 

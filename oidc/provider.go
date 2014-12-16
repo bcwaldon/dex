@@ -131,6 +131,7 @@ func (n *pcsStepNext) step() (next pcsStepper) {
 	ttl, err := n.fn()
 	if err == nil {
 		next = &pcsStepNext{fn: n.fn, aft: ttl}
+		log.Debugf("Synced provider config, next attempt in %v", next.after())
 	} else {
 		next = &pcsStepRetry{fn: n.fn, aft: time.Second}
 		log.Errorf("Provider config sync failed, retrying in %v: %v", next.after(), err)

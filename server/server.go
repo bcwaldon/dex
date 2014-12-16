@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"sort"
 	"time"
 
 	"github.com/jonboulle/clockwork"
@@ -108,6 +109,9 @@ func (s *Server) AddConnector(cfg connector.ConnectorConfig) error {
 	}
 
 	s.Connectors = append(s.Connectors, idpc)
+
+	sortable := sortableIDPCs(s.Connectors)
+	sort.Sort(sortable)
 
 	log.Infof("Loaded IdP connector: id=%s type=%s", idpcID, cfg.ConnectorType())
 	return nil
@@ -251,4 +255,20 @@ func (s *Server) CodeToken(creds oidc.ClientCredentials, sessionKey string) (*jo
 	log.Infof("Session %s token sent: clientID=%s", sessionID, creds.ID)
 
 	return jwt, nil
+}
+
+type sortableIDPCs []connector.Connector
+
+func (s sortableIDPCs) Len() int {
+	return len([]connector.Connector(s))
+}
+
+func (s sortableIDPCs) Less(i, j int) bool {
+	idpcs := []connector.Connector(s)
+	return idpcs[i].ID() < idpcs[j].ID()
+}
+
+func (s sortableIDPCs) Swap(i, j int) {
+	idpcs := []connector.Connector(s)
+	idpcs[i], idpcs[j] = idpcs[j], idpcs[i]
 }

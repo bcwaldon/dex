@@ -34,7 +34,6 @@ type Config struct {
 type Client struct {
 	hc          phttp.Client
 	creds       ClientCredentials
-	secret      string
 	scope       []string
 	authURL     *url.URL
 	redirectURL *url.URL
@@ -143,7 +142,7 @@ func (c *Client) Exchange(code string) (result TokenResponse, err error) {
 	v := c.commonURLValues()
 	v.Set("grant_type", GrantTypeAuthCode)
 	v.Set("code", code)
-	v.Set("client_secret", c.secret)
+	v.Set("client_secret", c.creds.Secret)
 
 	req, err := http.NewRequest("POST", c.tokenURL.String(), strings.NewReader(v.Encode()))
 	if err != nil {

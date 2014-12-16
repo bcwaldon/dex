@@ -39,6 +39,7 @@ func (cfg *OIDCConnectorConfig) ConnectorType() string {
 }
 
 type OIDCConnector struct {
+	id        string
 	issuerURL string
 	cbURL     url.URL
 	loginFunc oidc.LoginFunc
@@ -48,6 +49,7 @@ type OIDCConnector struct {
 func (cfg *OIDCConnectorConfig) Connector(ns url.URL, lf oidc.LoginFunc, tpls *template.Template) (Connector, error) {
 	ns.Path = path.Join(ns.Path, httpPathCallback)
 	idpc := &OIDCConnector{
+		id:        cfg.ID,
 		issuerURL: cfg.IssuerURL,
 		cbURL:     ns,
 		loginFunc: lf,
@@ -60,6 +62,10 @@ func (cfg *OIDCConnectorConfig) Connector(ns url.URL, lf oidc.LoginFunc, tpls *t
 		},
 	}
 	return idpc, nil
+}
+
+func (c *OIDCConnector) ID() string {
+	return c.id
 }
 
 func (c *OIDCConnector) Healthy() error {

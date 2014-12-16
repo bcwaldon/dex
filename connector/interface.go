@@ -11,7 +11,7 @@ import (
 )
 
 type Connector interface {
-	health.Checkable
+	ID() string
 	LoginURL(sessionKey, prompt string) (string, error)
 	Register(mux *http.ServeMux, errorURL url.URL)
 
@@ -19,6 +19,8 @@ type Connector interface {
 	// Connector's operation. For example, this would encompass
 	// repeatedly caching any remote resources for local use.
 	Sync() chan struct{}
+
+	health.Checkable
 }
 
 type ConnectorConfig interface {

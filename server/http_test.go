@@ -29,7 +29,7 @@ type fakeConnector struct {
 }
 
 func (f *fakeConnector) ID() string {
-	return "123"
+	return "fake"
 }
 
 func (f *fakeConnector) Healthy() error {

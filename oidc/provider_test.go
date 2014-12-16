@@ -31,12 +31,12 @@ func (g *fakeProviderConfigGetterSetter) Set(cfg ProviderConfig) error {
 	return nil
 }
 
-type fakeServer struct {
+type fakeProviderConfigHandler struct {
 	cfg    ProviderConfig
 	maxAge time.Duration
 }
 
-func (s *fakeServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *fakeProviderConfigHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	b, _ := json.Marshal(s.cfg)
 	if s.maxAge.Seconds() >= 0 {
 		w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", int(s.maxAge.Seconds())))
@@ -45,8 +45,8 @@ func (s *fakeServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write(b)
 }
 
-func TestHTTPProviderConfigGet(t *testing.T) {
-	svr := &fakeServer{}
+func TestHTTPProviderConfigGetter(t *testing.T) {
+	svr := &fakeProviderConfigHandler{}
 	hc := &phttp.HandlerClient{Handler: svr}
 	fc := clockwork.NewFakeClock()
 	now := fc.Now().UTC()
@@ -123,7 +123,7 @@ func TestHTTPProviderConfigGet(t *testing.T) {
 	}
 }
 
-func TestSyncerRun(t *testing.T) {
+func TestProviderConfigSyncerRun(t *testing.T) {
 	c1 := &ProviderConfig{
 		Issuer: "http://first.example.com",
 	}

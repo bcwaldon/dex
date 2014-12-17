@@ -49,8 +49,8 @@ func TestNewClientScopeDefault(t *testing.T) {
 			t.Errorf("case %d: unexpected error from NewClient: %v", i, err)
 			continue
 		}
-		if !reflect.DeepEqual(tt.e, c.Scope) {
-			t.Errorf("case %d: want: %v, got: %v", i, tt.e, c.Scope)
+		if !reflect.DeepEqual(tt.e, c.scope) {
+			t.Errorf("case %d: want: %v, got: %v", i, tt.e, c.scope)
 		}
 	}
 }
@@ -65,7 +65,7 @@ func TestHealthy(t *testing.T) {
 		// all ok
 		{
 			c: &Client{
-				ProviderConfig: ProviderConfig{
+				providerConfig: ProviderConfig{
 					Issuer:    "http://example.com",
 					ExpiresAt: now.Add(time.Hour),
 				},
@@ -75,7 +75,7 @@ func TestHealthy(t *testing.T) {
 		// zero-value ProviderConfig.ExpiresAt
 		{
 			c: &Client{
-				ProviderConfig: ProviderConfig{
+				providerConfig: ProviderConfig{
 					Issuer: "http://example.com",
 				},
 			},
@@ -84,7 +84,7 @@ func TestHealthy(t *testing.T) {
 		// expired ProviderConfig
 		{
 			c: &Client{
-				ProviderConfig: ProviderConfig{
+				providerConfig: ProviderConfig{
 					Issuer:    "http://example.com",
 					ExpiresAt: now.Add(time.Hour * -1),
 				},

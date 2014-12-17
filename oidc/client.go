@@ -49,33 +49,33 @@ type ClientConfig struct {
 
 func NewClient(cfg ClientConfig) (*Client, error) {
 	c := Client{
-		Credentials:    cfg.Credentials,
-		HTTPClient:     cfg.HTTPClient,
-		Scope:          cfg.Scope,
-		RedirectURL:    cfg.RedirectURL,
-		ProviderConfig: cfg.ProviderConfig,
-		KeySet:         cfg.KeySet,
+		credentials:    cfg.Credentials,
+		httpClient:     cfg.HTTPClient,
+		scope:          cfg.Scope,
+		redirectURL:    cfg.RedirectURL,
+		providerConfig: cfg.ProviderConfig,
+		keySet:         cfg.KeySet,
 	}
 
-	if c.HTTPClient == nil {
-		c.HTTPClient = http.DefaultClient
+	if c.httpClient == nil {
+		c.httpClient = http.DefaultClient
 	}
 
-	if c.Scope == nil {
-		c.Scope = make([]string, len(DefaultScope))
-		copy(c.Scope, DefaultScope)
+	if c.scope == nil {
+		c.scope = make([]string, len(DefaultScope))
+		copy(c.scope, DefaultScope)
 	}
 
 	return &c, nil
 }
 
 type Client struct {
-	HTTPClient     phttp.Client
-	ProviderConfig ProviderConfig
-	Credentials    ClientCredentials
-	RedirectURL    string
-	Scope          []string
-	KeySet         key.PublicKeySet
+	httpClient     phttp.Client
+	providerConfig ProviderConfig
+	credentials    ClientCredentials
+	redirectURL    string
+	scope          []string
+	keySet         key.PublicKeySet
 
 	keySetSyncMutex sync.Mutex
 	lastKeySetSync  time.Time
@@ -84,11 +84,11 @@ type Client struct {
 func (c *Client) Healthy() error {
 	now := time.Now().UTC()
 
-	if c.ProviderConfig.Empty() {
+	if c.providerConfig.Empty() {
 		return errors.New("oidc client provider config empty")
 	}
 
-	if !c.ProviderConfig.ExpiresAt.IsZero() && c.ProviderConfig.ExpiresAt.Before(now) {
+	if !c.providerConfig.ExpiresAt.IsZero() && c.providerConfig.ExpiresAt.Before(now) {
 		return errors.New("oidc client provider config expired")
 	}
 
@@ -97,19 +97,19 @@ func (c *Client) Healthy() error {
 
 func (c *Client) OAuthClient() (*oauth2.Client, error) {
 	ocfg := oauth2.Config{
-		Credentials: oauth2.ClientCredentials(c.Credentials),
-		RedirectURL: c.RedirectURL,
-		AuthURL:     c.ProviderConfig.AuthEndpoint,
-		TokenURL:    c.ProviderConfig.TokenEndpoint,
-		Scope:       c.Scope,
+		Credentials: oauth2.ClientCredentials(c.credentials),
+		RedirectURL: c.redirectURL,
+		AuthURL:     c.providerConfig.AuthEndpoint,
+		TokenURL:    c.providerConfig.TokenEndpoint,
+		Scope:       c.scope,
 	}
 
-	return oauth2.NewClient(c.HTTPClient, ocfg)
+	return oauth2.NewClient(c.httpClient, ocfg)
 }
 
 func (c *Client) SyncProviderConfig(discoveryURL string) chan struct{} {
 	rp := &providerConfigRepo{c}
-	r := NewHTTPProviderConfigGetter(c.HTTPClient, discoveryURL)
+	r := NewHTTPProviderConfigGetter(c.httpClient, discoveryURL)
 	return NewProviderConfigSyncer(r, rp).Run()
 }
 
@@ -133,7 +133,7 @@ func (c *Client) maybeSyncKeys() error {
 		return nil
 	}
 
-	r := NewRemotePublicKeyRepo(c.HTTPClient, c.ProviderConfig.KeysEndpoint)
+	r := NewRemotePublicKeyRepo(c.httpClient, c.providerConfig.KeysEndpoint)
 	w := &clientKeyRepo{client: c}
 	_, err := key.Sync(r, w, clockwork.NewRealClock())
 	c.lastKeySetSync = time.Now().UTC()
@@ -146,7 +146,7 @@ type providerConfigRepo struct {
 }
 
 func (r *providerConfigRepo) Set(cfg ProviderConfig) error {
-	r.client.ProviderConfig = cfg
+	r.client.providerConfig = cfg
 	return nil
 }
 
@@ -159,7 +159,7 @@ func (r *clientKeyRepo) Set(ks key.KeySet) error {
 	if !ok {
 		return errors.New("unable to cast to PublicKey")
 	}
-	r.client.KeySet = *pks
+	r.client.keySet = *pks
 	return nil
 }
 
@@ -168,14 +168,14 @@ func (c *Client) Verify(jwt jose.JWT) error {
 	var keys func() []key.PublicKey
 	if kID, ok := jwt.KeyID(); ok {
 		keys = func() (keys []key.PublicKey) {
-			if k := c.KeySet.Key(kID); k != nil {
+			if k := c.keySet.Key(kID); k != nil {
 				keys = append(keys, *k)
 			}
 			return
 		}
 	} else {
 		keys = func() []key.PublicKey {
-			return c.KeySet.Keys()
+			return c.keySet.Keys()
 		}
 	}
 
@@ -219,11 +219,11 @@ func (c *Client) Verify(jwt jose.JWT) error {
 		return fmt.Errorf("could not verify JWT signature: %v", err)
 	}
 
-	return VerifyClaims(jwt, c.ProviderConfig.Issuer, c.Credentials.ID)
+	return VerifyClaims(jwt, c.providerConfig.Issuer, c.credentials.ID)
 }
 
 func (c *Client) ClientCredsToken(scope []string) (jose.JWT, error) {
-	if !c.ProviderConfig.SupportsGrantType(oauth2.GrantTypeClientCreds) {
+	if !c.providerConfig.SupportsGrantType(oauth2.GrantTypeClientCreds) {
 		return jose.JWT{}, fmt.Errorf("%v grant type is not supported", oauth2.GrantTypeClientCreds)
 	}
 

@@ -166,3 +166,49 @@ func TestDBClientIdentityRepoMetadata(t *testing.T) {
 		t.Fatalf("Retrieved incorrect ClientMetadata: want=nil got=%#v", got)
 	}
 }
+
+func TestDBClientIdentityRepoAuthenticate(t *testing.T) {
+	c, err := db.NewConnection(dsn)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	r := db.NewClientIdentityRepo(c)
+
+	cm := oidc.ClientMetadata{
+		RedirectURL: url.URL{Scheme: "http", Host: "127.0.0.1:5556", Path: "/cb"},
+	}
+
+	cc, err := r.New(cm)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	ok, err := r.Authenticate(*cc)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	} else if !ok {
+		t.Fatalf("Authentication failed for good creds")
+	}
+
+	creds := []oidc.ClientCredentials{
+		// completely made up
+		oidc.ClientCredentials{ID: "foo", Secret: "bar"},
+
+		// good client ID, bad secret
+		oidc.ClientCredentials{ID: cc.ID, Secret: "bar"},
+
+		// bad client ID, good secret
+		oidc.ClientCredentials{ID: "foo", Secret: cc.Secret},
+
+		// good client ID, secret with some fluff on the end
+		oidc.ClientCredentials{ID: cc.ID, Secret: fmt.Sprintf("%sfluff", cc.Secret)},
+	}
+	for i, c := range creds {
+		ok, err := r.Authenticate(c)
+		if err != nil {
+			t.Errorf("case %d: unexpected error: %v", i, err)
+		} else if ok {
+			t.Errorf("case %d: authentication succeeded for bad creds", i)
+		}
+	}
+}

@@ -38,6 +38,37 @@ type ClientMetadata struct {
 	RedirectURL url.URL
 }
 
+type ClientConfig struct {
+	HTTPClient     phttp.Client
+	Credentials    ClientCredentials
+	Scope          []string
+	RedirectURL    string
+	ProviderConfig ProviderConfig
+	KeySet         key.PublicKeySet
+}
+
+func NewClient(cfg ClientConfig) (*Client, error) {
+	c := Client{
+		Credentials:    cfg.Credentials,
+		HTTPClient:     cfg.HTTPClient,
+		Scope:          cfg.Scope,
+		RedirectURL:    cfg.RedirectURL,
+		ProviderConfig: cfg.ProviderConfig,
+		KeySet:         cfg.KeySet,
+	}
+
+	if c.HTTPClient == nil {
+		c.HTTPClient = http.DefaultClient
+	}
+
+	if c.Scope == nil {
+		c.Scope = make([]string, len(DefaultScope))
+		copy(c.Scope, DefaultScope)
+	}
+
+	return &c, nil
+}
+
 type Client struct {
 	HTTPClient     phttp.Client
 	ProviderConfig ProviderConfig
@@ -64,35 +95,21 @@ func (c *Client) Healthy() error {
 	return nil
 }
 
-func (c *Client) getHTTPClient() phttp.Client {
-	if c.HTTPClient != nil {
-		return c.HTTPClient
-	}
-	return http.DefaultClient
-}
-
-func (c *Client) getScope() []string {
-	if c.Scope != nil {
-		return c.Scope
-	}
-	return DefaultScope
-}
-
 func (c *Client) OAuthClient() (*oauth2.Client, error) {
 	ocfg := oauth2.Config{
 		Credentials: oauth2.ClientCredentials(c.Credentials),
 		RedirectURL: c.RedirectURL,
 		AuthURL:     c.ProviderConfig.AuthEndpoint,
 		TokenURL:    c.ProviderConfig.TokenEndpoint,
-		Scope:       c.getScope(),
+		Scope:       c.Scope,
 	}
 
-	return oauth2.NewClient(c.getHTTPClient(), ocfg)
+	return oauth2.NewClient(c.HTTPClient, ocfg)
 }
 
 func (c *Client) SyncProviderConfig(discoveryURL string) chan struct{} {
 	rp := &providerConfigRepo{c}
-	r := NewHTTPProviderConfigGetter(c.getHTTPClient(), discoveryURL)
+	r := NewHTTPProviderConfigGetter(c.HTTPClient, discoveryURL)
 	return NewProviderConfigSyncer(r, rp).Run()
 }
 
@@ -116,7 +133,7 @@ func (c *Client) maybeSyncKeys() error {
 		return nil
 	}
 
-	r := NewRemotePublicKeyRepo(c.getHTTPClient(), c.ProviderConfig.KeysEndpoint)
+	r := NewRemotePublicKeyRepo(c.HTTPClient, c.ProviderConfig.KeysEndpoint)
 	w := &clientKeyRepo{client: c}
 	_, err := key.Sync(r, w, clockwork.NewRealClock())
 	c.lastKeySetSync = time.Now().UTC()

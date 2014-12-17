@@ -73,12 +73,18 @@ func TestHTTPExchangeToken(t *testing.T) {
 	}
 
 	ks := key.NewPublicKeySet([]jose.JWK{k.JWK()}, time.Now().Add(1*time.Hour))
-	cl := &oidc.Client{
+
+	ccfg := oidc.ClientConfig{
 		HTTPClient:     sClient,
 		ProviderConfig: pcfg,
 		Credentials:    ci.Credentials,
 		RedirectURL:    "http://client.example.com",
 		KeySet:         *ks,
+	}
+
+	cl, err := oidc.NewClient(ccfg)
+	if err != nil {
+		t.Fatalf("Failed creating oidc.Client: %v", err)
 	}
 
 	m := http.NewServeMux()
@@ -156,11 +162,16 @@ func TestHTTPClientCredsToken(t *testing.T) {
 	}
 
 	ks := key.NewPublicKeySet([]jose.JWK{k.JWK()}, time.Now().Add(1*time.Hour))
-	cl := &oidc.Client{
+	ccfg := oidc.ClientConfig{
 		HTTPClient:     sClient,
 		ProviderConfig: cfg,
 		Credentials:    ci.Credentials,
 		KeySet:         *ks,
+	}
+
+	cl, err := oidc.NewClient(ccfg)
+	if err != nil {
+		t.Fatalf("Failed creating client: %v", err)
 	}
 
 	tok, err := cl.ClientCredsToken([]string{"openid"})

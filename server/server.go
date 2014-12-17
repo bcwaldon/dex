@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"sort"
 	"time"
 
 	"github.com/jonboulle/clockwork"
@@ -44,7 +45,7 @@ type Server struct {
 	Templates           *template.Template
 	LoginTemplate       *template.Template
 	HealthChecks        []health.Checkable
-	Connectors          map[string]connector.Connector
+	Connectors          []connector.Connector
 }
 
 func (s *Server) Run() chan struct{} {
@@ -107,7 +108,10 @@ func (s *Server) AddConnector(cfg connector.ConnectorConfig) error {
 		return err
 	}
 
-	s.Connectors[idpcID] = idpc
+	s.Connectors = append(s.Connectors, idpc)
+
+	sortable := sortableIDPCs(s.Connectors)
+	sort.Sort(sortable)
 
 	log.Infof("Loaded IdP connector: id=%s type=%s", idpcID, cfg.ConnectorType())
 	return nil
@@ -130,8 +134,8 @@ func (s *Server) HTTPHandler() http.Handler {
 	mux.HandleFunc(httpPathHealth, handleHealthFunc(checks))
 
 	pcfg := s.ProviderConfig()
-	for id, idpc := range s.Connectors {
-		errorURL, err := url.Parse(fmt.Sprintf("%s?idpc_id=%s", pcfg.AuthEndpoint, id))
+	for _, idpc := range s.Connectors {
+		errorURL, err := url.Parse(fmt.Sprintf("%s?idpc_id=%s", pcfg.AuthEndpoint, idpc.ID()))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -251,4 +255,20 @@ func (s *Server) CodeToken(creds oidc.ClientCredentials, sessionKey string) (*jo
 	log.Infof("Session %s token sent: clientID=%s", sessionID, creds.ID)
 
 	return jwt, nil
+}
+
+type sortableIDPCs []connector.Connector
+
+func (s sortableIDPCs) Len() int {
+	return len([]connector.Connector(s))
+}
+
+func (s sortableIDPCs) Less(i, j int) bool {
+	idpcs := []connector.Connector(s)
+	return idpcs[i].ID() < idpcs[j].ID()
+}
+
+func (s sortableIDPCs) Swap(i, j int) {
+	idpcs := []connector.Connector(s)
+	idpcs[i], idpcs[j] = idpcs[j], idpcs[i]
 }

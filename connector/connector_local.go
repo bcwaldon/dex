@@ -46,6 +46,7 @@ func (cfg *LocalConnectorConfig) Connector(ns url.URL, lf oidc.LoginFunc, tpls *
 
 	idp := NewLocalIdentityProvider(cfg.Users)
 	idpc := &LocalConnector{
+		id:        cfg.ID,
 		idp:       idp,
 		namespace: ns,
 		loginFunc: lf,
@@ -56,6 +57,7 @@ func (cfg *LocalConnectorConfig) Connector(ns url.URL, lf oidc.LoginFunc, tpls *
 }
 
 type LocalConnector struct {
+	id        string
 	idp       *LocalIdentityProvider
 	namespace url.URL
 	loginFunc oidc.LoginFunc
@@ -67,6 +69,10 @@ type Page struct {
 	Name    string
 	Error   bool
 	Message string
+}
+
+func (c *LocalConnector) ID() string {
+	return c.id
 }
 
 func (c *LocalConnector) Healthy() error {

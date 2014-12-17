@@ -28,7 +28,7 @@ type fakeConnector struct {
 }
 
 func (f *fakeConnector) ID() string {
-	return "123"
+	return "fake"
 }
 
 func (f *fakeConnector) Healthy() error {
@@ -66,8 +66,8 @@ func TestHandleAuthFuncMethodNotAllowed(t *testing.T) {
 }
 
 func TestHandleAuthFuncResponses(t *testing.T) {
-	idpcs := map[string]connector.Connector{
-		"fake": &fakeConnector{loginURL: "http://fake.example.com"},
+	idpcs := []connector.Connector{
+		&fakeConnector{loginURL: "http://fake.example.com"},
 	}
 	srv := &Server{
 		IssuerURL:      url.URL{Scheme: "http", Host: "server.example.com"},

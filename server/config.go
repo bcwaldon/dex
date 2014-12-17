@@ -83,7 +83,7 @@ func (cfg *SingleServerConfig) Server() (*Server, error) {
 		Templates:           tpl,
 		LoginTemplate:       ltpl,
 		HealthChecks:        []health.Checkable{km},
-		Connectors:          make(map[string]connector.Connector),
+		Connectors:          []connector.Connector{},
 	}
 
 	return &srv, nil
@@ -148,7 +148,7 @@ func (cfg *MultiServerConfig) Server() (*Server, error) {
 		Templates:           tpl,
 		LoginTemplate:       ltpl,
 		HealthChecks:        []health.Checkable{km, dbh},
-		Connectors:          make(map[string]connector.Connector),
+		Connectors:          []connector.Connector{},
 	}
 
 	return &srv, nil

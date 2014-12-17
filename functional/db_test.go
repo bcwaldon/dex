@@ -10,7 +10,6 @@ import (
 
 	"github.com/coreos-inc/auth/db"
 	"github.com/coreos-inc/auth/key"
-	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 	"github.com/coreos-inc/auth/session"
 )
@@ -28,10 +27,11 @@ func init() {
 }
 
 func TestDBSessionKeyRepoPushPop(t *testing.T) {
-	r, err := db.NewSessionKeyRepo(dsn)
+	c, err := db.NewConnection(dsn)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
+	r := db.NewSessionKeyRepo(c)
 
 	key := "123"
 	sessionID := "456"
@@ -53,10 +53,11 @@ func TestDBSessionKeyRepoPushPop(t *testing.T) {
 }
 
 func TestDBSessionRepoCreateUpdate(t *testing.T) {
-	r, err := db.NewSessionRepo(dsn)
+	c, err := db.NewConnection(dsn)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
+	r := db.NewSessionRepo(c)
 
 	// postgres stores its time type with a lower precision
 	// than we generate here. Stripping off nanoseconds gives
@@ -98,22 +99,27 @@ func TestDBSessionRepoCreateUpdate(t *testing.T) {
 }
 
 func TestDBPrivateKeySetRepoSetGet(t *testing.T) {
-	r, err := db.NewPrivateKeySetRepo(dsn, "roflroflroflroflroflroflroflrofl")
+	c, err := db.NewConnection(dsn)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
 
-	k1, err := key.GeneratePrivateRSAKey()
+	r, err := db.NewPrivateKeySetRepo(c, "roflroflroflroflroflroflroflrofl")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	k1, err := key.GeneratePrivateKey()
 	if err != nil {
 		t.Fatalf("Unable to generate RSA key: %v", err)
 	}
 
-	k2, err := key.GeneratePrivateRSAKey()
+	k2, err := key.GeneratePrivateKey()
 	if err != nil {
 		t.Fatalf("Unable to generate RSA key: %v", err)
 	}
 
-	ks := key.NewPrivateKeySet([]key.PrivateKey{k1, k2}, time.Now().Add(time.Minute))
+	ks := key.NewPrivateKeySet([]*key.PrivateKey{k1, k2}, time.Now().Add(time.Minute))
 	if err := r.Set(ks); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -128,35 +134,35 @@ func TestDBPrivateKeySetRepoSetGet(t *testing.T) {
 	}
 }
 
-func TestDBClientIdentityRepoFind(t *testing.T) {
-	r, err := db.NewClientIdentityRepo(dsn)
+func TestDBClientIdentityRepoMetadata(t *testing.T) {
+	c, err := db.NewConnection(dsn)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
+	r := db.NewClientIdentityRepo(c)
 
-	ci := oauth2.ClientIdentity{
-		ID:          "XXX",
-		Secret:      "secrete",
+	cm := oidc.ClientMetadata{
 		RedirectURL: url.URL{Scheme: "http", Host: "127.0.0.1:5556", Path: "/cb"},
 	}
 
-	if err := r.Create(ci); err != nil {
-		t.Fatalf(err.Error())
-	}
-
-	got, err := r.Find(ci.ID)
+	cc, err := r.New(cm)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	if !reflect.DeepEqual(ci, *got) {
-		t.Fatalf("Retrieved incorrect ClientIdentity: want=%#v got=%#v", ci, *got)
+
+	got, err := r.Metadata(cc.ID)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	if !reflect.DeepEqual(cm, *got) {
+		t.Fatalf("Retrieved incorrect ClientMetadata: want=%#v got=%#v", cm, *got)
 	}
 
-	got, err = r.Find("noexist")
+	got, err = r.Metadata("noexist")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
 	if got != nil {
-		t.Fatalf("Retrieved incorrect ClientIdentity: want=nil got=%#v", got)
+		t.Fatalf("Retrieved incorrect ClientMetadata: want=nil got=%#v", got)
 	}
 }

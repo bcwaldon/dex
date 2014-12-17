@@ -9,9 +9,10 @@ import (
 	"testing"
 	"time"
 
-	phttp "github.com/coreos-inc/auth/pkg/http"
-
 	"github.com/jonboulle/clockwork"
+
+	"github.com/coreos-inc/auth/oauth2"
+	phttp "github.com/coreos-inc/auth/pkg/http"
 )
 
 type fakeProviderConfigGetterSetter struct {
@@ -340,5 +341,58 @@ func TestSyncerRunExpFailure(t *testing.T) {
 	// ensure retry is attempted after 1s
 	if from.getCount != 2 {
 		t.Fatalf("want: getCount=1, got: getCount=%v", from.getCount)
+	}
+}
+
+func TestProviderConfigSupportsGrantType(t *testing.T) {
+	tests := []struct {
+		types []string
+		typ   string
+		want  bool
+	}{
+		// explicitly supported
+		{
+			types: []string{"foo_type"},
+			typ:   "foo_type",
+			want:  true,
+		},
+
+		// explicitly unsupported
+		{
+			types: []string{"bar_type"},
+			typ:   "foo_type",
+			want:  false,
+		},
+
+		// default type explicitly unsupported
+		{
+			types: []string{oauth2.GrantTypeImplicit},
+			typ:   oauth2.GrantTypeAuthCode,
+			want:  false,
+		},
+
+		// type not found in default set
+		{
+			types: []string{},
+			typ:   "foo_type",
+			want:  false,
+		},
+
+		// type found in default set
+		{
+			types: []string{},
+			typ:   oauth2.GrantTypeAuthCode,
+			want:  true,
+		},
+	}
+
+	for i, tt := range tests {
+		cfg := ProviderConfig{
+			GrantTypesSupported: tt.types,
+		}
+		got := cfg.SupportsGrantType(tt.typ)
+		if tt.want != got {
+			t.Errorf("case %d: assert %v supports %v: want=%t got=%t", i, tt.types, tt.typ, tt.want, got)
+		}
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/coreos-inc/auth/pkg/log"
 )
@@ -51,7 +52,7 @@ func BasicAuth(r *http.Request) (username, password string, ok bool) {
 	return cs[:s], cs[s+1:], true
 }
 
-func CacheControlMaxAge(hdr string) (int, bool, error) {
+func cacheControlMaxAge(hdr string) (time.Duration, bool, error) {
 	for _, field := range strings.Split(hdr, ",") {
 		parts := strings.SplitN(strings.TrimSpace(field), "=", 2)
 		k := strings.ToLower(strings.TrimSpace(parts[0]))
@@ -60,23 +61,62 @@ func CacheControlMaxAge(hdr string) (int, bool, error) {
 		}
 
 		if len(parts) == 1 {
-			return 0, true, errors.New("max-age has no value")
+			return 0, false, errors.New("max-age has no value")
 		}
 
 		v := strings.TrimSpace(parts[1])
 		if v == "" {
-			return 0, true, errors.New("max-age has empty value")
+			return 0, false, errors.New("max-age has empty value")
 		}
 
 		age, err := strconv.Atoi(v)
 		if err != nil {
-			return 0, true, err
+			return 0, false, err
 		}
 
-		return age, true, nil
+		if age <= 0 {
+			return 0, false, nil
+		}
+
+		return time.Duration(age) * time.Second, true, nil
 	}
 
 	return 0, false, nil
+}
+
+func expires(date, expires string) (time.Duration, bool, error) {
+	if date == "" || expires == "" {
+		return 0, false, nil
+	}
+
+	te, err := time.Parse(time.RFC1123, expires)
+	if err != nil {
+		return 0, false, err
+	}
+
+	td, err := time.Parse(time.RFC1123, date)
+	if err != nil {
+		return 0, false, err
+	}
+
+	ttl := te.Sub(td)
+
+	// headers indicate data already expired, caller should not
+	// have to care about this case
+	if ttl <= 0 {
+		return 0, false, nil
+	}
+
+	return ttl, true, nil
+}
+
+func Cacheable(hdr http.Header) (time.Duration, bool, error) {
+	ttl, ok, err := cacheControlMaxAge(hdr.Get("Cache-Control"))
+	if err != nil || ok {
+		return ttl, ok, err
+	}
+
+	return expires(hdr.Get("Date"), hdr.Get("Expires"))
 }
 
 // MergeQuery appends additional query values to an existing URL.

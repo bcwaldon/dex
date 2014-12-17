@@ -5,13 +5,11 @@ import (
 	"net/http"
 	"net/url"
 	"path"
-	"time"
 
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 	phttp "github.com/coreos-inc/auth/pkg/http"
 	"github.com/coreos-inc/auth/pkg/log"
-	ptime "github.com/coreos-inc/auth/pkg/time"
 )
 
 const (
@@ -80,27 +78,7 @@ func (c *OIDCConnector) Register(mux *http.ServeMux, errorURL url.URL) {
 }
 
 func (c *OIDCConnector) Sync() chan struct{} {
-	stop := make(chan struct{})
-	go func() {
-		c.client.ProviderConfig = func() oidc.ProviderConfig {
-			var sleep time.Duration
-			for {
-				pcfg, err := oidc.FetchProviderConfig(http.DefaultClient, c.issuerURL)
-				if err == nil {
-					return pcfg
-				}
-
-				sleep = ptime.ExpBackoff(sleep, time.Minute)
-				log.Errorf("Failed fetching provider config, trying again in %v: %v", sleep, err)
-				time.Sleep(sleep)
-			}
-		}()
-
-		log.Infof("Fetched provider config from %s: %#v", c.issuerURL, c.client.ProviderConfig)
-
-		c.client.SyncProviderConfig(c.issuerURL)
-	}()
-	return stop
+	return c.client.SyncProviderConfig(c.issuerURL)
 }
 
 func redirectError(w http.ResponseWriter, errorURL url.URL, q url.Values) {

@@ -17,6 +17,9 @@ import (
 )
 
 const (
+	MaximumProviderConfigSyncInterval = 24 * time.Hour
+	MinimumProviderConfigSyncInterval = time.Minute
+
 	discoveryConfigPath = "/.well-known/openid-configuration"
 )
 
@@ -31,6 +34,10 @@ type ProviderConfig struct {
 	IDTokenAlgValuesSupported         []string  `json:"id_token_alg_values_supported"`
 	TokenEndpointAuthMethodsSupported []string  `json:"token_endpoint_auth_methods_supported"`
 	ExpiresAt                         time.Time `json:"-"`
+}
+
+func (p ProviderConfig) Empty() bool {
+	return p.Issuer == ""
 }
 
 func (p ProviderConfig) SupportsGrantType(grantType string) bool {
@@ -76,42 +83,14 @@ func NewProviderConfigSyncer(from ProviderConfigGetter, to ProviderConfigSetter)
 func (s *ProviderConfigSyncer) Run() chan struct{} {
 	stop := make(chan struct{})
 
+	var next pcsStepper
+	next = &pcsStepNext{aft: time.Duration(0)}
+
 	go func() {
-		var failing bool
-		var next time.Duration
-
-		fail := func(err error) {
-			if !failing {
-				failing = true
-				next = time.Second
-			} else {
-				next = ptime.ExpBackoff(next, time.Minute)
-			}
-			log.Errorf("Error syncing provider config, retrying in %v: %v", next, err)
-		}
-
 		for {
-			cfg, err := s.from.Get()
-			if err != nil {
-				fail(err)
-			} else {
-				diff := cfg.ExpiresAt.Sub(s.clock.Now().UTC())
-				if diff <= 0 {
-					fail(errors.New("fetched provider config is already expired"))
-				} else {
-					failing = false
-					next = diff / 2
-					if err = s.to.Set(cfg); err != nil {
-						fail(fmt.Errorf("error setting provider config: %v", err))
-					} else {
-						log.Infof("Updating provider config in %v: config=%#v", next, cfg)
-					}
-				}
-			}
-
 			select {
-			case <-s.clock.After(next):
-				continue
+			case <-s.clock.After(next.after()):
+				next = next.step(s.sync)
 			case <-stop:
 				return
 			}
@@ -119,6 +98,83 @@ func (s *ProviderConfigSyncer) Run() chan struct{} {
 	}()
 
 	return stop
+}
+
+func (s *ProviderConfigSyncer) sync() (time.Duration, error) {
+	cfg, err := s.from.Get()
+	if err != nil {
+		return 0, err
+	}
+
+	if err = s.to.Set(cfg); err != nil {
+		return 0, fmt.Errorf("error setting provider config: %v", err)
+	}
+
+	log.Infof("Updating provider config: config=%#v", cfg)
+
+	return nextSyncAfter(cfg.ExpiresAt, s.clock), nil
+}
+
+type pcsStepFunc func() (time.Duration, error)
+
+type pcsStepper interface {
+	after() time.Duration
+	step(pcsStepFunc) pcsStepper
+}
+
+type pcsStepNext struct {
+	aft time.Duration
+}
+
+func (n *pcsStepNext) after() time.Duration {
+	return n.aft
+}
+
+func (n *pcsStepNext) step(fn pcsStepFunc) (next pcsStepper) {
+	ttl, err := fn()
+	if err == nil {
+		next = &pcsStepNext{aft: ttl}
+		log.Debugf("Synced provider config, next attempt in %v", next.after())
+	} else {
+		next = &pcsStepRetry{aft: time.Second}
+		log.Errorf("Provider config sync failed, retrying in %v: %v", next.after(), err)
+	}
+	return
+}
+
+type pcsStepRetry struct {
+	aft time.Duration
+}
+
+func (r *pcsStepRetry) after() time.Duration {
+	return r.aft
+}
+
+func (r *pcsStepRetry) step(fn pcsStepFunc) (next pcsStepper) {
+	ttl, err := fn()
+	if err == nil {
+		next = &pcsStepNext{aft: ttl}
+		log.Infof("Provider config sync no longer failing")
+	} else {
+		next = &pcsStepRetry{aft: ptime.ExpBackoff(r.aft, time.Minute)}
+		log.Errorf("Provider config sync still failing, retrying in %v: %v", next.after(), err)
+	}
+	return
+}
+
+func nextSyncAfter(exp time.Time, clock clockwork.Clock) time.Duration {
+	if exp.IsZero() {
+		return MaximumProviderConfigSyncInterval
+	}
+
+	t := exp.Sub(clock.Now()) / 2
+	if t > MaximumProviderConfigSyncInterval {
+		t = MaximumProviderConfigSyncInterval
+	} else if t < MinimumProviderConfigSyncInterval {
+		t = MinimumProviderConfigSyncInterval
+	}
+
+	return t
 }
 
 type httpProviderConfigGetter struct {
@@ -151,13 +207,14 @@ func (r *httpProviderConfigGetter) Get() (cfg ProviderConfig, err error) {
 		return
 	}
 
-	ttl, ok, err := phttp.CacheControlMaxAge(resp.Header.Get("Cache-Control"))
-	if err != nil || !ok {
-		err = errors.New("provider config missing cache headers")
+	var ttl time.Duration
+	var ok bool
+	ttl, ok, err = phttp.Cacheable(resp.Header)
+	if err != nil {
 		return
+	} else if ok {
+		cfg.ExpiresAt = r.clock.Now().UTC().Add(ttl)
 	}
-	maxAge := time.Duration(ttl) * time.Second
-	cfg.ExpiresAt = r.clock.Now().UTC().Add(maxAge)
 
 	// The issuer value returned MUST be identical to the Issuer URL that was directly used to retrieve the configuration information.
 	// http://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfigurationValidation

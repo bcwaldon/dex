@@ -16,40 +16,28 @@ import (
 )
 
 type fakeProviderConfigGetterSetter struct {
-	getErr      bool
-	setErr      bool
-	cfg         *ProviderConfig
-	getCount    int
-	getErrCount int
-	setCount    int
-	setErrCount int
+	cfg      *ProviderConfig
+	getCount int
+	setCount int
 }
 
 func (g *fakeProviderConfigGetterSetter) Get() (ProviderConfig, error) {
-	if g.getErr {
-		g.getErrCount++
-		return ProviderConfig{}, errors.New("error")
-	}
 	g.getCount++
 	return *g.cfg, nil
 }
 
 func (g *fakeProviderConfigGetterSetter) Set(cfg ProviderConfig) error {
-	if g.setErr {
-		g.setErrCount++
-		return errors.New("error")
-	}
 	g.cfg = &cfg
 	g.setCount++
 	return nil
 }
 
-type fakeServer struct {
+type fakeProviderConfigHandler struct {
 	cfg    ProviderConfig
 	maxAge time.Duration
 }
 
-func (s *fakeServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *fakeProviderConfigHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	b, _ := json.Marshal(s.cfg)
 	if s.maxAge.Seconds() >= 0 {
 		w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", int(s.maxAge.Seconds())))
@@ -58,8 +46,8 @@ func (s *fakeServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write(b)
 }
 
-func TestHTTPProviderConfigGet(t *testing.T) {
-	svr := &fakeServer{}
+func TestHTTPProviderConfigGetter(t *testing.T) {
+	svr := &fakeProviderConfigHandler{}
 	hc := &phttp.HandlerClient{Handler: svr}
 	fc := clockwork.NewFakeClock()
 	now := fc.Now().UTC()
@@ -100,14 +88,14 @@ func TestHTTPProviderConfigGet(t *testing.T) {
 			},
 			ok: false,
 		},
-		// missing cache header
+		// missing cache header results in zero ExpiresAt
 		{
 			dsc: "https://example.com",
 			age: -1,
 			cfg: ProviderConfig{
 				Issuer: "https://example.com",
 			},
-			ok: false,
+			ok: true,
 		},
 	}
 
@@ -136,7 +124,7 @@ func TestHTTPProviderConfigGet(t *testing.T) {
 	}
 }
 
-func TestSyncerRun(t *testing.T) {
+func TestProviderConfigSyncerRun(t *testing.T) {
 	c1 := &ProviderConfig{
 		Issuer: "http://first.example.com",
 	}
@@ -152,31 +140,31 @@ func TestSyncerRun(t *testing.T) {
 		secondExp time.Duration
 		count     int
 	}{
-		// exp is 10s, should have same config after 1s
+		// exp is 10m, should have same config after 1s
 		{
 			first:     c1,
-			firstExp:  time.Duration(10 * time.Second),
-			advance:   time.Second,
+			firstExp:  time.Duration(10 * time.Minute),
+			advance:   time.Minute,
 			second:    c1,
-			secondExp: time.Duration(10 * time.Second),
+			secondExp: time.Duration(10 * time.Minute),
 			count:     1,
 		},
-		// exp is 10s, should have new config after 10/2 = 5s
+		// exp is 10m, should have new config after 10/2 = 5m
 		{
 			first:     c1,
-			firstExp:  time.Duration(10 * time.Second),
-			advance:   time.Duration(5 * time.Second),
+			firstExp:  time.Duration(10 * time.Minute),
+			advance:   time.Duration(5 * time.Minute),
 			second:    c2,
-			secondExp: time.Duration(10 * time.Second),
+			secondExp: time.Duration(10 * time.Minute),
 			count:     2,
 		},
-		// exp is 20s, should have new config after 20/2 = 10s
+		// exp is 20m, should have new config after 20/2 = 10m
 		{
 			first:     c1,
-			firstExp:  time.Duration(20 * time.Second),
-			advance:   time.Duration(10 * time.Second),
+			firstExp:  time.Duration(20 * time.Minute),
+			advance:   time.Duration(10 * time.Minute),
 			second:    c2,
-			secondExp: time.Duration(30 * time.Second),
+			secondExp: time.Duration(30 * time.Minute),
 			count:     2,
 		},
 	}
@@ -229,118 +217,168 @@ func TestSyncerRun(t *testing.T) {
 	}
 }
 
-// TestSyncerRunGetFailure tests for ProviderConfigGetterSetter.Get() errors
-func TestSyncerRunGetFailure(t *testing.T) {
+type staticProviderConfigGetter struct {
+	cfg ProviderConfig
+	err error
+}
+
+func (g *staticProviderConfigGetter) Get() (ProviderConfig, error) {
+	return g.cfg, g.err
+}
+
+type staticProviderConfigSetter struct {
+	cfg *ProviderConfig
+	err error
+}
+
+func (s *staticProviderConfigSetter) Set(cfg ProviderConfig) error {
+	s.cfg = &cfg
+	return s.err
+}
+
+func TestProviderConfigSyncerSyncFailure(t *testing.T) {
 	fc := clockwork.NewFakeClock()
-	now := fc.Now().UTC()
-	c := &ProviderConfig{
-		ExpiresAt: now.Add(10 * time.Second),
-	}
-	from := &fakeProviderConfigGetterSetter{getErr: true, cfg: c}
-	to := &fakeProviderConfigGetterSetter{}
-	syncer := NewProviderConfigSyncer(from, to)
-	syncer.clock = fc
 
-	stop := syncer.Run()
-	defer close(stop)
-	fc.BlockUntil(1)
+	tests := []struct {
+		from *staticProviderConfigGetter
+		to   *staticProviderConfigSetter
 
-	// ensure get failed
-	if from.getCount != 0 || from.getErrCount != 1 {
-		t.Fatalf("want: getCount=0, getErrCount=1 got: getCount=%v, getErrCount=%v", from.getCount, from.getErrCount)
-	}
-
-	// ensure Set() did not occur
-	if to.cfg != nil {
-		t.Fatalf("want: to.cfg=nil, got: %v", to.cfg)
-	}
-
-	fc.Advance(time.Second)
-	fc.BlockUntil(1)
-
-	// ensure retry is attempted after 1s
-	if from.getCount != 0 || from.getErrCount != 2 {
-		t.Fatalf("want: getCount=0, getErrCount=2 got: getCount=%v, getErrCount=%v", from.getCount, from.getErrCount)
+		// want indicates what ProviderConfig should be passed to Set.
+		// If nil, the Set should not be called.
+		want *ProviderConfig
+	}{
+		// generic Get failure
+		{
+			from: &staticProviderConfigGetter{err: errors.New("fail")},
+			to:   &staticProviderConfigSetter{},
+			want: nil,
+		},
+		// generic Set failure
+		{
+			from: &staticProviderConfigGetter{cfg: ProviderConfig{ExpiresAt: fc.Now().Add(time.Minute)}},
+			to:   &staticProviderConfigSetter{err: errors.New("fail")},
+			want: &ProviderConfig{ExpiresAt: fc.Now().Add(time.Minute)},
+		},
 	}
 
-	// ensure Set() did not occur
-	if to.cfg != nil {
-		t.Fatalf("want: to.cfg=nil, got: %v", to.cfg)
+	for i, tt := range tests {
+		pcs := &ProviderConfigSyncer{
+			from:  tt.from,
+			to:    tt.to,
+			clock: fc,
+		}
+		_, err := pcs.sync()
+		if err == nil {
+			t.Errorf("case %d: expected non-nil error", i)
+		}
+		if !reflect.DeepEqual(tt.want, tt.to.cfg) {
+			t.Errorf("case %d: Set mismatch: want=%#v got=%#v", i, tt.want, tt.to.cfg)
+		}
 	}
 }
 
-// TestSyncerRunSetFailure tests for ProviderConfigGetterSetter.Set() errors
-func TestSyncerRunSetFailure(t *testing.T) {
+func TestNextSyncAfter(t *testing.T) {
 	fc := clockwork.NewFakeClock()
-	now := fc.Now().UTC()
-	c := &ProviderConfig{
-		ExpiresAt: now.Add(10 * time.Second),
+
+	tests := []struct {
+		exp  time.Time
+		want time.Duration
+	}{
+		{
+			exp:  fc.Now().Add(time.Hour),
+			want: 30 * time.Minute,
+		},
+		// override large values with the maximum
+		{
+			exp:  fc.Now().Add(168 * time.Hour), // one week
+			want: 24 * time.Hour,
+		},
+		// override "now" values with the minimum
+		{
+			exp:  fc.Now(),
+			want: time.Minute,
+		},
+		// override negative values with the minimum
+		{
+			exp:  fc.Now().Add(-1 * time.Minute),
+			want: time.Minute,
+		},
+		// zero-value Time results in maximum sync interval
+		{
+			exp:  time.Time{},
+			want: 24 * time.Hour,
+		},
 	}
-	from := &fakeProviderConfigGetterSetter{cfg: c}
-	to := &fakeProviderConfigGetterSetter{setErr: true}
-	syncer := NewProviderConfigSyncer(from, to)
-	syncer.clock = fc
 
-	stop := syncer.Run()
-	defer close(stop)
-	fc.BlockUntil(1)
-
-	// ensure get was called
-	if from.getCount != 1 {
-		t.Fatalf("want: getCount=1, got: getCount=%v", from.getCount)
-	}
-
-	// ensure set fails
-	if to.setCount != 0 || to.setErrCount != 1 {
-		t.Fatalf("want: setCount=0, setErrCount=1, got: setCount=%v, setErrCount=%v", to.setCount, to.setErrCount)
-	}
-
-	fc.Advance(time.Second)
-	fc.BlockUntil(1)
-
-	// ensure retry is attempted after 1s
-	if from.getCount != 2 {
-		t.Fatalf("want: getCount=1, got: getCount=%v", from.getCount)
-	}
-
-	// ensure set fails
-	if to.setCount != 0 {
-		t.Fatalf("want: setCount=0, got: setCount=%v", to.setCount)
+	for i, tt := range tests {
+		got := nextSyncAfter(tt.exp, fc)
+		if tt.want != got {
+			t.Errorf("case %d: want=%v got=%v", i, tt.want, got)
+		}
 	}
 }
 
-// TestSyncerRunExpFailure tests for expired config errors
-func TestSyncerRunExpFailure(t *testing.T) {
-	fc := clockwork.NewFakeClock()
-	now := fc.Now().UTC()
-	c := &ProviderConfig{
-		ExpiresAt: now,
+func TestProviderConfigEmpty(t *testing.T) {
+	cfg := ProviderConfig{}
+	if !cfg.Empty() {
+		t.Fatalf("Empty provider config reports non-empty")
 	}
-	from := &fakeProviderConfigGetterSetter{cfg: c}
-	to := &fakeProviderConfigGetterSetter{}
-	syncer := NewProviderConfigSyncer(from, to)
-	syncer.clock = fc
+	cfg = ProviderConfig{Issuer: "http://example.com"}
+	if cfg.Empty() {
+		t.Fatalf("Non-empty provider config reports empty")
+	}
+}
 
-	stop := syncer.Run()
-	defer close(stop)
-	fc.BlockUntil(1)
+func TestPCSStepAfter(t *testing.T) {
+	pass := func() (time.Duration, error) { return 7 * time.Second, nil }
+	fail := func() (time.Duration, error) { return 0, errors.New("fail") }
 
-	// ensure get was called
-	if from.getCount != 1 {
-		t.Fatalf("want: getCount=1, got: getCount=%v", from.getCount)
+	tests := []struct {
+		stepper  pcsStepper
+		stepFunc pcsStepFunc
+		want     pcsStepper
+	}{
+		// good step results in retry at TTL
+		{
+			stepper:  &pcsStepNext{},
+			stepFunc: pass,
+			want:     &pcsStepNext{aft: 7 * time.Second},
+		},
+
+		// good step after failed step results results in retry at TTL
+		{
+			stepper:  &pcsStepRetry{aft: 2 * time.Second},
+			stepFunc: pass,
+			want:     &pcsStepNext{aft: 7 * time.Second},
+		},
+
+		// failed step results in a retry in 1s
+		{
+			stepper:  &pcsStepNext{},
+			stepFunc: fail,
+			want:     &pcsStepRetry{aft: time.Second},
+		},
+
+		// failed retry backs off by a factor of 2
+		{
+			stepper:  &pcsStepRetry{aft: time.Second},
+			stepFunc: fail,
+			want:     &pcsStepRetry{aft: 2 * time.Second},
+		},
+
+		// failed retry backs off by a factor of 2, up to 1m
+		{
+			stepper:  &pcsStepRetry{aft: 32 * time.Second},
+			stepFunc: fail,
+			want:     &pcsStepRetry{aft: 60 * time.Second},
+		},
 	}
 
-	// ensure config is not set
-	if to.cfg != nil {
-		t.Fatalf("want: cfg=nil got: cfg=%v", to.cfg)
-	}
-
-	fc.Advance(time.Second)
-	fc.BlockUntil(1)
-
-	// ensure retry is attempted after 1s
-	if from.getCount != 2 {
-		t.Fatalf("want: getCount=1, got: getCount=%v", from.getCount)
+	for i, tt := range tests {
+		got := tt.stepper.step(tt.stepFunc)
+		if !reflect.DeepEqual(tt.want, got) {
+			t.Errorf("case %d: want=%#v got=%#v", i, tt.want, got)
+		}
 	}
 }
 

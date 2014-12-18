@@ -7,7 +7,7 @@ ExecStart=/usr/bin/docker run \
 --env AUTHD_WORKER_ISSUER=https://auth.update.core-os.net \
 --env AUTHD_WORKER_DB_URL=${AUTHD_WORKER_DB_URL} \
 --env AUTHD_WORKER_KEY_SECRET=${AUTHD_WORKER_KEY_SECRET} \
-quay.io/coreosinc/authd /opt/authd/bin/authd
+quay.io/coreosinc/authd /opt/authd/bin/authd-worker
 
 ExecStop=/usr/bin/docker kill %n
 

@@ -1,6 +1,6 @@
 FROM quay.io/brianredbeard/corebox
 
-ADD bin/authd /opt/authd/bin/authd
+ADD bin/authd-worker /opt/authd/bin/authd-worker
 ADD bin/authd-overlord /opt/authd/bin/authd-overlord
 ADD bin/authctl /opt/authd/bin/authctl
 

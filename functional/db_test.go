@@ -1,12 +1,15 @@
 package functional
 
 import (
+	"database/sql"
 	"fmt"
 	"net/url"
 	"os"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/lib/pq"
 
 	"github.com/coreos-inc/auth/db"
 	"github.com/coreos-inc/auth/key"
@@ -23,6 +26,24 @@ func init() {
 	if dsn == "" {
 		fmt.Println("Unable to proceed with empty env var AUTHD_TEST_DSN")
 		os.Exit(1)
+	}
+
+	Cleanup()
+}
+
+func Cleanup() {
+	sqlDB, err := sql.Open("postgres", dsn)
+	if err != nil {
+		fmt.Printf("Unable to connect to database, err=%v", err)
+		os.Exit(1)
+	}
+
+	for _, t := range db.Tables() {
+		_, err = sqlDB.Exec(fmt.Sprintf("DELETE FROM %s", pq.QuoteIdentifier(t)))
+		if err != nil {
+			fmt.Printf("Error deleting rows from table=%s, err=%v", t, err)
+			os.Exit(1)
+		}
 	}
 }
 

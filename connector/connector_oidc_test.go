@@ -85,10 +85,14 @@ func TestLoginURL(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		cl := &oidc.Client{
+		cfg := oidc.ClientConfig{
 			Credentials: oidc.ClientCredentials{ID: tt.cid, Secret: "fake-client-secret"},
 			RedirectURL: tt.redir,
 			Scope:       tt.scope,
+		}
+		cl, err := oidc.NewClient(cfg)
+		if err != nil {
+			t.Errorf("test: %d. unexpected error: %v", i, err)
 		}
 		cn := &OIDCConnector{
 			loginFunc: lf,

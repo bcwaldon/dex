@@ -86,10 +86,15 @@ func main() {
 
 	log.Infof("Fetched provider config from %s: %#v", *discovery, cfg)
 
-	client := &oidc.Client{
+	ccfg := oidc.ClientConfig{
 		ProviderConfig: cfg,
 		Credentials:    cc,
 		RedirectURL:    redirectURL.String(),
+	}
+
+	client, err := oidc.NewClient(ccfg)
+	if err != nil {
+		log.Fatalf("Unable to create Client: %v", err)
 	}
 
 	client.SyncProviderConfig(*discovery)

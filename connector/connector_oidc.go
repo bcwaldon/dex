@@ -46,18 +46,26 @@ type OIDCConnector struct {
 
 func (cfg *OIDCConnectorConfig) Connector(ns url.URL, lf oidc.LoginFunc, tpls *template.Template) (Connector, error) {
 	ns.Path = path.Join(ns.Path, httpPathCallback)
+
+	ccfg := oidc.ClientConfig{
+		RedirectURL: ns.String(),
+		Credentials: oidc.ClientCredentials{
+			ID:     cfg.ClientID,
+			Secret: cfg.ClientSecret,
+		},
+	}
+
+	cl, err := oidc.NewClient(ccfg)
+	if err != nil {
+		return nil, err
+	}
+
 	idpc := &OIDCConnector{
 		id:        cfg.ID,
 		issuerURL: cfg.IssuerURL,
 		cbURL:     ns,
 		loginFunc: lf,
-		client: &oidc.Client{
-			RedirectURL: ns.String(),
-			Credentials: oidc.ClientCredentials{
-				ID:     cfg.ClientID,
-				Secret: cfg.ClientSecret,
-			},
-		},
+		client:    cl,
 	}
 	return idpc, nil
 }

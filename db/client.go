@@ -3,10 +3,7 @@ package db
 import (
 	"encoding/base64"
 	"errors"
-	"fmt"
-	"net"
 	"net/url"
-	"strings"
 
 	"github.com/coopernurse/gorp"
 	"golang.org/x/crypto/bcrypt"
@@ -128,7 +125,7 @@ func (r *clientIdentityRepo) Authenticate(creds oidc.ClientCredentials) (bool, e
 }
 
 func (r *clientIdentityRepo) New(meta oidc.ClientMetadata) (*oidc.ClientCredentials, error) {
-	id, err := genClientID(meta.RedirectURL.Host)
+	id, err := oidc.GenClientID(meta.RedirectURL.Host)
 	if err != nil {
 		return nil, err
 	}
@@ -153,23 +150,4 @@ func (r *clientIdentityRepo) New(meta oidc.ClientMetadata) (*oidc.ClientCredenti
 	}
 
 	return &cc, nil
-}
-
-func genClientID(hostport string) (string, error) {
-	b, err := pcrypto.RandBytes(32)
-	if err != nil {
-		return "", err
-	}
-
-	var host string
-	if strings.Contains(hostport, ":") {
-		host, _, err = net.SplitHostPort(hostport)
-		if err != nil {
-			return "", err
-		}
-	} else {
-		host = hostport
-	}
-
-	return fmt.Sprintf("%s@%s", base64.URLEncoding.EncodeToString(b), host), nil
 }

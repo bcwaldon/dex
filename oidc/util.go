@@ -1,12 +1,16 @@
 package oidc
 
 import (
+	"encoding/base64"
 	"errors"
+	"fmt"
+	"net"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/coreos-inc/auth/jose"
+	pcrypto "github.com/coreos-inc/auth/pkg/crypto"
 )
 
 func ParseTokenFromRequest(r *http.Request) (token jose.JWT, err error) {
@@ -33,4 +37,23 @@ func NewClaims(iss, sub, aud string, iat, exp time.Time) jose.Claims {
 		"iat": float64(iat.Unix()),
 		"exp": float64(exp.Unix()),
 	}
+}
+
+func GenClientID(hostport string) (string, error) {
+	b, err := pcrypto.RandBytes(32)
+	if err != nil {
+		return "", err
+	}
+
+	var host string
+	if strings.Contains(hostport, ":") {
+		host, _, err = net.SplitHostPort(hostport)
+		if err != nil {
+			return "", err
+		}
+	} else {
+		host = hostport
+	}
+
+	return fmt.Sprintf("%s@%s", base64.URLEncoding.EncodeToString(b), host), nil
 }

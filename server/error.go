@@ -1,12 +1,10 @@
 package server
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/url"
 
 	"github.com/coreos-inc/auth/oauth2"
-	"github.com/coreos-inc/auth/pkg/log"
 )
 
 const (
@@ -38,7 +36,7 @@ func writeAPIError(w http.ResponseWriter, code int, err error) {
 	if code == 0 {
 		code = http.StatusInternalServerError
 	}
-	writeResponse(w, code, aerr)
+	writeResponseWithBody(w, code, aerr)
 }
 
 func writeTokenError(w http.ResponseWriter, err error, state string) {
@@ -57,16 +55,7 @@ func writeTokenError(w http.ResponseWriter, err error, state string) {
 		status = http.StatusBadRequest
 	}
 
-	b, err := json.Marshal(oerr)
-	if err != nil {
-		log.Errorf("Failed marshaling OAuth2 error: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	w.Write(b)
+	writeResponseWithBody(w, status, oerr)
 }
 
 func writeAuthError(w http.ResponseWriter, err error, state string) {
@@ -75,17 +64,7 @@ func writeAuthError(w http.ResponseWriter, err error, state string) {
 		oerr = oauth2.NewError(oauth2.ErrorServerError)
 	}
 	oerr.State = state
-
-	b, err := json.Marshal(oerr)
-	if err != nil {
-		log.Errorf("Failed marshaling OAuth2 error: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusBadRequest)
-	w.Write(b)
+	writeResponseWithBody(w, http.StatusBadRequest, oerr)
 }
 
 func redirectAuthError(w http.ResponseWriter, err error, state string, redirectURL url.URL) {

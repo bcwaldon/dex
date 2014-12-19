@@ -1,12 +1,14 @@
 package server
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"io/ioutil"
 	"net/url"
 
 	"github.com/coreos-inc/auth/oidc"
+	pcrypto "github.com/coreos-inc/auth/pkg/crypto"
 )
 
 type ClientIdentityRepo interface {
@@ -20,6 +22,10 @@ type ClientIdentityRepo interface {
 	// fail, (false, nil) will be returned. Only if the repo is unable
 	// to make these assertions will a non-nil error be returned.
 	Authenticate(creds oidc.ClientCredentials) (bool, error)
+
+	// New registers a new ClientIdentity with the repo for the given metadata.
+	// A unique Client ID and Secret will be generated and returned.
+	New(meta oidc.ClientMetadata) (*oidc.ClientCredentials, error)
 }
 
 func NewClientIdentityRepo(cs []oidc.ClientIdentity) ClientIdentityRepo {
@@ -37,6 +43,30 @@ func NewClientIdentityRepo(cs []oidc.ClientIdentity) ClientIdentityRepo {
 
 type memClientIdentityRepo struct {
 	idents map[string]oidc.ClientIdentity
+}
+
+func (cr *memClientIdentityRepo) New(meta oidc.ClientMetadata) (*oidc.ClientCredentials, error) {
+	id, err := oidc.GenClientID(meta.RedirectURL.Host)
+	if err != nil {
+		return nil, err
+	}
+
+	secret, err := pcrypto.RandBytes(32)
+	if err != nil {
+		return nil, err
+	}
+
+	cc := oidc.ClientCredentials{
+		ID:     id,
+		Secret: base64.URLEncoding.EncodeToString(secret),
+	}
+
+	cr.idents[id] = oidc.ClientIdentity{
+		Metadata:    meta,
+		Credentials: cc,
+	}
+
+	return &cc, nil
 }
 
 func (cr *memClientIdentityRepo) Metadata(clientID string) (*oidc.ClientMetadata, error) {

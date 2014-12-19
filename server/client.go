@@ -23,6 +23,9 @@ type ClientIdentityRepo interface {
 	// to make these assertions will a non-nil error be returned.
 	Authenticate(creds oidc.ClientCredentials) (bool, error)
 
+	// All returns all registered Client Identities.
+	All() ([]oidc.ClientIdentity, error)
+
 	// New registers a new ClientIdentity with the repo for the given metadata.
 	// A unique Client ID and Secret will be generated and returned.
 	New(meta oidc.ClientMetadata) (*oidc.ClientCredentials, error)
@@ -81,6 +84,15 @@ func (cr *memClientIdentityRepo) Authenticate(creds oidc.ClientCredentials) (boo
 	ci, ok := cr.idents[creds.ID]
 	ok = ok && ci.Credentials.Secret == creds.Secret
 	return ok, nil
+}
+
+func (cr *memClientIdentityRepo) All() ([]oidc.ClientIdentity, error) {
+	cs := make([]oidc.ClientIdentity, 0, len(cr.idents))
+	for _, ci := range cr.idents {
+		ci := ci
+		cs = append(cs, ci)
+	}
+	return cs, nil
 }
 
 func newClientIdentityRepoFromReader(r io.Reader) (ClientIdentityRepo, error) {

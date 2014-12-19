@@ -233,3 +233,51 @@ func TestDBClientIdentityRepoAuthenticate(t *testing.T) {
 		}
 	}
 }
+
+func TestDBClientIdentityAll(t *testing.T) {
+	Cleanup()
+	c, err := db.NewConnection(dsn)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	r := db.NewClientIdentityRepo(c)
+
+	cm := oidc.ClientMetadata{
+		RedirectURL: url.URL{Scheme: "http", Host: "127.0.0.1:5556", Path: "/cb"},
+	}
+
+	_, err = r.New(cm)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	got, err := r.All()
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	count := len(got)
+	if count != 1 {
+		t.Fatalf("Retrieved incorrect number of ClientIdentities: want=1 got=%d", count)
+	}
+
+	if !reflect.DeepEqual(cm, got[0].Metadata) {
+		t.Fatalf("Retrieved incorrect ClientMetadata: want=%#v got=%#v", cm, got[0])
+	}
+
+	cm = oidc.ClientMetadata{
+		RedirectURL: url.URL{Scheme: "http", Host: "foo.com", Path: "/cb"},
+	}
+	_, err = r.New(cm)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	got, err = r.All()
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	count = len(got)
+	if count != 2 {
+		t.Fatalf("Retrieved incorrect number of ClientIdentities: want=2 got=%d", count)
+	}
+}

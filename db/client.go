@@ -1,18 +1,17 @@
 package db
 
 import (
-	"crypto/rand"
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"net"
 	"net/url"
-	"strings"
 
 	"github.com/coopernurse/gorp"
+	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/coreos-inc/auth/oidc"
+	pcrypto "github.com/coreos-inc/auth/pkg/crypto"
 )
 
 const (
@@ -128,12 +127,12 @@ func (r *clientIdentityRepo) Authenticate(creds oidc.ClientCredentials) (bool, e
 }
 
 func (r *clientIdentityRepo) New(meta oidc.ClientMetadata) (*oidc.ClientCredentials, error) {
-	id, err := genClientID(meta.RedirectURL.Host)
+	id, err := oidc.GenClientID(meta.RedirectURL.Host)
 	if err != nil {
 		return nil, err
 	}
 
-	secret, err := randBytes(maxSecretLength)
+	secret, err := pcrypto.RandBytes(maxSecretLength)
 	if err != nil {
 		return nil, err
 	}
@@ -155,32 +154,26 @@ func (r *clientIdentityRepo) New(meta oidc.ClientMetadata) (*oidc.ClientCredenti
 	return &cc, nil
 }
 
-func randBytes(n int) ([]byte, error) {
-	b := make([]byte, n)
-	got, err := rand.Read(b)
+func (r *clientIdentityRepo) All() ([]oidc.ClientIdentity, error) {
+	qt := pq.QuoteIdentifier(clientIdentityTableName)
+	q := fmt.Sprintf("SELECT * FROM %s", qt)
+	objs, err := r.dbMap.Select(&clientIdentityModel{}, q)
 	if err != nil {
 		return nil, err
-	} else if n != got {
-		return nil, errors.New("unable to generate enough random data")
-	}
-	return b, nil
-}
-
-func genClientID(hostport string) (string, error) {
-	b, err := randBytes(32)
-	if err != nil {
-		return "", err
 	}
 
-	var host string
-	if strings.Contains(hostport, ":") {
-		host, _, err = net.SplitHostPort(hostport)
-		if err != nil {
-			return "", err
+	cs := make([]oidc.ClientIdentity, len(objs))
+	for i, obj := range objs {
+		m, ok := obj.(*clientIdentityModel)
+		if !ok {
+			return nil, errors.New("unable to cast client identity to clientIdentityModel")
 		}
-	} else {
-		host = hostport
-	}
 
-	return fmt.Sprintf("%s@%s", base64.URLEncoding.EncodeToString(b), host), nil
+		ci, err := m.ClientIdentity()
+		if err != nil {
+			return nil, err
+		}
+		cs[i] = *ci
+	}
+	return cs, nil
 }

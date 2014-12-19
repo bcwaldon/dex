@@ -3,9 +3,11 @@ package db
 import (
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"net/url"
 
 	"github.com/coopernurse/gorp"
+	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/coreos-inc/auth/oidc"
@@ -150,4 +152,28 @@ func (r *clientIdentityRepo) New(meta oidc.ClientMetadata) (*oidc.ClientCredenti
 	}
 
 	return &cc, nil
+}
+
+func (r *clientIdentityRepo) All() ([]oidc.ClientIdentity, error) {
+	qt := pq.QuoteIdentifier(clientIdentityTableName)
+	q := fmt.Sprintf("SELECT * FROM %s", qt)
+	objs, err := r.dbMap.Select(&clientIdentityModel{}, q)
+	if err != nil {
+		return nil, err
+	}
+
+	cs := make([]oidc.ClientIdentity, len(objs))
+	for i, obj := range objs {
+		m, ok := obj.(*clientIdentityModel)
+		if !ok {
+			return nil, errors.New("unable to cast client identity to clientIdentityModel")
+		}
+
+		ci, err := m.ClientIdentity()
+		if err != nil {
+			return nil, err
+		}
+		cs[i] = *ci
+	}
+	return cs, nil
 }

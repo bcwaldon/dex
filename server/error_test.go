@@ -11,6 +11,72 @@ import (
 	"github.com/coreos-inc/auth/oauth2"
 )
 
+func TestWriteAPIError(t *testing.T) {
+	tests := []struct {
+		err      error
+		code     int
+		wantCode int
+		wantBody string
+	}{
+		// standard
+		{
+			err:      newAPIError(errorInvalidRequest, "foo"),
+			code:     http.StatusBadRequest,
+			wantCode: http.StatusBadRequest,
+			wantBody: `{"error":"invalid_request","error_description":"foo"}`,
+		},
+		// no description
+		{
+			err:      newAPIError(errorInvalidRequest, ""),
+			code:     http.StatusBadRequest,
+			wantCode: http.StatusBadRequest,
+			wantBody: `{"error":"invalid_request"}`,
+		},
+		// no type
+		{
+			err:      newAPIError("", ""),
+			code:     http.StatusBadRequest,
+			wantCode: http.StatusBadRequest,
+			wantBody: `{"error":"server_error"}`,
+		},
+		// generic error
+		{
+			err:      errors.New("generic failure"),
+			code:     http.StatusTeapot,
+			wantCode: http.StatusTeapot,
+			wantBody: `{"error":"server_error"}`,
+		},
+		// nil error
+		{
+			err:      nil,
+			code:     http.StatusTeapot,
+			wantCode: http.StatusTeapot,
+			wantBody: `{"error":"server_error"}`,
+		},
+		// empty code
+		{
+			err:      nil,
+			code:     0,
+			wantCode: http.StatusInternalServerError,
+			wantBody: `{"error":"server_error"}`,
+		},
+	}
+
+	for i, tt := range tests {
+		w := httptest.NewRecorder()
+		writeAPIError(w, tt.code, tt.err)
+
+		if tt.wantCode != w.Code {
+			t.Errorf("case %d: incorrect HTTP status: want=%d got=%d", i, tt.wantCode, w.Code)
+		}
+
+		gotBody := w.Body.String()
+		if tt.wantBody != gotBody {
+			t.Errorf("case %d: incorrect HTTP body: want=%q got=%q", i, tt.wantBody, gotBody)
+		}
+	}
+}
+
 func TestWriteTokenError(t *testing.T) {
 	tests := []struct {
 		err        error

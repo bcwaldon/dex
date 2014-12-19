@@ -9,6 +9,38 @@ import (
 	"github.com/coreos-inc/auth/pkg/log"
 )
 
+const (
+	errorInvalidRequest = "invalid_request"
+	errorServerError    = "server_error"
+)
+
+type apiError struct {
+	Type        string `json:"error"`
+	Description string `json:"error_description,omitempty"`
+}
+
+func (e *apiError) Error() string {
+	return e.Type
+}
+
+func newAPIError(typ, desc string) *apiError {
+	return &apiError{Type: typ, Description: desc}
+}
+
+func writeAPIError(w http.ResponseWriter, code int, err error) {
+	aerr, ok := err.(*apiError)
+	if !ok {
+		aerr = newAPIError(errorServerError, "")
+	}
+	if aerr.Type == "" {
+		aerr.Type = errorServerError
+	}
+	if code == 0 {
+		code = http.StatusInternalServerError
+	}
+	writeResponse(w, code, aerr)
+}
+
 func writeTokenError(w http.ResponseWriter, err error, state string) {
 	oerr, ok := err.(*oauth2.Error)
 	if !ok {

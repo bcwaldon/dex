@@ -24,6 +24,7 @@ import (
 
 const (
 	LoginPageTemplateName = "login.html"
+	APIVersion            = "v1"
 )
 
 type OIDCServer interface {
@@ -142,7 +143,9 @@ func (s *Server) HTTPHandler() http.Handler {
 		idpc.Register(mux, *errorURL)
 	}
 
-	return mux
+	apiBasePath := path.Join(httpPathAPI, APIVersion)
+	registerDiscoveryResource(apiBasePath, mux)
+	return http.Handler(mux)
 }
 
 func (s *Server) ClientMetadata(clientID string) (*oidc.ClientMetadata, error) {

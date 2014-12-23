@@ -8,8 +8,9 @@ import (
 )
 
 const (
-	errorInvalidRequest = "invalid_request"
-	errorServerError    = "server_error"
+	errorInvalidClientMetadata = "invalid_client_metadata"
+	errorInvalidRequest        = "invalid_request"
+	errorServerError           = "server_error"
 )
 
 type apiError struct {

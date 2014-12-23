@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/coreos-inc/auth/oidc"
 	"github.com/coreos-inc/auth/schema"
 )
 
@@ -166,6 +167,70 @@ func TestCreate(t *testing.T) {
 		gotLoc := w.Header().Get("Location")
 		if gotLoc != wantLoc {
 			t.Errorf("case %d: invalid location header, want=%v, got=%v", i, wantLoc, gotLoc)
+		}
+	}
+}
+
+func TestList(t *testing.T) {
+	tests := []struct {
+		cs       []oidc.ClientIdentity
+		wantBody string
+	}{
+		// empty repo
+		{
+			cs:       nil,
+			wantBody: `{}`,
+		},
+		// single client
+		{
+			cs: []oidc.ClientIdentity{
+				oidc.ClientIdentity{
+					Credentials: oidc.ClientCredentials{ID: "foo", Secret: "bar"},
+					Metadata: oidc.ClientMetadata{
+						RedirectURL: url.URL{Scheme: "http", Host: "example.com"},
+					},
+				},
+			},
+			wantBody: `{"clients":[{"client_id":"foo","redirect_uris":["http://example.com"]}]}`,
+		},
+		// multi client
+		{
+			cs: []oidc.ClientIdentity{
+				oidc.ClientIdentity{
+					Credentials: oidc.ClientCredentials{ID: "foo", Secret: "bar"},
+					Metadata: oidc.ClientMetadata{
+						RedirectURL: url.URL{Scheme: "http", Host: "example.com"},
+					},
+				},
+				oidc.ClientIdentity{
+					Credentials: oidc.ClientCredentials{ID: "biz", Secret: "bang"},
+					Metadata: oidc.ClientMetadata{
+						RedirectURL: url.URL{Scheme: "https", Host: "example.com", Path: "one/two/three"},
+					},
+				},
+			},
+			wantBody: `{"clients":[{"client_id":"foo","redirect_uris":["http://example.com"]},{"client_id":"biz","redirect_uris":["https://example.com/one/two/three"]}]}`,
+		},
+	}
+
+	for i, tt := range tests {
+		repo := NewClientIdentityRepo(tt.cs)
+		res := &clientResource{repo: repo}
+
+		r, err := http.NewRequest("GET", "http://example.com/clients", nil)
+		if err != nil {
+			t.Fatalf("Failed creating http.Request: %v", err)
+		}
+		w := httptest.NewRecorder()
+		res.ServeHTTP(w, r)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("case %d: invalid response code, want=%d, got=%d", i, http.StatusOK, w.Code)
+		}
+
+		gotBody := w.Body.String()
+		if gotBody != tt.wantBody {
+			t.Errorf("case %d: invalid response body, want=%s, got=%s", i, tt.wantBody, gotBody)
 		}
 	}
 }

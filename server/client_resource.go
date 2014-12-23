@@ -23,12 +23,35 @@ func registerClientResource(prefix string, mux *http.ServeMux, repo ClientIdenti
 
 func (c *clientResource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
+	case "GET":
+		c.list(w, r)
 	case "POST":
 		c.create(w, r)
 	default:
 		msg := fmt.Sprintf("HTTP %s method not supported for this resource", r.Method)
 		writeAPIError(w, http.StatusMethodNotAllowed, newAPIError(errorInvalidRequest, msg))
 	}
+}
+
+func (c *clientResource) list(w http.ResponseWriter, r *http.Request) {
+	cs, err := c.repo.All()
+	if err != nil {
+		writeAPIError(w, http.StatusInternalServerError, newAPIError(errorServerError, "error listing clients"))
+		return
+	}
+
+	scs := make([]*schema.Client, len(cs))
+	for i, ci := range cs {
+		sc := schema.MapClientIdentityToSchemaClient(ci)
+		// dont expose secret
+		sc.Client_secret = ""
+		scs[i] = &sc
+	}
+
+	page := schema.ClientPage{
+		Clients: scs,
+	}
+	writeResponseWithBody(w, http.StatusOK, page)
 }
 
 func (c *clientResource) create(w http.ResponseWriter, r *http.Request) {

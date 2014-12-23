@@ -14,7 +14,6 @@ import (
 	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oauth2"
 	phttp "github.com/coreos-inc/auth/pkg/http"
-	pnet "github.com/coreos-inc/auth/pkg/net"
 )
 
 const (
@@ -163,65 +162,6 @@ func (r *clientKeyRepo) Set(ks key.KeySet) error {
 	return nil
 }
 
-// verify if a JWT is valid or not
-func (c *Client) Verify(jwt jose.JWT) error {
-	var keys func() []key.PublicKey
-	if kID, ok := jwt.KeyID(); ok {
-		keys = func() (keys []key.PublicKey) {
-			if k := c.keySet.Key(kID); k != nil {
-				keys = append(keys, *k)
-			}
-			return
-		}
-	} else {
-		keys = func() []key.PublicKey {
-			return c.keySet.Keys()
-		}
-	}
-
-	jwtBytes := []byte(jwt.Data())
-
-	attempt := func() (bool, error) {
-		for _, k := range keys() {
-			v, err := k.Verifier()
-			if err != nil {
-				return false, err
-			}
-			if v.Verify(jwt.Signature, jwtBytes) == nil {
-				return true, nil
-			}
-		}
-		return false, nil
-	}
-
-	reattempt := func() error {
-		ok, err := attempt()
-		if ok || err != nil {
-			return err
-		}
-
-		if err = c.maybeSyncKeys(); err != nil {
-			return err
-		}
-
-		ok, err = attempt()
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return errors.New("no matching keys")
-		}
-
-		return nil
-	}
-
-	if err := reattempt(); err != nil {
-		return fmt.Errorf("could not verify JWT signature: %v", err)
-	}
-
-	return VerifyClaims(jwt, c.providerConfig.Issuer, c.credentials.ID)
-}
-
 func (c *Client) ClientCredsToken(scope []string) (jose.JWT, error) {
 	if !c.providerConfig.SupportsGrantType(oauth2.GrantTypeClientCreds) {
 		return jose.JWT{}, fmt.Errorf("%v grant type is not supported", oauth2.GrantTypeClientCreds)
@@ -265,50 +205,45 @@ func (c *Client) ExchangeAuthCode(code string) (jose.JWT, error) {
 	return jwt, c.Verify(jwt)
 }
 
-// Verify claims in accordance with OIDC spec
-// http://openid.net/specs/openid-connect-basic-1_0.html#IDTokenValidation
-func VerifyClaims(jwt jose.JWT, issuer, clientID string) error {
-	now := time.Now().UTC()
-
-	claims, err := jwt.Claims()
-	if err != nil {
-		return err
-	}
-
-	ident, err := IdentityFromClaims(claims)
-	if err != nil {
-		return err
-	}
-
-	if ident.ExpiresAt.Before(now) {
-		return errors.New("token is expired")
-	}
-
-	// iss REQUIRED. Issuer Identifier for the Issuer of the response.
-	// The iss value is a case sensitive URL using the https scheme that contains scheme, host, and optionally, port number and path components and no query or fragment components.
-	if iss, exists := claims["iss"].(string); exists {
-		if !pnet.URLEqual(iss, issuer) {
-			return fmt.Errorf("invalid claim value: 'iss'. expected=%s, found=%s.", issuer, iss)
+func (c *Client) Verify(jwt jose.JWT) error {
+	var keys func() []key.PublicKey
+	if kID, ok := jwt.KeyID(); ok {
+		keys = func() (keys []key.PublicKey) {
+			if k := c.keySet.Key(kID); k != nil {
+				keys = append(keys, *k)
+			}
+			return
 		}
 	} else {
-		return errors.New("missing claim: 'iss'")
-	}
-
-	// iat REQUIRED. Time at which the JWT was issued.
-	// Its value is a JSON number representing the number of seconds from 1970-01-01T0:0:0Z as measured in UTC until the date/time.
-	if _, exists := claims["iat"].(float64); !exists {
-		return errors.New("missing claim: 'iat'")
-	}
-
-	// aud REQUIRED. Audience(s) that this ID Token is intended for.
-	// It MUST contain the OAuth 2.0 client_id of the Relying Party as an audience value. It MAY also contain identifiers for other audiences. In the general case, the aud value is an array of case sensitive strings. In the common special case when there is one audience, the aud value MAY be a single case sensitive string.
-	if aud, exists := claims["aud"].(string); exists {
-		if aud != clientID {
-			return errors.New("invalid claim value: 'aud'")
+		keys = func() []key.PublicKey {
+			return c.keySet.Keys()
 		}
-	} else {
-		return errors.New("missing claim: 'aud'")
 	}
 
-	return nil
+	reattempt := func() error {
+		ok, err := VerifySignature(jwt, keys())
+		if ok || err != nil {
+			return err
+		}
+
+		if err = c.maybeSyncKeys(); err != nil {
+			return err
+		}
+
+		ok, err = VerifySignature(jwt, keys())
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return errors.New("no matching keys")
+		}
+
+		return nil
+	}
+
+	if err := reattempt(); err != nil {
+		return fmt.Errorf("could not verify JWT signature: %v", err)
+	}
+
+	return VerifyClaims(jwt, c.providerConfig.Issuer, c.credentials.ID)
 }

@@ -1,8 +1,8 @@
 {
 	"ImportPath": "github.com/coreos-inc/auth",
-	"GoVersion": "go1.3",
+	"GoVersion": "go1.3.3",
 	"Packages": [
-		"github.com/coreos-inc/auth/..."
+		"./..."
 	],
 	"Deps": [
 		{
@@ -25,6 +25,14 @@
 		{
 			"ImportPath": "golang.org/x/crypto/blowfish",
 			"Rev": "1fbbd62cfec66bd39d91e97749579579d4d3037e"
+                },
+                {
+			"ImportPath": "google.golang.org/api/google-api-go-generator",
+			"Rev": "d3edb0282bde692467788c50070a9211afe75cf3"
+		},
+		{
+			"ImportPath": "google.golang.org/api/googleapi",
+			"Rev": "d3edb0282bde692467788c50070a9211afe75cf3"
 		}
 	]
 }

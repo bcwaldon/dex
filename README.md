@@ -57,6 +57,14 @@ docker build .
 QUAY_USER=xxx QUAY_PASSWORD=yyy ./docker-push <image-id-from-prev>
 ```
 
+## Rebuild API from JSON schema
+Go API bindings are generated from a JSON Discovery file.
+To regenerate run:
+```
+./schema/generator
+```
+For updating generator dependencies see docs in: `schema/generator_import.go`.
+
 ## Runing Tests
 
 Run all tests: `./test`  

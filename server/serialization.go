@@ -18,5 +18,7 @@ func writeResponseWithBody(w http.ResponseWriter, code int, resp interface{}) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	w.Write(enc)
+	if _, err = w.Write(enc); err != nil {
+		log.Errorf("Failed writing HTTP response: %v", err)
+	}
 }

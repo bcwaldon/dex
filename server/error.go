@@ -11,6 +11,7 @@ const (
 	errorInvalidClientMetadata = "invalid_client_metadata"
 	errorInvalidRequest        = "invalid_request"
 	errorServerError           = "server_error"
+	errorAccessDenied          = "access_denied"
 )
 
 type apiError struct {

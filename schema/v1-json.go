@@ -49,6 +49,25 @@ const DiscoveryJSON = `{
         "client_id": {
           "type": "string"
         },
+        "redirect_uris": {
+          "required": true,
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ClientWithSecret": {
+      "id": "Client",
+      "type": "object",
+      "properties": {
+        "client_name": {
+          "type": "string"
+        },
+        "client_id": {
+          "type": "string"
+        },
         "client_secret": {
           "type": "string"
         },
@@ -104,7 +123,7 @@ const DiscoveryJSON = `{
             "$ref": "Client"
           },
           "response": {
-            "$ref": "Client"
+            "$ref": "ClientWithSecret"
           }
         }
       }

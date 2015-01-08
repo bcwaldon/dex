@@ -137,7 +137,7 @@ func TestCreate(t *testing.T) {
 			t.Errorf("case %d: invalid response code, want=%d, got=%d", i, http.StatusCreated, w.Code)
 		}
 
-		var client schema.Client
+		var client schema.ClientWithSecret
 		if err := json.Unmarshal(w.Body.Bytes(), &client); err != nil {
 			t.Errorf("case %d: unexpected error=%v", i, err)
 		}

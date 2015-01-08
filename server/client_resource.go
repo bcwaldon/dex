@@ -43,8 +43,6 @@ func (c *clientResource) list(w http.ResponseWriter, r *http.Request) {
 	scs := make([]*schema.Client, len(cs))
 	for i, ci := range cs {
 		sc := schema.MapClientIdentityToSchemaClient(ci)
-		// dont expose secret
-		sc.Client_secret = ""
 		scs[i] = &sc
 	}
 
@@ -90,7 +88,7 @@ func (c *clientResource) create(w http.ResponseWriter, r *http.Request) {
 	}
 	ci.Credentials = *creds
 
-	sc = schema.MapClientIdentityToSchemaClient(ci)
+	ssc := schema.MapClientIdentityToSchemaClientWithSecret(ci)
 	w.Header().Add("Location", phttp.NewResourceLocation(r.URL, ci.Credentials.ID))
-	writeResponseWithBody(w, http.StatusCreated, sc)
+	writeResponseWithBody(w, http.StatusCreated, ssc)
 }

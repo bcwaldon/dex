@@ -70,8 +70,6 @@ type Client struct {
 
 	Client_name string `json:"client_name,omitempty"`
 
-	Client_secret string `json:"client_secret,omitempty"`
-
 	Redirect_uris []string `json:"redirect_uris,omitempty"`
 }
 
@@ -79,6 +77,16 @@ type ClientPage struct {
 	Clients []*Client `json:"clients,omitempty"`
 
 	NextPageToken string `json:"nextPageToken,omitempty"`
+}
+
+type ClientWithSecret struct {
+	Client_id string `json:"client_id,omitempty"`
+
+	Client_name string `json:"client_name,omitempty"`
+
+	Client_secret string `json:"client_secret,omitempty"`
+
+	Redirect_uris []string `json:"redirect_uris,omitempty"`
 }
 
 type Error struct {
@@ -110,7 +118,7 @@ func (c *ClientsCreateCall) Fields(s ...googleapi.Field) *ClientsCreateCall {
 	return c
 }
 
-func (c *ClientsCreateCall) Do() (*Client, error) {
+func (c *ClientsCreateCall) Do() (*ClientWithSecret, error) {
 	var body io.Reader = nil
 	body, err := googleapi.WithoutDataWrapper.JSONReader(c.client)
 	if err != nil {
@@ -136,7 +144,7 @@ func (c *ClientsCreateCall) Do() (*Client, error) {
 	if err := googleapi.CheckResponse(res); err != nil {
 		return nil, err
 	}
-	var ret *Client
+	var ret *ClientWithSecret
 	if err := json.NewDecoder(res.Body).Decode(&ret); err != nil {
 		return nil, err
 	}
@@ -150,7 +158,7 @@ func (c *ClientsCreateCall) Do() (*Client, error) {
 	//     "$ref": "Client"
 	//   },
 	//   "response": {
-	//     "$ref": "Client"
+	//     "$ref": "ClientWithSecret"
 	//   }
 	// }
 

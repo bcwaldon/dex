@@ -37,6 +37,13 @@ func MapSchemaClientToClientIdentity(sc Client) (oidc.ClientIdentity, error) {
 func MapClientIdentityToSchemaClient(c oidc.ClientIdentity) Client {
 	return Client{
 		Client_id:     c.Credentials.ID,
+		Redirect_uris: []string{c.Metadata.RedirectURL.String()},
+	}
+}
+
+func MapClientIdentityToSchemaClientWithSecret(c oidc.ClientIdentity) ClientWithSecret {
+	return ClientWithSecret{
+		Client_id:     c.Credentials.ID,
 		Client_secret: c.Credentials.Secret,
 		Redirect_uris: []string{c.Metadata.RedirectURL.String()},
 	}

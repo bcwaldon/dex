@@ -41,6 +41,11 @@ func cleanup() {
 	for _, t := range db.Tables() {
 		_, err = sqlDB.Exec(fmt.Sprintf("DROP TABLE %s", pq.QuoteIdentifier(t)))
 		if err != nil {
+			// DB is probably fresh, safe to ignore nonexistant tables
+			if err, ok := err.(*pq.Error); ok && err.Code.Name() == "undefined_table" {
+				continue
+			}
+
 			fmt.Printf("Unable to drop table %q: %v\n", t, err)
 			os.Exit(1)
 		}

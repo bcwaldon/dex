@@ -34,14 +34,14 @@ func init() {
 func cleanup() {
 	sqlDB, err := sql.Open("postgres", dsn)
 	if err != nil {
-		fmt.Printf("Unable to connect to database, err=%v", err)
+		fmt.Printf("Unable to connect to database, err=%v\n", err)
 		os.Exit(1)
 	}
 
 	for _, t := range db.Tables() {
 		_, err = sqlDB.Exec(fmt.Sprintf("DROP TABLE %s", pq.QuoteIdentifier(t)))
 		if err != nil {
-			fmt.Printf("Unable to drop table %q: %v", t, err)
+			fmt.Printf("Unable to drop table %q: %v\n", t, err)
 			os.Exit(1)
 		}
 	}

@@ -39,9 +39,9 @@ func cleanup() {
 	}
 
 	for _, t := range db.Tables() {
-		_, err = sqlDB.Exec(fmt.Sprintf("DELETE FROM %s", pq.QuoteIdentifier(t)))
+		_, err = sqlDB.Exec(fmt.Sprintf("DROP TABLE %s", pq.QuoteIdentifier(t)))
 		if err != nil {
-			fmt.Printf("Error deleting rows from table=%s, err=%v", t, err)
+			fmt.Printf("Unable to drop table %q: %v", t, err)
 			os.Exit(1)
 		}
 	}

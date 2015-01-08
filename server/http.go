@@ -31,6 +31,7 @@ var (
 	httpPathKeys      = "/keys"
 	httpPathAuth      = "/auth"
 	httpPathHealth    = "/health"
+	httpPathAPI       = "/api"
 )
 
 func handleDiscoveryFunc(cfg oidc.ProviderConfig) http.HandlerFunc {

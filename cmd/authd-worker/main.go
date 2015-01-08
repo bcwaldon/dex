@@ -8,6 +8,7 @@ import (
 	"os"
 
 	pflag "github.com/coreos-inc/auth/pkg/flag"
+	phttp "github.com/coreos-inc/auth/pkg/http"
 	"github.com/coreos-inc/auth/pkg/log"
 	"github.com/coreos-inc/auth/server"
 )
@@ -91,9 +92,14 @@ func main() {
 		}
 	}
 
+	h := srv.HTTPHandler()
+	if *logDebug {
+		h = &phttp.LoggingMiddleware{h}
+	}
+
 	httpsrv := &http.Server{
 		Addr:    lu.Host,
-		Handler: srv.HTTPHandler(),
+		Handler: h,
 	}
 
 	log.Infof("Binding to %s...", httpsrv.Addr)

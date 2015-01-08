@@ -28,10 +28,10 @@ func init() {
 		os.Exit(1)
 	}
 
-	Cleanup()
+	cleanup()
 }
 
-func Cleanup() {
+func cleanup() {
 	sqlDB, err := sql.Open("postgres", dsn)
 	if err != nil {
 		fmt.Printf("Unable to connect to database, err=%v", err)
@@ -235,7 +235,8 @@ func TestDBClientIdentityRepoAuthenticate(t *testing.T) {
 }
 
 func TestDBClientIdentityAll(t *testing.T) {
-	Cleanup()
+	cleanup()
+
 	c, err := db.NewConnection(dsn)
 	if err != nil {
 		t.Fatalf(err.Error())

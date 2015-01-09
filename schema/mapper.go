@@ -10,13 +10,13 @@ import (
 func MapSchemaClientToClientIdentity(sc Client) (oidc.ClientIdentity, error) {
 	ci := oidc.ClientIdentity{
 		Credentials: oidc.ClientCredentials{
-			ID: sc.Client_id,
+			ID: sc.Id,
 		},
 		Metadata: oidc.ClientMetadata{},
 	}
 
 	urlOK := false
-	for _, ru := range sc.Redirect_uris {
+	for _, ru := range sc.RedirectURIs {
 		if ru == "" {
 			continue
 		}
@@ -36,15 +36,15 @@ func MapSchemaClientToClientIdentity(sc Client) (oidc.ClientIdentity, error) {
 
 func MapClientIdentityToSchemaClient(c oidc.ClientIdentity) Client {
 	return Client{
-		Client_id:     c.Credentials.ID,
-		Redirect_uris: []string{c.Metadata.RedirectURL.String()},
+		Id:           c.Credentials.ID,
+		RedirectURIs: []string{c.Metadata.RedirectURL.String()},
 	}
 }
 
 func MapClientIdentityToSchemaClientWithSecret(c oidc.ClientIdentity) ClientWithSecret {
 	return ClientWithSecret{
-		Client_id:     c.Credentials.ID,
-		Client_secret: c.Credentials.Secret,
-		Redirect_uris: []string{c.Metadata.RedirectURL.String()},
+		Id:           c.Credentials.ID,
+		Secret:       c.Credentials.Secret,
+		RedirectURIs: []string{c.Metadata.RedirectURL.String()},
 	}
 }

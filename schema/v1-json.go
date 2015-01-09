@@ -43,13 +43,13 @@ const DiscoveryJSON = `{
       "id": "Client",
       "type": "object",
       "properties": {
-        "client_name": {
+        "name": {
           "type": "string"
         },
-        "client_id": {
+        "id": {
           "type": "string"
         },
-        "redirect_uris": {
+        "redirectURIs": {
           "required": true,
           "type": "array",
           "items": {
@@ -62,16 +62,16 @@ const DiscoveryJSON = `{
       "id": "Client",
       "type": "object",
       "properties": {
-        "client_name": {
+        "name": {
           "type": "string"
         },
-        "client_id": {
+        "id": {
           "type": "string"
         },
-        "client_secret": {
+        "secret": {
           "type": "string"
         },
-        "redirect_uris": {
+        "redirectURIs": {
           "required": true,
           "type": "array",
           "items": {

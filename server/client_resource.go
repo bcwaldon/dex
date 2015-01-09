@@ -72,18 +72,18 @@ func (c *clientResource) create(w http.ResponseWriter, r *http.Request) {
 	ci, err := schema.MapSchemaClientToClientIdentity(sc)
 	if err != nil {
 		log.Debugf("Invalid request data: %v", err)
-		writeAPIError(w, http.StatusBadRequest, newAPIError(errorInvalidClientMetadata, "missing or invalid field: redirect_uris"))
+		writeAPIError(w, http.StatusBadRequest, newAPIError(errorInvalidClientMetadata, "missing or invalid field: redirectURIs"))
 		return
 	}
 	u := ci.Metadata.RedirectURL
 	if u.Scheme == "" || u.Host == "" {
-		writeAPIError(w, http.StatusBadRequest, newAPIError(errorInvalidClientMetadata, "missing or invalid field: redirect_uris"))
+		writeAPIError(w, http.StatusBadRequest, newAPIError(errorInvalidClientMetadata, "missing or invalid field: redirectURIs"))
 		return
 	}
 
 	creds, err := c.repo.New(ci.Metadata)
 	if err != nil {
-		writeAPIError(w, http.StatusBadRequest, newAPIError(errorInvalidClientMetadata, "missing or invalid field: redirect_uris"))
+		writeAPIError(w, http.StatusBadRequest, newAPIError(errorInvalidClientMetadata, "missing or invalid field: redirectURIs"))
 		return
 	}
 	ci.Credentials = *creds

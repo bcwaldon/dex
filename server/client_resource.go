@@ -15,10 +15,15 @@ type clientResource struct {
 	repo ClientIdentityRepo
 }
 
-func registerClientResource(prefix string, mux *http.ServeMux, repo ClientIdentityRepo) {
-	c := &clientResource{repo}
-	p := path.Join(prefix, "clients")
-	mux.Handle(p, c)
+func registerClientResource(prefix string, repo ClientIdentityRepo) (string, http.Handler) {
+	mux := http.NewServeMux()
+	c := &clientResource{
+		repo: repo,
+	}
+	relPath := "clients"
+	absPath := path.Join(prefix, relPath)
+	mux.Handle(absPath, c)
+	return relPath, mux
 }
 
 func (c *clientResource) ServeHTTP(w http.ResponseWriter, r *http.Request) {

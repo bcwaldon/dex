@@ -28,20 +28,25 @@ func init() {
 		os.Exit(1)
 	}
 
-	Cleanup()
+	cleanup()
 }
 
-func Cleanup() {
+func cleanup() {
 	sqlDB, err := sql.Open("postgres", dsn)
 	if err != nil {
-		fmt.Printf("Unable to connect to database, err=%v", err)
+		fmt.Printf("Unable to connect to database, err=%v\n", err)
 		os.Exit(1)
 	}
 
 	for _, t := range db.Tables() {
-		_, err = sqlDB.Exec(fmt.Sprintf("DELETE FROM %s", pq.QuoteIdentifier(t)))
+		_, err = sqlDB.Exec(fmt.Sprintf("DROP TABLE %s", pq.QuoteIdentifier(t)))
 		if err != nil {
-			fmt.Printf("Error deleting rows from table=%s, err=%v", t, err)
+			// DB is probably fresh, safe to ignore nonexistant tables
+			if err, ok := err.(*pq.Error); ok && err.Code.Name() == "undefined_table" {
+				continue
+			}
+
+			fmt.Printf("Unable to drop table %q: %v\n", t, err)
 			os.Exit(1)
 		}
 	}
@@ -235,7 +240,8 @@ func TestDBClientIdentityRepoAuthenticate(t *testing.T) {
 }
 
 func TestDBClientIdentityAll(t *testing.T) {
-	Cleanup()
+	cleanup()
+
 	c, err := db.NewConnection(dsn)
 	if err != nil {
 		t.Fatalf(err.Error())

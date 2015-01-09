@@ -71,3 +71,51 @@ func VerifyClaims(jwt jose.JWT, issuer, clientID string) error {
 
 	return nil
 }
+
+// VerifyClientClaims verifies all the required claims are valid for a "client credentials" JWT.
+// Returns the client ID if valid, or an error if invalid.
+func VerifyClientClaims(jwt jose.JWT, issuer string) (string, error) {
+	claims, err := jwt.Claims()
+	if err != nil {
+		return "", fmt.Errorf("failed to parse JWT claims: %v", err)
+	}
+
+	iss, ok, err := claims.StringClaim("iss")
+	if err != nil {
+		return "", fmt.Errorf("failed to parse 'iss' claim: %v", err)
+	} else if !ok {
+		return "", errors.New("missing required 'iss' claim")
+	} else if !pnet.URLEqual(iss, issuer) {
+		return "", fmt.Errorf("'iss' claim does not match expected issuer, iss=%s", iss)
+	}
+
+	sub, ok, err := claims.StringClaim("sub")
+	if err != nil {
+		return "", fmt.Errorf("failed to parse 'sub' claim: %v", err)
+	} else if !ok {
+		return "", errors.New("missing required 'sub' claim")
+	}
+
+	aud, ok, err := claims.StringClaim("aud")
+	if err != nil {
+		return "", fmt.Errorf("failed to parse 'aud' claim: %v", err)
+	} else if !ok {
+		return "", errors.New("missing required 'aud' claim")
+	}
+
+	if sub != aud {
+		return "", fmt.Errorf("invalid claims, 'aud' claim and 'sub' claim do not match, aud=%s, sub=%s", aud, sub)
+	}
+
+	now := time.Now().UTC()
+	exp, ok, err := claims.TimeClaim("exp")
+	if err != nil {
+		return "", fmt.Errorf("failed to parse 'exp' claim: %v", err)
+	} else if !ok {
+		return "", errors.New("missing required 'exp' claim")
+	} else if exp.Before(now) {
+		return "", fmt.Errorf("token already expired at: %v", exp)
+	}
+
+	return sub, nil
+}

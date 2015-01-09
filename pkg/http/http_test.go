@@ -302,3 +302,66 @@ func TestCacheableFail(t *testing.T) {
 		}
 	}
 }
+
+func TestNewResourceLocation(t *testing.T) {
+	tests := []struct {
+		ru   *url.URL
+		id   string
+		want string
+	}{
+		{
+			ru: &url.URL{
+				Scheme: "http",
+				Host:   "example.com",
+			},
+			id:   "foo",
+			want: "http://example.com/foo",
+		},
+		// https
+		{
+			ru: &url.URL{
+				Scheme: "https",
+				Host:   "example.com",
+			},
+			id:   "foo",
+			want: "https://example.com/foo",
+		},
+		// with path
+		{
+			ru: &url.URL{
+				Scheme: "http",
+				Host:   "example.com",
+				Path:   "one/two/three",
+			},
+			id:   "foo",
+			want: "http://example.com/one/two/three/foo",
+		},
+		// with fragment
+		{
+			ru: &url.URL{
+				Scheme:   "http",
+				Host:     "example.com",
+				Fragment: "frag",
+			},
+			id:   "foo",
+			want: "http://example.com/foo",
+		},
+		// with query
+		{
+			ru: &url.URL{
+				Scheme:   "http",
+				Host:     "example.com",
+				RawQuery: "dog=elroy",
+			},
+			id:   "foo",
+			want: "http://example.com/foo",
+		},
+	}
+
+	for i, tt := range tests {
+		got := NewResourceLocation(tt.ru, tt.id)
+		if tt.want != got {
+			t.Errorf("case %d: want=%s, got=%s", i, tt.want, got)
+		}
+	}
+}

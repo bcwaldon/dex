@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -129,4 +130,14 @@ func MergeQuery(u url.URL, q url.Values) url.URL {
 	}
 	u.RawQuery = uv.Encode()
 	return u
+}
+
+// NewResourceLocation appends a resource id to the end of the requested URL path.
+func NewResourceLocation(reqURL *url.URL, id string) string {
+	var u url.URL
+	u = *reqURL
+	u.Path = path.Join(u.Path, id)
+	u.RawQuery = ""
+	u.Fragment = ""
+	return u.String()
 }

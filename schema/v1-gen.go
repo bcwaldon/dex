@@ -66,11 +66,11 @@ type ClientsService struct {
 }
 
 type Client struct {
-	Client_id string `json:"client_id,omitempty"`
+	Id string `json:"id,omitempty"`
 
-	Client_name string `json:"client_name,omitempty"`
+	Name string `json:"name,omitempty"`
 
-	Redirect_uris []string `json:"redirect_uris,omitempty"`
+	RedirectURIs []string `json:"redirectURIs,omitempty"`
 }
 
 type ClientPage struct {
@@ -80,13 +80,13 @@ type ClientPage struct {
 }
 
 type ClientWithSecret struct {
-	Client_id string `json:"client_id,omitempty"`
+	Id string `json:"id,omitempty"`
 
-	Client_name string `json:"client_name,omitempty"`
+	Name string `json:"name,omitempty"`
 
-	Client_secret string `json:"client_secret,omitempty"`
+	RedirectURIs []string `json:"redirectURIs,omitempty"`
 
-	Redirect_uris []string `json:"redirect_uris,omitempty"`
+	Secret string `json:"secret,omitempty"`
 }
 
 type Error struct {

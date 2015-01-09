@@ -67,33 +67,33 @@ func TestCreateInvalidRequest(t *testing.T) {
 		},
 		// missing url field
 		{
-			req:      &http.Request{Method: "POST", URL: u, Header: h, Body: makeBody(`{"client_id":"foo"}`)},
+			req:      &http.Request{Method: "POST", URL: u, Header: h, Body: makeBody(`{"id":"foo"}`)},
 			wantCode: http.StatusBadRequest,
-			wantBody: `{"error":"invalid_client_metadata","error_description":"missing or invalid field: redirect_uris"}`,
+			wantBody: `{"error":"invalid_client_metadata","error_description":"missing or invalid field: redirectURIs"}`,
 		},
 		// empty url array
 		{
-			req:      &http.Request{Method: "POST", URL: u, Header: h, Body: makeBody(`{"redirect_uris":[]}`)},
+			req:      &http.Request{Method: "POST", URL: u, Header: h, Body: makeBody(`{"redirectURIs":[]}`)},
 			wantCode: http.StatusBadRequest,
-			wantBody: `{"error":"invalid_client_metadata","error_description":"missing or invalid field: redirect_uris"}`,
+			wantBody: `{"error":"invalid_client_metadata","error_description":"missing or invalid field: redirectURIs"}`,
 		},
 		// array with empty string
 		{
-			req:      &http.Request{Method: "POST", URL: u, Header: h, Body: makeBody(`{"redirect_uris":[""]}`)},
+			req:      &http.Request{Method: "POST", URL: u, Header: h, Body: makeBody(`{"redirectURIs":[""]}`)},
 			wantCode: http.StatusBadRequest,
-			wantBody: `{"error":"invalid_client_metadata","error_description":"missing or invalid field: redirect_uris"}`,
+			wantBody: `{"error":"invalid_client_metadata","error_description":"missing or invalid field: redirectURIs"}`,
 		},
 		// uri missing scheme
 		{
-			req:      &http.Request{Method: "POST", URL: u, Header: h, Body: makeBody(`{"redirect_uris":["asdf.com"]}`)},
+			req:      &http.Request{Method: "POST", URL: u, Header: h, Body: makeBody(`{"redirectURIs":["asdf.com"]}`)},
 			wantCode: http.StatusBadRequest,
-			wantBody: `{"error":"invalid_client_metadata","error_description":"missing or invalid field: redirect_uris"}`,
+			wantBody: `{"error":"invalid_client_metadata","error_description":"missing or invalid field: redirectURIs"}`,
 		},
 		// uri missing host
 		{
-			req:      &http.Request{Method: "POST", URL: u, Header: h, Body: makeBody(`{"redirect_uris":["http://"]}`)},
+			req:      &http.Request{Method: "POST", URL: u, Header: h, Body: makeBody(`{"redirectURIs":["http://"]}`)},
 			wantCode: http.StatusBadRequest,
-			wantBody: `{"error":"invalid_client_metadata","error_description":"missing or invalid field: redirect_uris"}`,
+			wantBody: `{"error":"invalid_client_metadata","error_description":"missing or invalid field: redirectURIs"}`,
 		},
 	}
 
@@ -124,7 +124,7 @@ func TestCreate(t *testing.T) {
 	endpoint := "http://example.com/clients"
 
 	for i, tt := range tests {
-		body := strings.NewReader(fmt.Sprintf(`{"redirect_uris":["%s"]}`, strings.Join(tt, `","`)))
+		body := strings.NewReader(fmt.Sprintf(`{"redirectURIs":["%s"]}`, strings.Join(tt, `","`)))
 		r, err := http.NewRequest("POST", endpoint, body)
 		if err != nil {
 			t.Fatalf("Failed creating http.Request: %v", err)
@@ -141,11 +141,11 @@ func TestCreate(t *testing.T) {
 		if err := json.Unmarshal(w.Body.Bytes(), &client); err != nil {
 			t.Errorf("case %d: unexpected error=%v", i, err)
 		}
-		if len(client.Redirect_uris) != 1 {
-			t.Errorf("case %d: unexpected number of redirect URIs, want=1, got=%d", i, len(client.Redirect_uris))
+		if len(client.RedirectURIs) != 1 {
+			t.Errorf("case %d: unexpected number of redirect URIs, want=1, got=%d", i, len(client.RedirectURIs))
 		}
 
-		gotURL := client.Redirect_uris[0]
+		gotURL := client.RedirectURIs[0]
 		for i, u := range tt {
 			if u == gotURL {
 				break
@@ -155,15 +155,15 @@ func TestCreate(t *testing.T) {
 			}
 		}
 
-		if client.Client_id == "" {
+		if client.Id == "" {
 			t.Errorf("case %d: empty client ID in response", i)
 		}
 
-		if client.Client_secret == "" {
+		if client.Secret == "" {
 			t.Errorf("case %d: empty client secret in response", i)
 		}
 
-		wantLoc := fmt.Sprintf("%s/%s", endpoint, client.Client_id)
+		wantLoc := fmt.Sprintf("%s/%s", endpoint, client.Id)
 		gotLoc := w.Header().Get("Location")
 		if gotLoc != wantLoc {
 			t.Errorf("case %d: invalid location header, want=%v, got=%v", i, wantLoc, gotLoc)
@@ -191,7 +191,7 @@ func TestList(t *testing.T) {
 					},
 				},
 			},
-			wantBody: `{"clients":[{"client_id":"foo","redirect_uris":["http://example.com"]}]}`,
+			wantBody: `{"clients":[{"id":"foo","redirectURIs":["http://example.com"]}]}`,
 		},
 		// multi client
 		{
@@ -209,7 +209,7 @@ func TestList(t *testing.T) {
 					},
 				},
 			},
-			wantBody: `{"clients":[{"client_id":"foo","redirect_uris":["http://example.com"]},{"client_id":"biz","redirect_uris":["https://example.com/one/two/three"]}]}`,
+			wantBody: `{"clients":[{"id":"foo","redirectURIs":["http://example.com"]},{"id":"biz","redirectURIs":["https://example.com/one/two/three"]}]}`,
 		},
 	}
 

@@ -5,7 +5,6 @@ import (
 	"html/template"
 	"net/http"
 	"net/url"
-	"path"
 	"testing"
 	"time"
 
@@ -17,6 +16,54 @@ import (
 	"github.com/coreos-inc/auth/server"
 	"github.com/coreos-inc/auth/session"
 )
+
+func mockServer(cis []oidc.ClientIdentity) (*server.Server, error) {
+	k, err := key.GeneratePrivateKey()
+	if err != nil {
+		return nil, fmt.Errorf("Unable to generate private key: %v", err)
+	}
+
+	km := key.NewPrivateKeyManager()
+	err = km.Set(key.NewPrivateKeySet([]*key.PrivateKey{k}, time.Now().Add(time.Minute)))
+	if err != nil {
+		return nil, err
+	}
+
+	sm := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())
+	srv := &server.Server{
+		IssuerURL:          url.URL{Scheme: "http", Host: "server.example.com"},
+		KeyManager:         km,
+		ClientIdentityRepo: server.NewClientIdentityRepo(cis),
+		SessionManager:     sm,
+	}
+
+	return srv, nil
+}
+
+func mockClient(srv *server.Server, ci oidc.ClientIdentity) (*oidc.Client, error) {
+	hdlr := srv.HTTPHandler()
+	sClient := &phttp.HandlerClient{Handler: hdlr}
+
+	cfg, err := oidc.FetchProviderConfig(sClient, srv.IssuerURL.String())
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch provider config: %v", err)
+	}
+
+	jwks, err := srv.KeyManager.JWKs()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate JWKs: %v", err)
+	}
+
+	ks := key.NewPublicKeySet(jwks, time.Now().Add(1*time.Hour))
+	ccfg := oidc.ClientConfig{
+		HTTPClient:     sClient,
+		ProviderConfig: cfg,
+		Credentials:    ci.Credentials,
+		KeySet:         *ks,
+	}
+
+	return oidc.NewClient(ccfg)
+}
 
 func TestHTTPExchangeToken(t *testing.T) {
 	user := connector.LocalUser{
@@ -128,50 +175,16 @@ func TestHTTPClientCredsToken(t *testing.T) {
 			Secret: "XXX",
 		},
 	}
-	cir := server.NewClientIdentityRepo([]oidc.ClientIdentity{ci})
-	issuerURL := url.URL{Scheme: "http", Host: "server.example.com"}
+	cis := []oidc.ClientIdentity{ci}
 
-	k, err := key.GeneratePrivateKey()
+	srv, err := mockServer(cis)
 	if err != nil {
-		t.Fatalf("Unable to generate private key: %v", err)
+		t.Fatalf("Unexpected error setting up server: %v", err)
 	}
 
-	km := key.NewPrivateKeyManager()
-	err = km.Set(key.NewPrivateKeySet([]*key.PrivateKey{k}, time.Now().Add(time.Minute)))
+	cl, err := mockClient(srv, ci)
 	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-
-	sm := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())
-	srv := &server.Server{
-		IssuerURL:          issuerURL,
-		KeyManager:         km,
-		ClientIdentityRepo: cir,
-		SessionManager:     sm,
-	}
-
-	ns := issuerURL
-	ns.Path = path.Join(ns.Path, "/auth")
-
-	hdlr := srv.HTTPHandler()
-	sClient := &phttp.HandlerClient{Handler: hdlr}
-
-	cfg, err := oidc.FetchProviderConfig(sClient, issuerURL.String())
-	if err != nil {
-		t.Fatalf("Failed to fetch provider config: %v", err)
-	}
-
-	ks := key.NewPublicKeySet([]jose.JWK{k.JWK()}, time.Now().Add(1*time.Hour))
-	ccfg := oidc.ClientConfig{
-		HTTPClient:     sClient,
-		ProviderConfig: cfg,
-		Credentials:    ci.Credentials,
-		KeySet:         *ks,
-	}
-
-	cl, err := oidc.NewClient(ccfg)
-	if err != nil {
-		t.Fatalf("Failed creating client: %v", err)
+		t.Fatalf("Unexpected error setting up OIDC client: %v", err)
 	}
 
 	tok, err := cl.ClientCredsToken([]string{"openid"})
@@ -196,8 +209,9 @@ func TestHTTPClientCredsToken(t *testing.T) {
 		t.Fatalf("unexpected claim value for name, got=%v, want=%v", name, ci.Credentials.ID)
 	}
 
-	if iss := claims["iss"].(string); iss != issuerURL.String() {
-		t.Fatalf("unexpected claim value for iss, got=%v, want=%v", iss, issuerURL.String())
+	wantIss := srv.IssuerURL.String()
+	if iss := claims["iss"].(string); iss != wantIss {
+		t.Fatalf("unexpected claim value for iss, got=%v, want=%v", iss, wantIss)
 	}
 }
 

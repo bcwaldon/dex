@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/url"
+	"sort"
 
 	"github.com/coreos-inc/auth/oidc"
 	pcrypto "github.com/coreos-inc/auth/pkg/crypto"
@@ -87,12 +88,27 @@ func (cr *memClientIdentityRepo) Authenticate(creds oidc.ClientCredentials) (boo
 }
 
 func (cr *memClientIdentityRepo) All() ([]oidc.ClientIdentity, error) {
-	cs := make([]oidc.ClientIdentity, 0, len(cr.idents))
+	cs := make(sortableClientIdentities, 0, len(cr.idents))
 	for _, ci := range cr.idents {
 		ci := ci
 		cs = append(cs, ci)
 	}
+	sort.Sort(cs)
 	return cs, nil
+}
+
+type sortableClientIdentities []oidc.ClientIdentity
+
+func (s sortableClientIdentities) Len() int {
+	return len([]oidc.ClientIdentity(s))
+}
+
+func (s sortableClientIdentities) Less(i, j int) bool {
+	return s[i].Credentials.ID < s[j].Credentials.ID
+}
+
+func (s sortableClientIdentities) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
 }
 
 func newClientIdentityRepoFromReader(r io.Reader) (ClientIdentityRepo, error) {

@@ -9,22 +9,6 @@ import (
 	"github.com/coreos-inc/auth/oidc"
 )
 
-type sortableClientIdentities []oidc.ClientIdentity
-
-func (s sortableClientIdentities) Len() int {
-	return len([]oidc.ClientIdentity(s))
-}
-
-func (s sortableClientIdentities) Less(i, j int) bool {
-	cs := []oidc.ClientIdentity(s)
-	return cs[i].Credentials.ID < cs[j].Credentials.ID
-}
-
-func (s sortableClientIdentities) Swap(i, j int) {
-	cs := []oidc.ClientIdentity(s)
-	cs[i], cs[j] = cs[j], cs[i]
-}
-
 func TestMemClientIdentityRepoNew(t *testing.T) {
 	tests := []struct {
 		meta oidc.ClientMetadata

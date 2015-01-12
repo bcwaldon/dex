@@ -145,6 +145,16 @@ func (s *Server) HTTPHandler() http.Handler {
 
 	apiBasePath := path.Join(httpPathAPI, APIVersion)
 	registerDiscoveryResource(apiBasePath, mux)
+
+	clientPath, clientHandler := registerClientResource(apiBasePath, s.ClientIdentityRepo)
+	ca := &clientTokenMiddleware{
+		issuerURL: s.IssuerURL.String(),
+		ciRepo:    s.ClientIdentityRepo,
+		keysFunc:  s.KeyManager.PublicKeys,
+		next:      clientHandler,
+	}
+	mux.Handle(path.Join(apiBasePath, clientPath), ca)
+
 	return http.Handler(mux)
 }
 

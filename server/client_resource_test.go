@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -173,13 +174,13 @@ func TestCreate(t *testing.T) {
 
 func TestList(t *testing.T) {
 	tests := []struct {
-		cs       []oidc.ClientIdentity
-		wantBody string
+		cs   []oidc.ClientIdentity
+		want []*schema.Client
 	}{
 		// empty repo
 		{
-			cs:       nil,
-			wantBody: `{}`,
+			cs:   nil,
+			want: nil,
 		},
 		// single client
 		{
@@ -191,7 +192,12 @@ func TestList(t *testing.T) {
 					},
 				},
 			},
-			wantBody: `{"clients":[{"id":"foo","redirectURIs":["http://example.com"]}]}`,
+			want: []*schema.Client{
+				&schema.Client{
+					Id:           "foo",
+					RedirectURIs: []string{"http://example.com"},
+				},
+			},
 		},
 		// multi client
 		{
@@ -209,7 +215,16 @@ func TestList(t *testing.T) {
 					},
 				},
 			},
-			wantBody: `{"clients":[{"id":"foo","redirectURIs":["http://example.com"]},{"id":"biz","redirectURIs":["https://example.com/one/two/three"]}]}`,
+			want: []*schema.Client{
+				&schema.Client{
+					Id:           "foo",
+					RedirectURIs: []string{"http://example.com"},
+				},
+				&schema.Client{
+					Id:           "biz",
+					RedirectURIs: []string{"https://example.com/one/two/three"},
+				},
+			},
 		},
 	}
 
@@ -228,9 +243,15 @@ func TestList(t *testing.T) {
 			t.Errorf("case %d: invalid response code, want=%d, got=%d", i, http.StatusOK, w.Code)
 		}
 
-		gotBody := w.Body.String()
-		if gotBody != tt.wantBody {
-			t.Errorf("case %d: invalid response body, want=%s, got=%s", i, tt.wantBody, gotBody)
+		var resp schema.ClientPage
+		if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+			t.Errorf("case %d: unexpected error=%v", i, err)
+		}
+
+		want := tt.want
+		got := resp.Clients
+		if !reflect.DeepEqual(want, got) {
+			t.Errorf("case %d: invalid response body, want=%#v, got=%#v", i, want, got)
 		}
 	}
 }

@@ -1,7 +1,6 @@
 package jose
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 )
@@ -29,7 +28,7 @@ func ParseJWS(raw string) (JWS, error) {
 
 	header, err := decodeHeader(jws.RawHeader)
 	if err != nil {
-		return JWS{}, errors.New("malformed JWS, unable to decode header")
+		return JWS{}, fmt.Errorf("malformed JWS, unable to decode header, %s", err)
 	}
 	if err = header.Validate(); err != nil {
 		return JWS{}, fmt.Errorf("malformed JWS, %s", err)

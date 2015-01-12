@@ -15,6 +15,7 @@ type PrivateKeyManager interface {
 	ExpiresAt() time.Time
 	Signer() (josesig.Signer, error)
 	JWKs() ([]jose.JWK, error)
+	PublicKeys() ([]PublicKey, error)
 
 	WritableKeySetRepo
 	health.Checkable
@@ -58,6 +59,18 @@ func (m *privateKeyManager) JWKs() ([]jose.JWK, error) {
 		jwks[i] = k.JWK()
 	}
 	return jwks, nil
+}
+
+func (m *privateKeyManager) PublicKeys() ([]PublicKey, error) {
+	jwks, err := m.JWKs()
+	if err != nil {
+		return nil, err
+	}
+	keys := make([]PublicKey, len(jwks))
+	for i, jwk := range jwks {
+		keys[i] = *NewPublicKey(jwk)
+	}
+	return keys, nil
 }
 
 func (m *privateKeyManager) Healthy() error {

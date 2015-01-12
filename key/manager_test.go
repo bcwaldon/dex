@@ -13,6 +13,41 @@ import (
 	"github.com/coreos-inc/auth/jose"
 )
 
+var (
+	jwk1 jose.JWK
+	jwk2 jose.JWK
+	jwk3 jose.JWK
+)
+
+func init() {
+	jwk1 = jose.JWK{
+		ID:       "1",
+		Type:     "RSA",
+		Alg:      "RS256",
+		Use:      "sig",
+		Modulus:  big.NewInt(1),
+		Exponent: 65537,
+	}
+
+	jwk2 = jose.JWK{
+		ID:       "2",
+		Type:     "RSA",
+		Alg:      "RS256",
+		Use:      "sig",
+		Modulus:  big.NewInt(2),
+		Exponent: 65537,
+	}
+
+	jwk3 = jose.JWK{
+		ID:       "3",
+		Type:     "RSA",
+		Alg:      "RS256",
+		Use:      "sig",
+		Modulus:  big.NewInt(3),
+		Exponent: 65537,
+	}
+}
+
 func generatePrivateKeyStatic(t *testing.T, idAndN int) *PrivateKey {
 	n := big.NewInt(int64(idAndN))
 	if n == nil {
@@ -31,35 +66,8 @@ func generatePrivateKeyStatic(t *testing.T, idAndN int) *PrivateKey {
 
 func TestPrivateKeyManagerJWKsRotate(t *testing.T) {
 	k1 := generatePrivateKeyStatic(t, 1)
-	jwk1 := jose.JWK{
-		ID:       "1",
-		Type:     "RSA",
-		Alg:      "RS256",
-		Use:      "sig",
-		Modulus:  big.NewInt(1),
-		Exponent: 65537,
-	}
-
 	k2 := generatePrivateKeyStatic(t, 2)
-	jwk2 := jose.JWK{
-		ID:       "2",
-		Type:     "RSA",
-		Alg:      "RS256",
-		Use:      "sig",
-		Modulus:  big.NewInt(2),
-		Exponent: 65537,
-	}
-
 	k3 := generatePrivateKeyStatic(t, 3)
-	jwk3 := jose.JWK{
-		ID:       "3",
-		Type:     "RSA",
-		Alg:      "RS256",
-		Use:      "sig",
-		Modulus:  big.NewInt(3),
-		Exponent: 65537,
-	}
-
 	km := NewPrivateKeyManager()
 	err := km.Set(&PrivateKeySet{
 		keys:        []*PrivateKey{k1, k2, k3},
@@ -176,5 +184,42 @@ func TestPrivateKeyManagerExpiresAt(t *testing.T) {
 	got = km.ExpiresAt()
 	if want != got {
 		t.Fatalf("Incorrect expiration time: want=%v got=%v", want, got)
+	}
+}
+
+func TestPublicKeys(t *testing.T) {
+	km := NewPrivateKeyManager()
+	k1 := generatePrivateKeyStatic(t, 1)
+	k2 := generatePrivateKeyStatic(t, 2)
+	k3 := generatePrivateKeyStatic(t, 3)
+
+	tests := [][]*PrivateKey{
+		[]*PrivateKey{k1},
+		[]*PrivateKey{k1, k2},
+		[]*PrivateKey{k1, k2, k3},
+	}
+
+	for i, tt := range tests {
+		ks := &PrivateKeySet{
+			keys:      tt,
+			expiresAt: time.Now().Add(time.Hour),
+		}
+		km.Set(ks)
+
+		jwks, err := km.JWKs()
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		pks := NewPublicKeySet(jwks, time.Now().Add(time.Hour))
+		want := pks.Keys()
+		got, err := km.PublicKeys()
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		if !reflect.DeepEqual(want, got) {
+			t.Errorf("case %d: Invalid public keys: want=%v got=%v", i, want, got)
+		}
 	}
 }

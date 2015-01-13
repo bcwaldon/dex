@@ -217,12 +217,12 @@ func TestList(t *testing.T) {
 			},
 			want: []*schema.Client{
 				&schema.Client{
-					Id:           "foo",
-					RedirectURIs: []string{"http://example.com"},
-				},
-				&schema.Client{
 					Id:           "biz",
 					RedirectURIs: []string{"https://example.com/one/two/three"},
+				},
+				&schema.Client{
+					Id:           "foo",
+					RedirectURIs: []string{"http://example.com"},
 				},
 			},
 		},
@@ -248,10 +248,8 @@ func TestList(t *testing.T) {
 			t.Errorf("case %d: unexpected error=%v", i, err)
 		}
 
-		want := tt.want
-		got := resp.Clients
-		if !reflect.DeepEqual(want, got) {
-			t.Errorf("case %d: invalid response body, want=%#v, got=%#v", i, want, got)
+		if !reflect.DeepEqual(tt.want, resp.Clients) {
+			t.Errorf("case %d: invalid response body, want=%#v, got=%#v", i, tt.want, resp.Clients)
 		}
 	}
 }

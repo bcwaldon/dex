@@ -3,7 +3,6 @@ package main
 import (
 	"net/url"
 
-	"github.com/coreos-inc/auth/db"
 	"github.com/coreos-inc/auth/oidc"
 )
 
@@ -32,14 +31,13 @@ func runNewClient(args []string) int {
 		return 1
 	}
 
-	dbc, err := db.NewConnection(global.dbURL)
+	drv, err := newDBDriver(global.dbURL)
 	if err != nil {
-		stderr("Failed initializing connection with database: %v", err)
+		stderr("Unable to initialize driver: %v", err)
 		return 1
 	}
 
-	r := db.NewClientIdentityRepo(dbc)
-	cc, err := r.New(oidc.ClientMetadata{RedirectURL: *redirectURL})
+	cc, err := drv.NewClient(oidc.ClientMetadata{RedirectURL: *redirectURL})
 	if err != nil {
 		stderr("Failed creating new client: %v", err)
 		return 1

@@ -31,13 +31,7 @@ func runNewClient(args []string) int {
 		return 1
 	}
 
-	drv, err := newDBDriver(global.dbURL)
-	if err != nil {
-		stderr("Unable to initialize driver: %v", err)
-		return 1
-	}
-
-	cc, err := drv.NewClient(oidc.ClientMetadata{RedirectURL: *redirectURL})
+	cc, err := getDriver().NewClient(oidc.ClientMetadata{RedirectURL: *redirectURL})
 	if err != nil {
 		stderr("Failed creating new client: %v", err)
 		return 1

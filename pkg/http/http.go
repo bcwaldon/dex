@@ -141,3 +141,15 @@ func NewResourceLocation(reqURL *url.URL, id string) string {
 	u.Fragment = ""
 	return u.String()
 }
+
+// CopyRequest returns a clone of the provided *http.Request.
+// The returned object is a shallow copy of the struct and a
+// deep copy of its Header field.
+func CopyRequest(r *http.Request) *http.Request {
+	r2 := *r
+	r2.Header = make(http.Header)
+	for k, s := range r.Header {
+		r2.Header[k] = s
+	}
+	return &r2
+}

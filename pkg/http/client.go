@@ -45,3 +45,7 @@ func (rr *RequestRecorder) Do(req *http.Request) (*http.Response, error) {
 
 	return rr.Response, rr.Error
 }
+
+func (rr *RequestRecorder) RoundTrip(req *http.Request) (*http.Response, error) {
+	return rr.Do(req)
+}

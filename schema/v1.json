@@ -37,9 +37,6 @@
       "id": "Client",
       "type": "object",
       "properties": {
-        "name": {
-          "type": "string"
-        },
         "id": {
           "type": "string"
         },
@@ -56,9 +53,6 @@
       "id": "Client",
       "type": "object",
       "properties": {
-        "name": {
-          "type": "string"
-        },
         "id": {
           "type": "string"
         },

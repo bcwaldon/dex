@@ -68,8 +68,6 @@ type ClientsService struct {
 type Client struct {
 	Id string `json:"id,omitempty"`
 
-	Name string `json:"name,omitempty"`
-
 	RedirectURIs []string `json:"redirectURIs,omitempty"`
 }
 
@@ -81,8 +79,6 @@ type ClientPage struct {
 
 type ClientWithSecret struct {
 	Id string `json:"id,omitempty"`
-
-	Name string `json:"name,omitempty"`
 
 	RedirectURIs []string `json:"redirectURIs,omitempty"`
 

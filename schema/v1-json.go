@@ -43,9 +43,6 @@ const DiscoveryJSON = `{
       "id": "Client",
       "type": "object",
       "properties": {
-        "name": {
-          "type": "string"
-        },
         "id": {
           "type": "string"
         },
@@ -62,9 +59,6 @@ const DiscoveryJSON = `{
       "id": "Client",
       "type": "object",
       "properties": {
-        "name": {
-          "type": "string"
-        },
         "id": {
           "type": "string"
         },

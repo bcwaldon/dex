@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/coreos-inc/auth/connector"
-	"github.com/coreos-inc/auth/db"
 )
 
 var (
@@ -35,24 +35,23 @@ func runSetConnectorConfigs(args []string) int {
 
 	rf, err := connector.NewConnectorConfigRepoFromFile(args[0])
 	if err != nil {
-		stderr("Unable to retrieve configs from file: %v", err)
+		stderr("Unable to retrieve connector configs from file: %v", err)
 		return 1
 	}
 
 	cfgs, err := rf.All()
 	if err != nil {
-		stderr("Unable to retrieve configs from file: %v", err)
+		stderr("Unable to retrieve connector configs from file: %v", err)
 		return 1
 	}
 
-	dbc, err := db.NewConnection(global.dbURL)
+	drv, err := newDBDriver(global.dbURL)
 	if err != nil {
-		stderr("Failed initializing connection with database: %v", err)
+		stderr("Unable to initialize driver: %v", err)
 		return 1
 	}
 
-	r := db.NewConnectorConfigRepo(dbc)
-	if err := r.Set(cfgs); err != nil {
+	if err := drv.SetConnectorConfigs(cfgs); err != nil {
 		stderr(err.Error())
 		return 1
 	}
@@ -68,16 +67,15 @@ func runGetConnectorConfigs(args []string) int {
 		return 2
 	}
 
-	dbc, err := db.NewConnection(global.dbURL)
+	drv, err := newDBDriver(global.dbURL)
 	if err != nil {
-		stderr("Failed initializing connection with database: %v", err)
+		stderr("Unable to initialize driver: %v", err)
 		return 1
 	}
 
-	r := db.NewConnectorConfigRepo(dbc)
-	cfgs, err := r.All()
+	cfgs, err := drv.ConnectorConfigs()
 	if err != nil {
-		stderr("Unable to retrieve configs from repo: %v", err)
+		stderr("Unable to retrieve connector configs: %v", err)
 		return 1
 	}
 

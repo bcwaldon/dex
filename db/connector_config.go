@@ -58,15 +58,15 @@ func (m *connectorConfigModel) ConnectorConfig() (connector.ConnectorConfig, err
 	return cfg, nil
 }
 
-func NewConnectorConfigRepo(dbm *gorp.DbMap) *connectorConfigRepo {
-	return &connectorConfigRepo{dbMap: dbm}
+func NewConnectorConfigRepo(dbm *gorp.DbMap) *ConnectorConfigRepo {
+	return &ConnectorConfigRepo{dbMap: dbm}
 }
 
-type connectorConfigRepo struct {
+type ConnectorConfigRepo struct {
 	dbMap *gorp.DbMap
 }
 
-func (r *connectorConfigRepo) All() ([]connector.ConnectorConfig, error) {
+func (r *ConnectorConfigRepo) All() ([]connector.ConnectorConfig, error) {
 	qt := pq.QuoteIdentifier(connectorConfigTableName)
 	q := fmt.Sprintf("SELECT * FROM %s", qt)
 	objs, err := r.dbMap.Select(&connectorConfigModel{}, q)
@@ -91,7 +91,7 @@ func (r *connectorConfigRepo) All() ([]connector.ConnectorConfig, error) {
 	return cfgs, nil
 }
 
-func (r *connectorConfigRepo) Set(cfgs []connector.ConnectorConfig) error {
+func (r *ConnectorConfigRepo) Set(cfgs []connector.ConnectorConfig) error {
 	insert := make([]interface{}, len(cfgs))
 	for i, cfg := range cfgs {
 		m, err := newConnectorConfigModel(cfg)

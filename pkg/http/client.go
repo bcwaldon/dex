@@ -1,7 +1,6 @@
 package http
 
 import (
-	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -29,10 +28,20 @@ func (hc *HandlerClient) Do(r *http.Request) (*http.Response, error) {
 }
 
 type RequestRecorder struct {
+	Response *http.Response
+	Error    error
+
 	Request *http.Request
 }
 
-func (r *RequestRecorder) Do(req *http.Request) (*http.Response, error) {
-	r.Request = req
-	return nil, errors.New("error")
+func (rr *RequestRecorder) Do(req *http.Request) (*http.Response, error) {
+	rr.Request = req
+
+	if rr.Response == nil && rr.Error == nil {
+		panic("RequestRecorder Response and Error cannot both be nil")
+	} else if rr.Response != nil && rr.Error != nil {
+		panic("RequestRecorder Response and Error cannot both be non-nil")
+	}
+
+	return rr.Response, rr.Error
 }

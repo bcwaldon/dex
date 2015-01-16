@@ -1,6 +1,7 @@
 package oauth2
 
 import (
+	"errors"
 	"net/url"
 	"reflect"
 	"strings"
@@ -129,7 +130,7 @@ func TestParseAuthCodeRequest(t *testing.T) {
 }
 
 func TestClientCredsToken(t *testing.T) {
-	hc := &phttp.RequestRecorder{}
+	hc := &phttp.RequestRecorder{Error: errors.New("error")}
 	cfg := Config{
 		Credentials: ClientCredentials{ID: "cid", Secret: "csecret"},
 		Scope:       []string{"foo-scope", "bar-scope"},

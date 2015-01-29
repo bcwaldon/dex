@@ -1,6 +1,7 @@
 package db
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/coopernurse/gorp"
@@ -17,6 +18,17 @@ type healthChecker struct {
 func (hc *healthChecker) Healthy() (err error) {
 	if err = hc.dbMap.Db.Ping(); err != nil {
 		err = fmt.Errorf("database error: %v", err)
+		return
 	}
+
+	num, err := hc.dbMap.SelectInt("SELECT 1")
+	if err != nil {
+		return
+	}
+
+	if num != 1 {
+		err = errors.New("unable to connect to database")
+	}
+
 	return
 }

@@ -29,7 +29,7 @@ func init() {
 }
 
 func cleanup() {
-	c, err := db.NewConnection(dsn)
+	c, err := db.NewConnection(db.Config{DSN: dsn})
 	if err != nil {
 		fmt.Printf("Unable to connect to database, err=%v\n", err)
 		os.Exit(1)
@@ -42,7 +42,7 @@ func cleanup() {
 }
 
 func TestDBSessionKeyRepoPushPop(t *testing.T) {
-	c, err := db.NewConnection(dsn)
+	c, err := db.NewConnection(db.Config{DSN: dsn})
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -68,7 +68,7 @@ func TestDBSessionKeyRepoPushPop(t *testing.T) {
 }
 
 func TestDBSessionRepoCreateUpdate(t *testing.T) {
-	c, err := db.NewConnection(dsn)
+	c, err := db.NewConnection(db.Config{DSN: dsn})
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -114,7 +114,7 @@ func TestDBSessionRepoCreateUpdate(t *testing.T) {
 }
 
 func TestDBPrivateKeySetRepoSetGet(t *testing.T) {
-	c, err := db.NewConnection(dsn)
+	c, err := db.NewConnection(db.Config{DSN: dsn})
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -150,7 +150,7 @@ func TestDBPrivateKeySetRepoSetGet(t *testing.T) {
 }
 
 func TestDBClientIdentityRepoMetadata(t *testing.T) {
-	c, err := db.NewConnection(dsn)
+	c, err := db.NewConnection(db.Config{DSN: dsn})
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -183,7 +183,7 @@ func TestDBClientIdentityRepoMetadata(t *testing.T) {
 }
 
 func TestDBClientIdentityRepoAuthenticate(t *testing.T) {
-	c, err := db.NewConnection(dsn)
+	c, err := db.NewConnection(db.Config{DSN: dsn})
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -231,7 +231,7 @@ func TestDBClientIdentityRepoAuthenticate(t *testing.T) {
 func TestDBClientIdentityAll(t *testing.T) {
 	cleanup()
 
-	c, err := db.NewConnection(dsn)
+	c, err := db.NewConnection(db.Config{DSN: dsn})
 	if err != nil {
 		t.Fatalf(err.Error())
 	}

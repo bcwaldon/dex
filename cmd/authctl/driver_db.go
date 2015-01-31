@@ -8,7 +8,7 @@ import (
 )
 
 func newDBDriver(dsn string) (driver, error) {
-	dbc, err := db.NewConnection(dsn)
+	dbc, err := db.NewConnection(db.Config{DSN: dsn})
 	if err != nil {
 		return nil, err
 	}

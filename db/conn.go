@@ -28,14 +28,6 @@ func register(t table) {
 	tables = append(tables, t)
 }
 
-func Tables() []string {
-	tn := make([]string, 0, len(tables))
-	for _, t := range tables {
-		tn = append(tn, t.name)
-	}
-	return tn
-}
-
 func NewConnection(dsn string) (*gorp.DbMap, error) {
 	if !strings.HasPrefix(dsn, "postgres://") {
 		return nil, errors.New("unrecognized database driver")

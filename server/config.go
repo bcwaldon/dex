@@ -90,10 +90,10 @@ func (cfg *SingleServerConfig) Server() (*Server, error) {
 }
 
 type MultiServerConfig struct {
-	IssuerURL   string
-	TemplateDir string
-	KeySecret   string
-	DatabaseURL string
+	IssuerURL      string
+	TemplateDir    string
+	KeySecret      string
+	DatabaseConfig db.Config
 }
 
 func (cfg *MultiServerConfig) Server() (*Server, error) {
@@ -101,7 +101,7 @@ func (cfg *MultiServerConfig) Server() (*Server, error) {
 		return nil, errors.New("missing key secret")
 	}
 
-	if cfg.DatabaseURL == "" {
+	if cfg.DatabaseConfig.DSN == "" {
 		return nil, errors.New("missing database connection string")
 	}
 
@@ -110,7 +110,7 @@ func (cfg *MultiServerConfig) Server() (*Server, error) {
 		return nil, err
 	}
 
-	dbc, err := db.NewConnection(cfg.DatabaseURL)
+	dbc, err := db.NewConnection(cfg.DatabaseConfig)
 	if err != nil {
 		return nil, fmt.Errorf("unable to initialize database connection: %v", err)
 	}

@@ -10,7 +10,7 @@ import (
 
 const (
 	sessionKeyValidityWindow     = 10 * time.Minute //RFC6749
-	defaultSessionValidityWindow = time.Hour
+	defaultSessionValidityWindow = 12 * time.Hour
 )
 
 type SessionState string

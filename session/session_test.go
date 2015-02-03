@@ -39,7 +39,7 @@ func TestSessionClaims(t *testing.T) {
 			},
 		},
 
-		// Identity has custom ExpiresAt
+		// Ignore Identity custom ExpiresAt, use from session
 		{
 			ses: Session{
 				CreatedAt: now,
@@ -57,7 +57,7 @@ func TestSessionClaims(t *testing.T) {
 				"sub":   "YYY",
 				"aud":   "XXX",
 				"iat":   float64(now.Unix()),
-				"exp":   float64(now.Add(time.Minute).Unix()),
+				"exp":   float64(now.Add(time.Hour).Unix()),
 				"name":  "elroy",
 				"email": "elroy@example.com",
 			},

@@ -10,7 +10,7 @@ import (
 
 const (
 	sessionKeyValidityWindow     = 10 * time.Minute //RFC6749
-	defaultSessionValidityWindow = time.Hour
+	defaultSessionValidityWindow = 12 * time.Hour
 )
 
 type SessionState string
@@ -38,12 +38,7 @@ type Session struct {
 }
 
 func (s *Session) Claims(issuerURL string) jose.Claims {
-	exp := s.Identity.ExpiresAt
-	if exp.IsZero() {
-		exp = s.ExpiresAt
-	}
-
-	claims := oidc.NewClaims(issuerURL, s.Identity.ID, s.ClientID, s.CreatedAt, exp)
+	claims := oidc.NewClaims(issuerURL, s.Identity.ID, s.ClientID, s.CreatedAt, s.ExpiresAt)
 	claims.Add("name", s.Identity.Name)
 	claims.Add("email", s.Identity.Email)
 

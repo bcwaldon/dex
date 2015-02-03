@@ -1,15 +1,12 @@
 package functional
 
 import (
-	"database/sql"
 	"fmt"
 	"net/url"
 	"os"
 	"reflect"
 	"testing"
 	"time"
-
-	"github.com/lib/pq"
 
 	"github.com/coreos-inc/auth/db"
 	"github.com/coreos-inc/auth/key"
@@ -32,23 +29,15 @@ func init() {
 }
 
 func cleanup() {
-	sqlDB, err := sql.Open("postgres", dsn)
+	c, err := db.NewConnection(dsn)
 	if err != nil {
 		fmt.Printf("Unable to connect to database, err=%v\n", err)
 		os.Exit(1)
 	}
 
-	for _, t := range db.Tables() {
-		_, err = sqlDB.Exec(fmt.Sprintf("DROP TABLE %s", pq.QuoteIdentifier(t)))
-		if err != nil {
-			// DB is probably fresh, safe to ignore nonexistant tables
-			if err, ok := err.(*pq.Error); ok && err.Code.Name() == "undefined_table" {
-				continue
-			}
-
-			fmt.Printf("Unable to drop table %q: %v\n", t, err)
-			os.Exit(1)
-		}
+	if err = c.DropTablesIfExists(); err != nil {
+		fmt.Printf("Unable to drop database tables, err=%v\n", err)
+		os.Exit(1)
 	}
 }
 

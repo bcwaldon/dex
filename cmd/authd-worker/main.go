@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/coreos-inc/auth/db"
 	pflag "github.com/coreos-inc/auth/pkg/flag"
 	phttp "github.com/coreos-inc/auth/pkg/http"
 	"github.com/coreos-inc/auth/pkg/log"
@@ -23,6 +24,8 @@ func main() {
 	// ignored if --no-db is set
 	dbURL := fs.String("db-url", "", "DSN-formatted database connection string")
 	keySecret := fs.String("key-secret", "", "symmetric key used to encrypt/decrypt signing key data in DB")
+	dbMaxIdleConns := fs.Int("db-max-idle-conns", 0, "maximum number of connections in the idle connection pool")
+	dbMaxOpenConns := fs.Int("db-max-open-conns", 0, "maximum number of open connections to the database")
 
 	// used only if --no-db is set
 	connectors := fs.String("connectors", "./static/fixtures/connectors.json", "JSON file containg set of IDPC configs")
@@ -67,11 +70,22 @@ func main() {
 			ConnectorsFile: *connectors,
 		}
 	} else {
+		if *dbMaxIdleConns == 0 {
+			log.Warning("Running with no limit on: database idle connections")
+		}
+		if *dbMaxOpenConns == 0 {
+			log.Warning("Running with no limit on: database open connections")
+		}
+		dbCfg := db.Config{
+			DSN:                *dbURL,
+			MaxIdleConnections: *dbMaxIdleConns,
+			MaxOpenConnections: *dbMaxOpenConns,
+		}
 		scfg = &server.MultiServerConfig{
-			IssuerURL:   *issuer,
-			TemplateDir: *templates,
-			KeySecret:   *keySecret,
-			DatabaseURL: *dbURL,
+			IssuerURL:      *issuer,
+			TemplateDir:    *templates,
+			KeySecret:      *keySecret,
+			DatabaseConfig: dbCfg,
 		}
 	}
 

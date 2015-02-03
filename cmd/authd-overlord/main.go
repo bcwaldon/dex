@@ -43,7 +43,12 @@ func main() {
 		log.Fatalf("--key-secret unset")
 	}
 
-	dbc, err := db.NewConnection(*dbURL)
+	dbCfg := db.Config{
+		DSN:                *dbURL,
+		MaxIdleConnections: 1,
+		MaxOpenConnections: 1,
+	}
+	dbc, err := db.NewConnection(dbCfg)
 	if err != nil {
 		log.Fatalf(err.Error())
 	}

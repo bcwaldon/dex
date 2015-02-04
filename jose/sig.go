@@ -1,10 +1,8 @@
-package sig
+package jose
 
 import (
 	"fmt"
 	"strings"
-
-	"github.com/coreos-inc/auth/jose"
 )
 
 type Verifier interface {
@@ -18,7 +16,7 @@ type Signer interface {
 	Sign(data []byte) (sig []byte, err error)
 }
 
-func NewVerifier(jwk jose.JWK) (Verifier, error) {
+func NewVerifier(jwk JWK) (Verifier, error) {
 	if strings.ToUpper(jwk.Type) != "RSA" {
 		return nil, fmt.Errorf("unsupported key type %q", jwk.Type)
 	}

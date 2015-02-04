@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/coreos-inc/auth/jose"
-	josesig "github.com/coreos-inc/auth/jose/sig"
 )
 
 func NewPublicKey(jwk jose.JWK) *PublicKey {
@@ -23,8 +22,8 @@ func (k *PublicKey) ID() string {
 	return k.jwk.ID
 }
 
-func (k *PublicKey) Verifier() (josesig.Verifier, error) {
-	return josesig.NewVerifierRSA(k.jwk)
+func (k *PublicKey) Verifier() (jose.Verifier, error) {
+	return jose.NewVerifierRSA(k.jwk)
 }
 
 type PrivateKey struct {
@@ -36,8 +35,8 @@ func (k *PrivateKey) ID() string {
 	return k.KeyID
 }
 
-func (k *PrivateKey) Signer() josesig.Signer {
-	return josesig.NewSignerRSA(k.ID(), *k.PrivateKey)
+func (k *PrivateKey) Signer() jose.Signer {
+	return jose.NewSignerRSA(k.ID(), *k.PrivateKey)
 }
 
 func (k *PrivateKey) JWK() jose.JWK {

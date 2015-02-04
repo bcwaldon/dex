@@ -1,24 +1,22 @@
-package sig
+package jose
 
 import (
 	"bytes"
 	"encoding/base64"
 	"testing"
-
-	"github.com/coreos-inc/auth/jose"
 )
 
 var hmacTestCases = []struct {
 	data  string
 	sig   string
-	jwk   jose.JWK
+	jwk   JWK
 	valid bool
 	desc  string
 }{
 	{
 		"test",
 		"Aymga2LNFrM-tnkr6MYLFY2Jou46h2_Omogeu0iMCRQ=",
-		jose.JWK{
+		JWK{
 			ID:     "fake-key",
 			Alg:    "HS256",
 			Secret: []byte("secret"),
@@ -29,7 +27,7 @@ var hmacTestCases = []struct {
 	{
 		"test",
 		"Aymga2LNFrM-tnkr6MYLFY2Jou46h2_Omogeu0iMCRQ=",
-		jose.JWK{
+		JWK{
 			ID:     "different-key",
 			Alg:    "HS256",
 			Secret: []byte("secret"),
@@ -40,7 +38,7 @@ var hmacTestCases = []struct {
 	{
 		"test sig and non-matching data",
 		"Aymga2LNFrM-tnkr6MYLFY2Jou46h2_Omogeu0iMCRQ=",
-		jose.JWK{
+		JWK{
 			ID:     "fake-key",
 			Alg:    "HS256",
 			Secret: []byte("secret"),

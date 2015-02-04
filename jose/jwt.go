@@ -62,3 +62,23 @@ func (j *JWT) Encode() string {
 	s := encodeSegment(j.Signature)
 	return strings.Join([]string{d, s}, ".")
 }
+
+func NewSignedJWT(claims map[string]interface{}, s Signer) (*JWT, error) {
+	header := JOSEHeader{
+		HeaderKeyAlgorithm: s.Alg(),
+		HeaderKeyID:        s.ID(),
+	}
+
+	jwt, err := NewJWT(header, Claims(claims))
+	if err != nil {
+		return nil, err
+	}
+
+	sig, err := s.Sign([]byte(jwt.Data()))
+	if err != nil {
+		return nil, err
+	}
+	jwt.Signature = sig
+
+	return &jwt, nil
+}

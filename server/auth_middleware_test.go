@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	josesig "github.com/coreos-inc/auth/jose/sig"
+	"github.com/coreos-inc/auth/jose"
 	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oidc"
 )
@@ -40,7 +40,7 @@ func TestClientToken(t *testing.T) {
 
 	makeToken := func(iss, sub, aud string, iat, exp time.Time) string {
 		claims := oidc.NewClaims(iss, sub, aud, iat, exp)
-		jwt, err := josesig.NewSignedJWT(claims, signer)
+		jwt, err := jose.NewSignedJWT(claims, signer)
 		if err != nil {
 			t.Fatalf("Failed to generate JWT, error=%v", err)
 		}

@@ -13,7 +13,6 @@ import (
 
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/jose"
-	josesig "github.com/coreos-inc/auth/jose/sig"
 	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
@@ -219,7 +218,7 @@ func (s *Server) ClientCredsToken(creds oidc.ClientCredentials) (*jose.JWT, erro
 	claims := oidc.NewClaims(s.IssuerURL.String(), creds.ID, creds.ID, now, exp)
 	claims.Add("name", creds.ID)
 
-	jwt, err := josesig.NewSignedJWT(claims, signer)
+	jwt, err := jose.NewSignedJWT(claims, signer)
 	if err != nil {
 		log.Errorf("Failed to generate ID token: %v", err)
 		return nil, oauth2.NewError(oauth2.ErrorServerError)
@@ -259,7 +258,7 @@ func (s *Server) CodeToken(creds oidc.ClientCredentials, sessionKey string) (*jo
 		return nil, oauth2.NewError(oauth2.ErrorServerError)
 	}
 
-	jwt, err := josesig.NewSignedJWT(ses.Claims(s.IssuerURL.String()), signer)
+	jwt, err := jose.NewSignedJWT(ses.Claims(s.IssuerURL.String()), signer)
 	if err != nil {
 		log.Errorf("Failed to generate ID token: %v", err)
 		return nil, oauth2.NewError(oauth2.ErrorServerError)

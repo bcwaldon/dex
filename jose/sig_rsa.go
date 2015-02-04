@@ -1,4 +1,4 @@
-package sig
+package jose
 
 import (
 	"crypto"
@@ -6,8 +6,6 @@ import (
 	"crypto/rsa"
 	"fmt"
 	"strings"
-
-	"github.com/coreos-inc/auth/jose"
 )
 
 type VerifierRSA struct {
@@ -21,7 +19,7 @@ type SignerRSA struct {
 	VerifierRSA
 }
 
-func NewVerifierRSA(jwk jose.JWK) (*VerifierRSA, error) {
+func NewVerifierRSA(jwk JWK) (*VerifierRSA, error) {
 	if strings.ToUpper(jwk.Alg) != "RS256" {
 		return nil, fmt.Errorf("unsupported key algorithm %q", jwk.Alg)
 	}

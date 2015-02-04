@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/coreos-inc/auth/jose"
-	josesig "github.com/coreos-inc/auth/jose/sig"
 	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
@@ -18,7 +17,7 @@ import (
 type StaticKeyManager struct {
 	key.PrivateKeyManager
 	expiresAt time.Time
-	signer    josesig.Signer
+	signer    jose.Signer
 	keys      []jose.JWK
 }
 
@@ -26,7 +25,7 @@ func (m *StaticKeyManager) ExpiresAt() time.Time {
 	return m.expiresAt
 }
 
-func (m *StaticKeyManager) Signer() (josesig.Signer, error) {
+func (m *StaticKeyManager) Signer() (jose.Signer, error) {
 	return m.signer, nil
 }
 
@@ -312,7 +311,7 @@ func TestServerTokenFail(t *testing.T) {
 	signerFixture := &StaticSigner{sig: []byte("beer"), err: nil}
 
 	tests := []struct {
-		signer josesig.Signer
+		signer jose.Signer
 		argCC  oidc.ClientCredentials
 		argKey string
 		err    string

@@ -1,4 +1,4 @@
-package sig
+package jose
 
 import (
 	"bytes"
@@ -8,8 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-
-	"github.com/coreos-inc/auth/jose"
 )
 
 type VerifierHMAC struct {
@@ -22,7 +20,7 @@ type SignerHMAC struct {
 	VerifierHMAC
 }
 
-func NewVerifierHMAC(jwk jose.JWK) (*VerifierHMAC, error) {
+func NewVerifierHMAC(jwk JWK) (*VerifierHMAC, error) {
 	if strings.ToUpper(jwk.Alg) != "HS256" {
 		return nil, fmt.Errorf("unsupported key algorithm %q", jwk.Alg)
 	}

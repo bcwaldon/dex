@@ -7,13 +7,12 @@ import (
 	"github.com/jonboulle/clockwork"
 
 	"github.com/coreos-inc/auth/jose"
-	josesig "github.com/coreos-inc/auth/jose/sig"
 	"github.com/coreos-inc/auth/pkg/health"
 )
 
 type PrivateKeyManager interface {
 	ExpiresAt() time.Time
-	Signer() (josesig.Signer, error)
+	Signer() (jose.Signer, error)
 	JWKs() ([]jose.JWK, error)
 	PublicKeys() ([]PublicKey, error)
 
@@ -40,7 +39,7 @@ func (m *privateKeyManager) ExpiresAt() time.Time {
 	return m.keySet.ExpiresAt()
 }
 
-func (m *privateKeyManager) Signer() (josesig.Signer, error) {
+func (m *privateKeyManager) Signer() (jose.Signer, error) {
 	if err := m.Healthy(); err != nil {
 		return nil, err
 	}

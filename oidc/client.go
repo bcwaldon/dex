@@ -180,7 +180,7 @@ func (c *Client) ClientCredsToken(scope []string) (jose.JWT, error) {
 		return jose.JWT{}, err
 	}
 
-	return jwt, c.Verify(jwt)
+	return jwt, c.verifyJWT(jwt)
 }
 
 // Exchange an OAuth2 auth code for an OIDC JWT
@@ -200,48 +200,29 @@ func (c *Client) ExchangeAuthCode(code string) (jose.JWT, error) {
 		return jose.JWT{}, err
 	}
 
-	return jwt, c.Verify(jwt)
+	return jwt, c.verifyJWT(jwt)
 }
 
-func (c *Client) Verify(jwt jose.JWT) error {
-	var keys func() []key.PublicKey
+func (c *Client) verifyJWT(jwt jose.JWT) error {
+	v := &jwtVerifier{
+		issuer:   c.providerConfig.Issuer,
+		clientID: c.credentials.ID,
+		syncFunc: c.maybeSyncKeys,
+	}
+
 	if kID, ok := jwt.KeyID(); ok {
-		keys = func() (keys []key.PublicKey) {
-			if k := c.keySet.Key(kID); k != nil {
-				keys = append(keys, *k)
+		v.keysFunc = func() []key.PublicKey {
+			k := c.keySet.Key(kID)
+			if k == nil {
+				return []key.PublicKey{}
 			}
-			return
+			return []key.PublicKey{*k}
 		}
 	} else {
-		keys = func() []key.PublicKey {
+		v.keysFunc = func() []key.PublicKey {
 			return c.keySet.Keys()
 		}
 	}
 
-	reattempt := func() error {
-		ok, err := VerifySignature(jwt, keys())
-		if ok || err != nil {
-			return err
-		}
-
-		if err = c.maybeSyncKeys(); err != nil {
-			return err
-		}
-
-		ok, err = VerifySignature(jwt, keys())
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return errors.New("no matching keys")
-		}
-
-		return nil
-	}
-
-	if err := reattempt(); err != nil {
-		return fmt.Errorf("could not verify JWT signature: %v", err)
-	}
-
-	return VerifyClaims(jwt, c.providerConfig.Issuer, c.credentials.ID)
+	return v.verify(jwt)
 }

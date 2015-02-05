@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jonboulle/clockwork"
+
 	"github.com/coreos-inc/auth/jose"
 	"github.com/coreos-inc/auth/key"
 	pnet "github.com/coreos-inc/auth/pkg/net"
@@ -118,4 +120,38 @@ func VerifyClientClaims(jwt jose.JWT, issuer string) (string, error) {
 	}
 
 	return sub, nil
+}
+
+type jwtVerifier struct {
+	issuer   string
+	clientID string
+	syncFunc func() error
+	keysFunc func() []key.PublicKey
+	clock    clockwork.Clock
+}
+
+func (v *jwtVerifier) verify(jwt jose.JWT) error {
+	ok, err := VerifySignature(jwt, v.keysFunc())
+	if ok {
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("oidc: JWT signature verification failed: %v", err)
+	}
+
+	if err = v.syncFunc(); err != nil {
+		return fmt.Errorf("oidc: failed syncing KeySet: %v", err)
+	}
+
+	ok, err = VerifySignature(jwt, v.keysFunc())
+	if err != nil {
+		return fmt.Errorf("oidc: JWT signature verification failed: %v", err)
+	} else if !ok {
+		return errors.New("oidc: unable to verify JWT signature: no matching keys")
+	}
+
+	if err := VerifyClaims(jwt, v.issuer, v.clientID); err != nil {
+		return fmt.Errorf("oidc: JWT claims invalid: %v", err)
+	}
+
+	return nil
 }

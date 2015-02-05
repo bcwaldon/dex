@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/coreos-inc/auth/jose"
+	"github.com/coreos-inc/auth/key"
 )
 
 func TestVerifyClientClaims(t *testing.T) {
@@ -124,6 +125,154 @@ func TestVerifyClientClaims(t *testing.T) {
 			}
 		} else if err == nil {
 			t.Errorf("case %d: expected error but err is nil", i)
+		}
+	}
+}
+
+func TestJWTVerifier(t *testing.T) {
+	iss := "http://example.com"
+	now := time.Now()
+	future12 := now.Add(12 * time.Hour)
+	past36 := now.Add(-36 * time.Hour)
+	past12 := now.Add(-12 * time.Hour)
+
+	priv1, err := key.GeneratePrivateKey()
+	if err != nil {
+		t.Fatalf("failed to generate private key, error=%v", err)
+	}
+	pk1 := *key.NewPublicKey(priv1.JWK())
+
+	priv2, err := key.GeneratePrivateKey()
+	if err != nil {
+		t.Fatalf("failed to generate private key, error=%v", err)
+	}
+	pk2 := *key.NewPublicKey(priv2.JWK())
+
+	jwtPK1, err := jose.NewSignedJWT(NewClaims(iss, "XXX", "XXX", past12, future12), priv1.Signer())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	jwtExpired, err := jose.NewSignedJWT(NewClaims(iss, "XXX", "XXX", past36, past12), priv1.Signer())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	jwtPK2, err := jose.NewSignedJWT(NewClaims(iss, "XXX", "XXX", past12, future12), priv2.Signer())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	tests := []struct {
+		verifier jwtVerifier
+		jwt      jose.JWT
+		wantErr  bool
+	}{
+		// JWT signed with available key
+		{
+			verifier: jwtVerifier{
+				issuer:   "example.com",
+				clientID: "XXX",
+				syncFunc: func() error { return nil },
+				keysFunc: func() []key.PublicKey {
+					return []key.PublicKey{pk1}
+				},
+			},
+			jwt:     *jwtPK1,
+			wantErr: false,
+		},
+
+		// expired JWT signed with available key
+		{
+			verifier: jwtVerifier{
+				issuer:   "example.com",
+				clientID: "XXX",
+				syncFunc: func() error { return nil },
+				keysFunc: func() []key.PublicKey {
+					return []key.PublicKey{pk1}
+				},
+			},
+			jwt:     *jwtExpired,
+			wantErr: false,
+		},
+
+		// JWT signed with unrecognized key, verifiable after sync
+		{
+			verifier: jwtVerifier{
+				issuer:   "example.com",
+				clientID: "XXX",
+				syncFunc: func() error { return nil },
+				keysFunc: func() func() []key.PublicKey {
+					var i int
+					return func() []key.PublicKey {
+						defer func() { i++ }()
+						return [][]key.PublicKey{
+							[]key.PublicKey{pk1},
+							[]key.PublicKey{pk2},
+						}[i]
+					}
+				}(),
+			},
+			jwt:     *jwtPK2,
+			wantErr: false,
+		},
+
+		// JWT signed with unrecognized key, not verifiable after sync
+		{
+			verifier: jwtVerifier{
+				issuer:   "example.com",
+				clientID: "XXX",
+				syncFunc: func() error { return nil },
+				keysFunc: func() []key.PublicKey {
+					return []key.PublicKey{pk1}
+				},
+			},
+			jwt:     *jwtPK2,
+			wantErr: true,
+		},
+
+		// verifier gets no keys from keysFunc, still not verifiable after sync
+		{
+			verifier: jwtVerifier{
+				issuer:   "example.com",
+				clientID: "XXX",
+				syncFunc: func() error { return nil },
+				keysFunc: func() []key.PublicKey {
+					return []key.PublicKey{}
+				},
+			},
+			jwt:     *jwtPK1,
+			wantErr: true,
+		},
+
+		// verifier gets no keys from keysFunc, verifiable after sync
+		{
+			verifier: jwtVerifier{
+				issuer:   "example.com",
+				clientID: "XXX",
+				syncFunc: func() error { return nil },
+				keysFunc: func() func() []key.PublicKey {
+					var i int
+					return func() []key.PublicKey {
+						defer func() { i++ }()
+						return [][]key.PublicKey{
+							[]key.PublicKey{},
+							[]key.PublicKey{pk2},
+						}[i]
+					}
+				}(),
+			},
+			jwt:     *jwtPK2,
+			wantErr: false,
+		},
+	}
+
+	for i, tt := range tests {
+		err := tt.verifier.verify(tt.jwt)
+		if tt.wantErr && (err == nil) {
+			t.Errorf("case %d: wanted non-nil error", i)
+		} else if !tt.wantErr && (err != nil) {
+			t.Errorf("case %d: wanted nil error, got %v", i, err)
 		}
 	}
 }

@@ -69,16 +69,10 @@ func Sync(r ReadableKeySetRepo, w WritableKeySetRepo, clock clockwork.Clock) (ex
 		return
 	}
 
-	diff := ks.ExpiresAt().Sub(clock.Now().UTC())
-	if diff <= 0 {
-		err = errors.New("key set expired")
-		return
-	}
-
 	if err = w.Set(ks); err != nil {
 		return
 	}
 
-	exp = diff
+	exp = ks.ExpiresAt().Sub(clock.Now().UTC())
 	return
 }

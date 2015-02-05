@@ -185,7 +185,7 @@ func (c *Client) ClientCredsToken(scope []string) (jose.JWT, error) {
 	return jwt, c.Verify(jwt)
 }
 
-// Exchange an OAauth2 auth code for an OIDC JWT
+// Exchange an OAuth2 auth code for an OIDC JWT
 func (c *Client) ExchangeAuthCode(code string) (jose.JWT, error) {
 	oac, err := c.OAuthClient()
 	if err != nil {

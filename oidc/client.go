@@ -8,8 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jonboulle/clockwork"
-
 	"github.com/coreos-inc/auth/jose"
 	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oauth2"
@@ -134,7 +132,7 @@ func (c *Client) maybeSyncKeys() error {
 
 	r := NewRemotePublicKeyRepo(c.httpClient, c.providerConfig.KeysEndpoint)
 	w := &clientKeyRepo{client: c}
-	_, err := key.Sync(r, w, clockwork.NewRealClock())
+	_, err := key.Sync(r, w)
 	c.lastKeySetSync = time.Now().UTC()
 
 	return err

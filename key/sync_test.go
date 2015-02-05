@@ -168,7 +168,7 @@ func TestSync(t *testing.T) {
 			t.Errorf("case %d: unexpected error: %v", i, err)
 			continue
 		}
-		exp, err := Sync(from, to, fc)
+		exp, err := sync(from, to, fc)
 		if err != nil {
 			t.Errorf("case %d: unexpected error: %v", i, err)
 			continue
@@ -190,7 +190,7 @@ func TestSyncFail(t *testing.T) {
 		from := &staticReadableKeySetRepo{ks: nil, err: tt}
 		to := NewPrivateKeySetRepo()
 
-		if _, err := Sync(from, to, clockwork.NewFakeClock()); err == nil {
+		if _, err := sync(from, to, clockwork.NewFakeClock()); err == nil {
 			t.Errorf("case %d: expected non-nil error", i)
 		}
 	}

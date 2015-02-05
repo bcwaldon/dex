@@ -1,9 +1,11 @@
 package oidc
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"reflect"
 	"testing"
@@ -432,5 +434,33 @@ func TestProviderConfigSupportsGrantType(t *testing.T) {
 		if tt.want != got {
 			t.Errorf("case %d: assert %v supports %v: want=%t got=%t", i, tt.types, tt.typ, tt.want, got)
 		}
+	}
+}
+
+func TestWaitForProviderConfigImmediateSuccess(t *testing.T) {
+	cfg := ProviderConfig{Issuer: "http://example.com"}
+	b, err := json.Marshal(cfg)
+	if err != nil {
+		t.Fatalf("Failed marshaling provider config")
+	}
+
+	resp := http.Response{Body: ioutil.NopCloser(bytes.NewBuffer(b))}
+	hc := &phttp.RequestRecorder{Response: &resp}
+	fc := clockwork.NewFakeClock()
+
+	reschan := make(chan ProviderConfig)
+	go func() {
+		reschan <- waitForProviderConfig(hc, cfg.Issuer, fc)
+	}()
+
+	var got ProviderConfig
+	select {
+	case got = <-reschan:
+	case <-time.After(time.Second):
+		t.Fatalf("Did not receive result within 1s")
+	}
+
+	if !reflect.DeepEqual(cfg, got) {
+		t.Fatalf("Received incorrect provider config: want=%#v got=%#v", cfg, got)
 	}
 }

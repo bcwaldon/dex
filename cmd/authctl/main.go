@@ -3,8 +3,10 @@ package main
 import (
 	"errors"
 	"flag"
+	"net/http"
 	"os"
 
+	"github.com/coreos-inc/auth/oidc"
 	pflag "github.com/coreos-inc/auth/pkg/flag"
 	"github.com/coreos-inc/auth/pkg/log"
 )
@@ -17,6 +19,8 @@ var (
 	globalFS = flag.NewFlagSet(cliName, flag.ExitOnError)
 
 	global struct {
+		endpoint string
+		creds    oidc.ClientCredentials
 		dbURL    string
 		help     bool
 		logDebug bool
@@ -26,6 +30,9 @@ var (
 func init() {
 	log.EnableTimestamps()
 
+	globalFS.StringVar(&global.endpoint, "endpoint", "", "URL of authd API")
+	globalFS.StringVar(&global.creds.ID, "client-id", "", "authd API user ID")
+	globalFS.StringVar(&global.creds.Secret, "client-secret", "", "authd API user password")
 	globalFS.StringVar(&global.dbURL, "db-url", "", "DSN-formatted database connection string")
 	globalFS.BoolVar(&global.help, "help", false, "Print usage information and exit")
 	globalFS.BoolVar(&global.help, "h", false, "Print usage information and exit")
@@ -80,18 +87,33 @@ type command struct {
 
 }
 
-func parseFlags() (err error) {
-	if err = globalFS.Parse(os.Args[1:]); err != nil {
-		return
+func parseFlags() error {
+	if err := globalFS.Parse(os.Args[1:]); err != nil {
+		return err
 	}
 
-	if err = pflag.SetFlagsFromEnv(globalFS, "AUTHCTL"); err != nil {
-		return
+	return pflag.SetFlagsFromEnv(globalFS, "AUTHCTL")
+}
+
+func getDriver() (drv driver) {
+	var err error
+	switch {
+	case len(global.dbURL) > 0:
+		drv, err = newDBDriver(global.dbURL)
+	case len(global.endpoint) > 0:
+		if len(global.creds.ID) == 0 || len(global.creds.Secret) == 0 {
+			err = errors.New("--client-id/--client-secret flags unset")
+		} else {
+			pcfg := oidc.WaitForProviderConfig(http.DefaultClient, global.endpoint)
+			drv, err = newAPIDriver(pcfg, global.creds)
+		}
+	default:
+		err = errors.New("--endpoint/--db-url flags unset")
 	}
 
-	if len(global.dbURL) == 0 {
-		err = errors.New("--db-url unset")
-		return
+	if err != nil {
+		stderr("Unable to configure authctl driver: %v", err)
+		os.Exit(1)
 	}
 
 	return

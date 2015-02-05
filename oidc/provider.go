@@ -234,3 +234,24 @@ func FetchProviderConfig(hc phttp.Client, issuerURL string) (ProviderConfig, err
 	g := NewHTTPProviderConfigGetter(hc, issuerURL)
 	return g.Get()
 }
+
+func WaitForProviderConfig(hc phttp.Client, issuerURL string) (pcfg ProviderConfig) {
+	return waitForProviderConfig(hc, issuerURL, clockwork.NewRealClock())
+}
+
+func waitForProviderConfig(hc phttp.Client, issuerURL string, clock clockwork.Clock) (pcfg ProviderConfig) {
+	var sleep time.Duration
+	var err error
+	for {
+		pcfg, err = FetchProviderConfig(hc, issuerURL)
+		if err == nil {
+			break
+		}
+
+		sleep = ptime.ExpBackoff(sleep, time.Minute)
+		fmt.Printf("Failed fetching provider config, trying again in %v: %v", sleep, err)
+		time.Sleep(sleep)
+	}
+
+	return
+}

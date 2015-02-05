@@ -45,13 +45,7 @@ func runSetConnectorConfigs(args []string) int {
 		return 1
 	}
 
-	drv, err := newDBDriver(global.dbURL)
-	if err != nil {
-		stderr("Unable to initialize driver: %v", err)
-		return 1
-	}
-
-	if err := drv.SetConnectorConfigs(cfgs); err != nil {
+	if err := getDriver().SetConnectorConfigs(cfgs); err != nil {
 		stderr(err.Error())
 		return 1
 	}
@@ -67,13 +61,7 @@ func runGetConnectorConfigs(args []string) int {
 		return 2
 	}
 
-	drv, err := newDBDriver(global.dbURL)
-	if err != nil {
-		stderr("Unable to initialize driver: %v", err)
-		return 1
-	}
-
-	cfgs, err := drv.ConnectorConfigs()
+	cfgs, err := getDriver().ConnectorConfigs()
 	if err != nil {
 		stderr("Unable to retrieve connector configs: %v", err)
 		return 1

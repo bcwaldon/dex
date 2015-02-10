@@ -2,6 +2,7 @@ package db
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -41,37 +42,69 @@ func newClientIdentityModel(id string, secret []byte, meta *oidc.ClientMetadata)
 		return nil, err
 	}
 
+	bmeta, err := json.Marshal(newClientMetadataJSON(meta))
+	if err != nil {
+		return nil, err
+	}
+
 	cim := clientIdentityModel{
-		ID:          id,
-		Secret:      hashed,
-		RedirectURL: meta.RedirectURL.String(),
+		ID:       id,
+		Secret:   hashed,
+		Metadata: bmeta,
 	}
 
 	return &cim, nil
 }
 
 type clientIdentityModel struct {
-	ID          string `db:"id"`
-	Secret      []byte `db:"secret"`
-	RedirectURL string `db:"redirectURL"`
+	ID       string `db:"id"`
+	Secret   []byte `db:"secret"`
+	Metadata []byte `db:"metadata"`
 }
 
-func (m *clientIdentityModel) ClientIdentity() (*oidc.ClientIdentity, error) {
+func newClientMetadataJSON(meta *oidc.ClientMetadata) *clientMetadataJSON {
+	return &clientMetadataJSON{
+		RedirectURL: (&meta.RedirectURL).String(),
+	}
+}
+
+type clientMetadataJSON struct {
+	RedirectURL string `json:"redirectURL"`
+}
+
+func (m clientMetadataJSON) ClientMetadata() (*oidc.ClientMetadata, error) {
 	u, err := url.Parse(m.RedirectURL)
 	if err != nil {
 		return nil, err
 	}
 
+	meta := oidc.ClientMetadata{
+		RedirectURL: *u,
+	}
+
+	return &meta, nil
+}
+
+func (m *clientIdentityModel) ClientIdentity() (*oidc.ClientIdentity, error) {
 	ci := oidc.ClientIdentity{
 		Credentials: oidc.ClientCredentials{
 			ID:     m.ID,
 			Secret: string(m.Secret),
 		},
-		Metadata: oidc.ClientMetadata{
-			RedirectURL: *u,
-		},
 	}
 
+	var cmj clientMetadataJSON
+	err := json.Unmarshal(m.Metadata, &cmj)
+	if err != nil {
+		return nil, err
+	}
+
+	cm, err := cmj.ClientMetadata()
+	if err != nil {
+		return nil, err
+	}
+
+	ci.Metadata = *cm
 	return &ci, nil
 }
 

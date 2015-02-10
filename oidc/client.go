@@ -8,8 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jonboulle/clockwork"
-
 	"github.com/coreos-inc/auth/jose"
 	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oauth2"
@@ -76,7 +74,7 @@ type Client struct {
 	scope          []string
 	keySet         key.PublicKeySet
 
-	keySetSyncMutex sync.Mutex
+	keySetSyncMutex sync.RWMutex
 	lastKeySetSync  time.Time
 }
 
@@ -134,7 +132,7 @@ func (c *Client) maybeSyncKeys() error {
 
 	r := NewRemotePublicKeyRepo(c.httpClient, c.providerConfig.KeysEndpoint)
 	w := &clientKeyRepo{client: c}
-	_, err := key.Sync(r, w, clockwork.NewRealClock())
+	_, err := key.Sync(r, w)
 	c.lastKeySetSync = time.Now().UTC()
 
 	return err
@@ -182,10 +180,10 @@ func (c *Client) ClientCredsToken(scope []string) (jose.JWT, error) {
 		return jose.JWT{}, err
 	}
 
-	return jwt, c.Verify(jwt)
+	return jwt, c.verifyJWT(jwt)
 }
 
-// Exchange an OAauth2 auth code for an OIDC JWT
+// Exchange an OAuth2 auth code for an OIDC JWT
 func (c *Client) ExchangeAuthCode(code string) (jose.JWT, error) {
 	oac, err := c.OAuthClient()
 	if err != nil {
@@ -202,48 +200,56 @@ func (c *Client) ExchangeAuthCode(code string) (jose.JWT, error) {
 		return jose.JWT{}, err
 	}
 
-	return jwt, c.Verify(jwt)
+	return jwt, c.verifyJWT(jwt)
 }
 
-func (c *Client) Verify(jwt jose.JWT) error {
-	var keys func() []key.PublicKey
+func (c *Client) verifyJWT(jwt jose.JWT) error {
+	v := &jwtVerifier{
+		issuer:   c.providerConfig.Issuer,
+		clientID: c.credentials.ID,
+		syncFunc: c.maybeSyncKeys,
+	}
+
 	if kID, ok := jwt.KeyID(); ok {
-		keys = func() (keys []key.PublicKey) {
-			if k := c.keySet.Key(kID); k != nil {
-				keys = append(keys, *k)
-			}
-			return
-		}
+		v.keysFunc = c.keysFuncWithID(kID)
 	} else {
-		keys = func() []key.PublicKey {
-			return c.keySet.Keys()
-		}
+		v.keysFunc = c.keysFuncAll()
 	}
 
-	reattempt := func() error {
-		ok, err := VerifySignature(jwt, keys())
-		if ok || err != nil {
-			return err
+	return v.verify(jwt)
+}
+
+// keysFuncWithID returns a function that retrieves at most unexpired
+// public key from the Client that matches the provided ID
+func (c *Client) keysFuncWithID(kID string) func() []key.PublicKey {
+	return func() []key.PublicKey {
+		c.keySetSyncMutex.RLock()
+		defer c.keySetSyncMutex.RUnlock()
+
+		if c.keySet.ExpiresAt().Before(time.Now()) {
+			return []key.PublicKey{}
 		}
 
-		if err = c.maybeSyncKeys(); err != nil {
-			return err
+		k := c.keySet.Key(kID)
+		if k == nil {
+			return []key.PublicKey{}
 		}
 
-		ok, err = VerifySignature(jwt, keys())
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return errors.New("no matching keys")
-		}
-
-		return nil
+		return []key.PublicKey{*k}
 	}
+}
 
-	if err := reattempt(); err != nil {
-		return fmt.Errorf("could not verify JWT signature: %v", err)
+// keysFuncAll returns a function that retrieves all unexpired public
+// keys from the Client
+func (c *Client) keysFuncAll() func() []key.PublicKey {
+	return func() []key.PublicKey {
+		c.keySetSyncMutex.RLock()
+		defer c.keySetSyncMutex.RUnlock()
+
+		if c.keySet.ExpiresAt().Before(time.Now()) {
+			return []key.PublicKey{}
+		}
+
+		return c.keySet.Keys()
 	}
-
-	return VerifyClaims(jwt, c.providerConfig.Issuer, c.credentials.ID)
 }

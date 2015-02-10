@@ -1,12 +1,22 @@
 package key
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 	"time"
 
 	"github.com/jonboulle/clockwork"
 )
+
+type staticReadableKeySetRepo struct {
+	ks  KeySet
+	err error
+}
+
+func (r *staticReadableKeySetRepo) Get() (KeySet, error) {
+	return r.ks, r.err
+}
 
 func TestKeySyncerSync(t *testing.T) {
 	fc := clockwork.NewFakeClock()
@@ -15,16 +25,16 @@ func TestKeySyncerSync(t *testing.T) {
 	k1 := generatePrivateKeyStatic(t, 1)
 	k2 := generatePrivateKeyStatic(t, 2)
 	k3 := generatePrivateKeyStatic(t, 3)
-	k4 := generatePrivateKeyStatic(t, 4)
 
 	steps := []struct {
-		from    *PrivateKeySet
+		fromKS  KeySet
+		fromErr error
 		advance time.Duration
 		want    *PrivateKeySet
 	}{
 		// on startup, first sync should trigger within a second
 		{
-			from: &PrivateKeySet{
+			fromKS: &PrivateKeySet{
 				keys:        []*PrivateKey{k1},
 				ActiveKeyID: k1.KeyID,
 				expiresAt:   now.Add(10 * time.Second),
@@ -38,7 +48,7 @@ func TestKeySyncerSync(t *testing.T) {
 		},
 		// advance halfway into TTL, triggering sync
 		{
-			from: &PrivateKeySet{
+			fromKS: &PrivateKeySet{
 				keys:        []*PrivateKey{k2, k1},
 				ActiveKeyID: k2.KeyID,
 				expiresAt:   now.Add(15 * time.Second),
@@ -53,11 +63,7 @@ func TestKeySyncerSync(t *testing.T) {
 
 		// advance halfway into TTL, triggering sync that fails
 		{
-			from: &PrivateKeySet{
-				keys:        []*PrivateKey{k3, k2, k1},
-				ActiveKeyID: k3.KeyID,
-				expiresAt:   now.Add(10 * time.Second),
-			},
+			fromErr: errors.New("fail!"),
 			advance: 10 * time.Second,
 			want: &PrivateKeySet{
 				keys:        []*PrivateKey{k2, k1},
@@ -68,21 +74,21 @@ func TestKeySyncerSync(t *testing.T) {
 
 		// sync retries quickly, and succeeds with fixed data
 		{
-			from: &PrivateKeySet{
-				keys:        []*PrivateKey{k4, k2, k1},
-				ActiveKeyID: k4.KeyID,
+			fromKS: &PrivateKeySet{
+				keys:        []*PrivateKey{k3, k2, k1},
+				ActiveKeyID: k3.KeyID,
 				expiresAt:   now.Add(25 * time.Second),
 			},
 			advance: 3 * time.Second,
 			want: &PrivateKeySet{
-				keys:        []*PrivateKey{k4, k2, k1},
-				ActiveKeyID: k4.KeyID,
+				keys:        []*PrivateKey{k3, k2, k1},
+				ActiveKeyID: k3.KeyID,
 				expiresAt:   now.Add(25 * time.Second),
 			},
 		},
 	}
 
-	from := NewPrivateKeySetRepo()
+	from := &staticReadableKeySetRepo{}
 	to := NewPrivateKeySetRepo()
 
 	syncer := NewKeySetSyncer(from, to)
@@ -91,10 +97,8 @@ func TestKeySyncerSync(t *testing.T) {
 	defer close(stop)
 
 	for i, st := range steps {
-		err := from.Set(st.from)
-		if err != nil {
-			t.Fatalf("step %d: unable to set keys: %v", i, err)
-		}
+		from.ks = st.fromKS
+		from.err = st.fromErr
 
 		fc.Advance(st.advance)
 		fc.BlockUntil(1)
@@ -164,7 +168,7 @@ func TestSync(t *testing.T) {
 			t.Errorf("case %d: unexpected error: %v", i, err)
 			continue
 		}
-		exp, err := Sync(from, to, fc)
+		exp, err := sync(from, to, fc)
 		if err != nil {
 			t.Errorf("case %d: unexpected error: %v", i, err)
 			continue
@@ -177,25 +181,17 @@ func TestSync(t *testing.T) {
 }
 
 func TestSyncFail(t *testing.T) {
-	fc := clockwork.NewFakeClock()
-	now := fc.Now().UTC()
-
-	from := NewPrivateKeySetRepo()
-	to := NewPrivateKeySetRepo()
-
-	k1 := generatePrivateKeyStatic(t, 1)
-	k2 := generatePrivateKeyStatic(t, 2)
-	fixture := &PrivateKeySet{
-		keys:        []*PrivateKey{k2, k1},
-		ActiveKeyID: k2.KeyID,
-		expiresAt:   now.Add(-1 * time.Minute),
+	tests := []error{
+		nil,
+		errors.New("fail!"),
 	}
-	err := from.Set(fixture)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	_, err = Sync(from, to, fc)
-	if err == nil {
-		t.Fatal("expected non-nil error")
+
+	for i, tt := range tests {
+		from := &staticReadableKeySetRepo{ks: nil, err: tt}
+		to := NewPrivateKeySetRepo()
+
+		if _, err := sync(from, to, clockwork.NewFakeClock()); err == nil {
+			t.Errorf("case %d: expected non-nil error", i)
+		}
 	}
 }

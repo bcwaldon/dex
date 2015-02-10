@@ -64,16 +64,16 @@ type clientIdentityModel struct {
 
 func newClientMetadataJSON(meta *oidc.ClientMetadata) *clientMetadataJSON {
 	return &clientMetadataJSON{
-		RedirectURL: (&meta.RedirectURL).String(),
+		RedirectURLs: []string{(&meta.RedirectURL).String()},
 	}
 }
 
 type clientMetadataJSON struct {
-	RedirectURL string `json:"redirectURL"`
+	RedirectURLs []string `json:"redirectURLs"`
 }
 
 func (m clientMetadataJSON) ClientMetadata() (*oidc.ClientMetadata, error) {
-	u, err := url.Parse(m.RedirectURL)
+	u, err := url.Parse(m.RedirectURLs[0])
 	if err != nil {
 		return nil, err
 	}

@@ -1,16 +1,26 @@
 authd
 =====
 
-authd is a federated identity authentication system implementing Open ID Connect (OIDC) on top of OAuth2.
-It is backed by a postgres database, but can be run locally in memory for testing.
-The server federeates identity assertion to a trused remote Identity Providers (IdP), aka Google.
-Currently only use of a single IdP is supported, but configuration of multiple IdPs will be supported.
+authd is a federated identity management service.
+It provides OpenID Connect (OIDC) to users, while it proxies to multiple remote identity providers (IdP) to drive actual authentication.
 
-authd consists of multiple components:  
-- server: is an OIDC server that proxies to Identity Providers (IdP) via "connectors".
-- OIDC client library: for clients connecting to authd or any other OIDC compliant Identity Providers (IdP) for authentication.
-- authd-overlord: a helper process required by the server. It refreshes signing keys and garbage collects expired sessions.
-- authctl: CLI tool for interfacing with the server.
+## Architecture
+
+authd consists of multiple components:
+
+- **authd-worker** is the primary server component of authd
+	- host a user-facing API that drives the OIDC protocol
+	- proxy to remote identity providers via "connectors"
+- **authd-overlord** is an auxiliary process responsible for two things:
+	- rotation of keys used by the workers to sign identity tokens
+	- garbage collection of stale data in the database
+- **authctl** is CLI tool used to manage an authd deployment
+	- configure identity provider connectors
+	- administer OIDC client identities
+
+A typical authd deployment consists of N authd-workers behind a load balanacer, and one authd-overlord.
+The authd-workers directly handle user requests, so the loss of all workers can result in service downtime.
+The single authd-overlord runs its tasks periodically, so it does not need to maintain 100% uptime.
 
 ## Connectors
 

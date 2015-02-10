@@ -74,7 +74,7 @@ type Client struct {
 	scope          []string
 	keySet         key.PublicKeySet
 
-	keySetSyncMutex sync.Mutex
+	keySetSyncMutex sync.RWMutex
 	lastKeySetSync  time.Time
 }
 
@@ -211,18 +211,45 @@ func (c *Client) verifyJWT(jwt jose.JWT) error {
 	}
 
 	if kID, ok := jwt.KeyID(); ok {
-		v.keysFunc = func() []key.PublicKey {
-			k := c.keySet.Key(kID)
-			if k == nil {
-				return []key.PublicKey{}
-			}
-			return []key.PublicKey{*k}
-		}
+		v.keysFunc = c.keysFuncWithID(kID)
 	} else {
-		v.keysFunc = func() []key.PublicKey {
-			return c.keySet.Keys()
-		}
+		v.keysFunc = c.keysFuncAll()
 	}
 
 	return v.verify(jwt)
+}
+
+// keysFuncWithID returns a function that retrieves at most unexpired
+// public key from the Client that matches the provided ID
+func (c *Client) keysFuncWithID(kID string) func() []key.PublicKey {
+	return func() []key.PublicKey {
+		c.keySetSyncMutex.RLock()
+		defer c.keySetSyncMutex.RUnlock()
+
+		if c.keySet.ExpiresAt().Before(time.Now()) {
+			return []key.PublicKey{}
+		}
+
+		k := c.keySet.Key(kID)
+		if k == nil {
+			return []key.PublicKey{}
+		}
+
+		return []key.PublicKey{*k}
+	}
+}
+
+// keysFuncAll returns a function that retrieves all unexpired public
+// keys from the Client
+func (c *Client) keysFuncAll() func() []key.PublicKey {
+	return func() []key.PublicKey {
+		c.keySetSyncMutex.RLock()
+		defer c.keySetSyncMutex.RUnlock()
+
+		if c.keySet.ExpiresAt().Before(time.Now()) {
+			return []key.PublicKey{}
+		}
+
+		return c.keySet.Keys()
+	}
 }

@@ -28,9 +28,10 @@ type ClientIdentityRepo interface {
 	// All returns all registered Client Identities.
 	All() ([]oidc.ClientIdentity, error)
 
-	// New registers a new ClientIdentity with the repo for the given metadata.
-	// A unique Client ID and Secret will be generated and returned.
-	New(meta oidc.ClientMetadata) (*oidc.ClientCredentials, error)
+	// New registers a ClientIdentity with the repo for the given metadata.
+	// An unused ID must be provided. A corresponding secret will be returned
+	// in a ClientCredentials struct along with the provided ID.
+	New(id string, meta oidc.ClientMetadata) (*oidc.ClientCredentials, error)
 }
 
 func NewClientIdentityRepo(cs []oidc.ClientIdentity) ClientIdentityRepo {
@@ -50,14 +51,9 @@ type memClientIdentityRepo struct {
 	idents map[string]oidc.ClientIdentity
 }
 
-func (cr *memClientIdentityRepo) New(meta oidc.ClientMetadata) (*oidc.ClientCredentials, error) {
-	if len(meta.RedirectURLs) == 0 {
-		return nil, errors.New("need at least one redirect URL")
-	}
-
-	id, err := oidc.GenClientID(meta.RedirectURLs[0].Host)
-	if err != nil {
-		return nil, err
+func (cr *memClientIdentityRepo) New(id string, meta oidc.ClientMetadata) (*oidc.ClientCredentials, error) {
+	if _, ok := cr.idents[id]; ok {
+		return nil, errors.New("client ID already exists")
 	}
 
 	secret, err := pcrypto.RandBytes(32)

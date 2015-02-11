@@ -70,13 +70,13 @@ func TestCreateInvalidRequest(t *testing.T) {
 		{
 			req:      &http.Request{Method: "POST", URL: u, Header: h, Body: makeBody(`{"id":"foo"}`)},
 			wantCode: http.StatusBadRequest,
-			wantBody: `{"error":"invalid_client_metadata","error_description":"missing or invalid field: redirectURIs"}`,
+			wantBody: `{"error":"invalid_client_metadata","error_description":"zero redirect URLs"}`,
 		},
 		// empty url array
 		{
 			req:      &http.Request{Method: "POST", URL: u, Header: h, Body: makeBody(`{"redirectURIs":[]}`)},
 			wantCode: http.StatusBadRequest,
-			wantBody: `{"error":"invalid_client_metadata","error_description":"missing or invalid field: redirectURIs"}`,
+			wantBody: `{"error":"invalid_client_metadata","error_description":"zero redirect URLs"}`,
 		},
 		// array with empty string
 		{
@@ -88,13 +88,13 @@ func TestCreateInvalidRequest(t *testing.T) {
 		{
 			req:      &http.Request{Method: "POST", URL: u, Header: h, Body: makeBody(`{"redirectURIs":["asdf.com"]}`)},
 			wantCode: http.StatusBadRequest,
-			wantBody: `{"error":"invalid_client_metadata","error_description":"missing or invalid field: redirectURIs"}`,
+			wantBody: `{"error":"invalid_client_metadata","error_description":"invalid redirect URL: scheme empty"}`,
 		},
 		// uri missing host
 		{
 			req:      &http.Request{Method: "POST", URL: u, Header: h, Body: makeBody(`{"redirectURIs":["http://"]}`)},
 			wantCode: http.StatusBadRequest,
-			wantBody: `{"error":"invalid_client_metadata","error_description":"missing or invalid field: redirectURIs"}`,
+			wantBody: `{"error":"invalid_client_metadata","error_description":"invalid redirect URL: host empty"}`,
 		},
 	}
 

@@ -150,12 +150,12 @@ func TestDBClientIdentityRepoMetadata(t *testing.T) {
 		},
 	}
 
-	cc, err := r.New(cm)
+	_, err := r.New("foo", cm)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
 
-	got, err := r.Metadata(cc.ID)
+	got, err := r.Metadata("foo")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -176,6 +176,30 @@ func TestDBClientIdentityRepoMetadataNoExist(t *testing.T) {
 	}
 }
 
+func TestDBClientIdentityRepoNewDuplicate(t *testing.T) {
+	r := db.NewClientIdentityRepo(connect(t))
+
+	meta1 := oidc.ClientMetadata{
+		RedirectURLs: []url.URL{
+			url.URL{Scheme: "http", Host: "foo.example.com"},
+		},
+	}
+
+	if _, err := r.New("foo", meta1); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	meta2 := oidc.ClientMetadata{
+		RedirectURLs: []url.URL{
+			url.URL{Scheme: "http", Host: "bar.example.com"},
+		},
+	}
+
+	if _, err := r.New("foo", meta2); err == nil {
+		t.Fatalf("expected non-nil error")
+	}
+}
+
 func TestDBClientIdentityRepoAuthenticate(t *testing.T) {
 	r := db.NewClientIdentityRepo(connect(t))
 
@@ -185,9 +209,13 @@ func TestDBClientIdentityRepoAuthenticate(t *testing.T) {
 		},
 	}
 
-	cc, err := r.New(cm)
+	cc, err := r.New("baz", cm)
 	if err != nil {
 		t.Fatalf(err.Error())
+	}
+
+	if cc.ID != "baz" {
+		t.Fatalf("Returned ClientCredentials has incorrect ID: want=baz got=%s", cc.ID)
 	}
 
 	ok, err := r.Authenticate(*cc)
@@ -229,7 +257,7 @@ func TestDBClientIdentityAll(t *testing.T) {
 		},
 	}
 
-	_, err := r.New(cm)
+	_, err := r.New("foo", cm)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -252,7 +280,7 @@ func TestDBClientIdentityAll(t *testing.T) {
 			url.URL{Scheme: "http", Host: "foo.com", Path: "/cb"},
 		},
 	}
-	_, err = r.New(cm)
+	_, err = r.New("bar", cm)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}

@@ -25,6 +25,9 @@ const (
 	// since the bcrypt library will silently ignore portions of
 	// a password past the first 72 characters.
 	maxSecretLength = 72
+
+	// postgres error codes
+	pgErrorCodeUniqueViolation = "23505" // unique_violation
 )
 
 func init() {
@@ -168,16 +171,7 @@ func (r *clientIdentityRepo) Authenticate(creds oidc.ClientCredentials) (bool, e
 	return ok, nil
 }
 
-func (r *clientIdentityRepo) New(meta oidc.ClientMetadata) (*oidc.ClientCredentials, error) {
-	if len(meta.RedirectURLs) == 0 {
-		return nil, errors.New("need at least one redirect URL")
-	}
-
-	id, err := oidc.GenClientID(meta.RedirectURLs[0].Host)
-	if err != nil {
-		return nil, err
-	}
-
+func (r *clientIdentityRepo) New(id string, meta oidc.ClientMetadata) (*oidc.ClientCredentials, error) {
 	secret, err := pcrypto.RandBytes(maxSecretLength)
 	if err != nil {
 		return nil, err
@@ -189,6 +183,10 @@ func (r *clientIdentityRepo) New(meta oidc.ClientMetadata) (*oidc.ClientCredenti
 	}
 
 	if err := r.dbMap.Insert(cim); err != nil {
+		if perr, ok := err.(*pq.Error); ok && perr.Code == pgErrorCodeUniqueViolation {
+			err = errors.New("client ID already exists")
+		}
+
 		return nil, err
 	}
 

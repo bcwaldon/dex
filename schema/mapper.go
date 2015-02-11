@@ -12,22 +12,22 @@ func MapSchemaClientToClientIdentity(sc Client) (oidc.ClientIdentity, error) {
 		Credentials: oidc.ClientCredentials{
 			ID: sc.Id,
 		},
-		Metadata: oidc.ClientMetadata{},
+		Metadata: oidc.ClientMetadata{
+			RedirectURLs: make([]url.URL, len(sc.RedirectURIs)),
+		},
 	}
 
-	for _, ru := range sc.RedirectURIs {
+	for i, ru := range sc.RedirectURIs {
 		if ru == "" {
-			continue
+			return oidc.ClientIdentity{}, errors.New("redirect URL empty")
 		}
+
 		u, err := url.Parse(ru)
 		if err != nil {
-			continue
+			return oidc.ClientIdentity{}, errors.New("redirect URL invalid")
 		}
-		ci.Metadata.RedirectURLs = append(ci.Metadata.RedirectURLs, *u)
-	}
 
-	if len(ci.Metadata.RedirectURLs) == 0 {
-		return oidc.ClientIdentity{}, errors.New("need at least one redirect URL")
+		ci.Metadata.RedirectURLs[i] = *u
 	}
 
 	return ci, nil

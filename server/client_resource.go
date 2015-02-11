@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"path"
 
+	"github.com/coreos-inc/auth/oidc"
 	phttp "github.com/coreos-inc/auth/pkg/http"
 	"github.com/coreos-inc/auth/pkg/log"
 	"github.com/coreos-inc/auth/schema"
@@ -80,16 +81,24 @@ func (c *clientResource) create(w http.ResponseWriter, r *http.Request) {
 		writeAPIError(w, http.StatusBadRequest, newAPIError(errorInvalidClientMetadata, "missing or invalid field: redirectURIs"))
 		return
 	}
-	for _, u := range ci.Metadata.RedirectURLs {
-		if u.Scheme == "" || u.Host == "" {
-			writeAPIError(w, http.StatusBadRequest, newAPIError(errorInvalidClientMetadata, "missing or invalid field: redirectURIs"))
-			return
-		}
+
+	if err := ci.Metadata.Valid(); err != nil {
+		log.Debugf("ClientMetadata invalid: %v", err)
+		writeAPIError(w, http.StatusBadRequest, newAPIError(errorInvalidClientMetadata, err.Error()))
+		return
 	}
 
-	creds, err := c.repo.New(ci.Metadata)
+	clientID, err := oidc.GenClientID(ci.Metadata.RedirectURLs[0].Host)
 	if err != nil {
-		writeAPIError(w, http.StatusBadRequest, newAPIError(errorInvalidClientMetadata, "missing or invalid field: redirectURIs"))
+		log.Errorf("Failed generating ID for new client: %v", err)
+		writeAPIError(w, http.StatusInternalServerError, newAPIError(errorServerError, "unable to generate client ID"))
+		return
+	}
+
+	creds, err := c.repo.New(clientID, ci.Metadata)
+	if err != nil {
+		log.Errorf("Failed creating client: %v", err)
+		writeAPIError(w, http.StatusInternalServerError, newAPIError(errorServerError, "unable to create client"))
 		return
 	}
 	ci.Credentials = *creds

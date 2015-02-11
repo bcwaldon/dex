@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"io"
 	"io/ioutil"
 	"net/url"
@@ -50,7 +51,11 @@ type memClientIdentityRepo struct {
 }
 
 func (cr *memClientIdentityRepo) New(meta oidc.ClientMetadata) (*oidc.ClientCredentials, error) {
-	id, err := oidc.GenClientID(meta.RedirectURL.Host)
+	if len(meta.RedirectURLs) == 0 {
+		return nil, errors.New("need at least one redirect URL")
+	}
+
+	id, err := oidc.GenClientID(meta.RedirectURLs[0].Host)
 	if err != nil {
 		return nil, err
 	}
@@ -134,17 +139,12 @@ type clientIdentity oidc.ClientIdentity
 
 func (ci *clientIdentity) UnmarshalJSON(data []byte) error {
 	c := struct {
-		ID          string `json:"id"`
-		Secret      string `json:"secret"`
-		RedirectURL string `json:"redirectURL"`
+		ID           string   `json:"id"`
+		Secret       string   `json:"secret"`
+		RedirectURLs []string `json:"redirectURL"`
 	}{}
 
 	if err := json.Unmarshal(data, &c); err != nil {
-		return err
-	}
-
-	ru, err := url.Parse(c.RedirectURL)
-	if err != nil {
 		return err
 	}
 
@@ -153,7 +153,15 @@ func (ci *clientIdentity) UnmarshalJSON(data []byte) error {
 		Secret: c.Secret,
 	}
 	ci.Metadata = oidc.ClientMetadata{
-		RedirectURL: *ru,
+		RedirectURLs: make([]url.URL, len(c.RedirectURLs)),
+	}
+
+	for i, us := range c.RedirectURLs {
+		up, err := url.Parse(us)
+		if err != nil {
+			return err
+		}
+		ci.Metadata.RedirectURLs[i] = *up
 	}
 
 	return nil

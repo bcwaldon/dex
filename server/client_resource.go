@@ -80,10 +80,11 @@ func (c *clientResource) create(w http.ResponseWriter, r *http.Request) {
 		writeAPIError(w, http.StatusBadRequest, newAPIError(errorInvalidClientMetadata, "missing or invalid field: redirectURIs"))
 		return
 	}
-	u := ci.Metadata.RedirectURL
-	if u.Scheme == "" || u.Host == "" {
-		writeAPIError(w, http.StatusBadRequest, newAPIError(errorInvalidClientMetadata, "missing or invalid field: redirectURIs"))
-		return
+	for _, u := range ci.Metadata.RedirectURLs {
+		if u.Scheme == "" || u.Host == "" {
+			writeAPIError(w, http.StatusBadRequest, newAPIError(errorInvalidClientMetadata, "missing or invalid field: redirectURIs"))
+			return
+		}
 	}
 
 	creds, err := c.repo.New(ci.Metadata)

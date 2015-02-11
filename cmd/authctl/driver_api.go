@@ -41,7 +41,11 @@ type apiDriver struct {
 
 func (d *apiDriver) NewClient(meta oidc.ClientMetadata) (*oidc.ClientCredentials, error) {
 	sc := &schema.Client{
-		RedirectURIs: []string{meta.RedirectURL.String()},
+		RedirectURIs: make([]string, len(meta.RedirectURLs)),
+	}
+
+	for i, u := range meta.RedirectURLs {
+		sc.RedirectURIs[i] = u.String()
 	}
 
 	call := d.svc.Clients.Create(sc)

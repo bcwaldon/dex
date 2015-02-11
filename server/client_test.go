@@ -15,17 +15,21 @@ func TestMemClientIdentityRepoNew(t *testing.T) {
 	}{
 		{
 			meta: oidc.ClientMetadata{
-				RedirectURL: url.URL{
-					Scheme: "https",
-					Host:   "example.com",
+				RedirectURLs: []url.URL{
+					url.URL{
+						Scheme: "https",
+						Host:   "example.com",
+					},
 				},
 			},
 		},
 		{
 			meta: oidc.ClientMetadata{
-				RedirectURL: url.URL{
-					Scheme: "https",
-					Host:   "example.com/foo",
+				RedirectURLs: []url.URL{
+					url.URL{
+						Scheme: "https",
+						Host:   "example.com/foo",
+					},
 				},
 			},
 		},
@@ -54,10 +58,10 @@ func TestMemClientIdentityRepoNew(t *testing.T) {
 			t.Errorf("case %d: expected repo to contain newly created Client", i)
 		}
 
-		uWant := tt.meta.RedirectURL
-		uGot := all[0].Metadata.RedirectURL
-		if uWant != uGot {
-			t.Errorf("case %d: redirect url mismatch, want=%v, got=%v", i, uWant, uGot)
+		wantURLs := tt.meta.RedirectURLs
+		gotURLs := all[0].Metadata.RedirectURLs
+		if !reflect.DeepEqual(wantURLs, gotURLs) {
+			t.Errorf("case %d: redirect url mismatch, want=%v, got=%v", i, wantURLs, gotURLs)
 		}
 	}
 }

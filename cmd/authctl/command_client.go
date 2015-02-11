@@ -31,7 +31,7 @@ func runNewClient(args []string) int {
 		return 1
 	}
 
-	cc, err := getDriver().NewClient(oidc.ClientMetadata{RedirectURL: *redirectURL})
+	cc, err := getDriver().NewClient(oidc.ClientMetadata{RedirectURLs: []url.URL{*redirectURL}})
 	if err != nil {
 		stderr("Failed creating new client: %v", err)
 		return 1

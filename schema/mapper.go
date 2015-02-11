@@ -15,7 +15,6 @@ func MapSchemaClientToClientIdentity(sc Client) (oidc.ClientIdentity, error) {
 		Metadata: oidc.ClientMetadata{},
 	}
 
-	urlOK := false
 	for _, ru := range sc.RedirectURIs {
 		if ru == "" {
 			continue
@@ -24,27 +23,35 @@ func MapSchemaClientToClientIdentity(sc Client) (oidc.ClientIdentity, error) {
 		if err != nil {
 			continue
 		}
-		ci.Metadata.RedirectURL = *u
-		urlOK = true
+		ci.Metadata.RedirectURLs = append(ci.Metadata.RedirectURLs, *u)
 	}
-	if !urlOK {
-		return oidc.ClientIdentity{}, errors.New("invalid callback URLs")
+
+	if len(ci.Metadata.RedirectURLs) == 0 {
+		return oidc.ClientIdentity{}, errors.New("need at least one redirect URL")
 	}
 
 	return ci, nil
 }
 
 func MapClientIdentityToSchemaClient(c oidc.ClientIdentity) Client {
-	return Client{
+	cl := Client{
 		Id:           c.Credentials.ID,
-		RedirectURIs: []string{c.Metadata.RedirectURL.String()},
+		RedirectURIs: make([]string, len(c.Metadata.RedirectURLs)),
 	}
+	for i, u := range c.Metadata.RedirectURLs {
+		cl.RedirectURIs[i] = u.String()
+	}
+	return cl
 }
 
 func MapClientIdentityToSchemaClientWithSecret(c oidc.ClientIdentity) ClientWithSecret {
-	return ClientWithSecret{
+	cl := ClientWithSecret{
 		Id:           c.Credentials.ID,
 		Secret:       c.Credentials.Secret,
-		RedirectURIs: []string{c.Metadata.RedirectURL.String()},
+		RedirectURIs: make([]string, len(c.Metadata.RedirectURLs)),
 	}
+	for i, u := range c.Metadata.RedirectURLs {
+		cl.RedirectURIs[i] = u.String()
+	}
+	return cl
 }

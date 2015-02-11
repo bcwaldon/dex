@@ -144,7 +144,10 @@ func TestDBClientIdentityRepoMetadata(t *testing.T) {
 	r := db.NewClientIdentityRepo(connect(t))
 
 	cm := oidc.ClientMetadata{
-		RedirectURL: url.URL{Scheme: "http", Host: "127.0.0.1:5556", Path: "/cb"},
+		RedirectURLs: []url.URL{
+			url.URL{Scheme: "http", Host: "127.0.0.1:5556", Path: "/cb"},
+			url.URL{Scheme: "https", Host: "example.com", Path: "/callback"},
+		},
 	}
 
 	cc, err := r.New(cm)
@@ -159,8 +162,12 @@ func TestDBClientIdentityRepoMetadata(t *testing.T) {
 	if !reflect.DeepEqual(cm, *got) {
 		t.Fatalf("Retrieved incorrect ClientMetadata: want=%#v got=%#v", cm, *got)
 	}
+}
 
-	got, err = r.Metadata("noexist")
+func TestDBClientIdentityRepoMetadataNoExist(t *testing.T) {
+	r := db.NewClientIdentityRepo(connect(t))
+
+	got, err := r.Metadata("noexist")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -173,7 +180,9 @@ func TestDBClientIdentityRepoAuthenticate(t *testing.T) {
 	r := db.NewClientIdentityRepo(connect(t))
 
 	cm := oidc.ClientMetadata{
-		RedirectURL: url.URL{Scheme: "http", Host: "127.0.0.1:5556", Path: "/cb"},
+		RedirectURLs: []url.URL{
+			url.URL{Scheme: "http", Host: "127.0.0.1:5556", Path: "/cb"},
+		},
 	}
 
 	cc, err := r.New(cm)
@@ -215,7 +224,9 @@ func TestDBClientIdentityAll(t *testing.T) {
 	r := db.NewClientIdentityRepo(connect(t))
 
 	cm := oidc.ClientMetadata{
-		RedirectURL: url.URL{Scheme: "http", Host: "127.0.0.1:5556", Path: "/cb"},
+		RedirectURLs: []url.URL{
+			url.URL{Scheme: "http", Host: "127.0.0.1:5556", Path: "/cb"},
+		},
 	}
 
 	_, err := r.New(cm)
@@ -237,7 +248,9 @@ func TestDBClientIdentityAll(t *testing.T) {
 	}
 
 	cm = oidc.ClientMetadata{
-		RedirectURL: url.URL{Scheme: "http", Host: "foo.com", Path: "/cb"},
+		RedirectURLs: []url.URL{
+			url.URL{Scheme: "http", Host: "foo.com", Path: "/cb"},
+		},
 	}
 	_, err = r.New(cm)
 	if err != nil {

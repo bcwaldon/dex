@@ -32,7 +32,7 @@ type ClientIdentity struct {
 }
 
 type ClientMetadata struct {
-	RedirectURL url.URL
+	RedirectURLs []url.URL
 }
 
 type ClientConfig struct {

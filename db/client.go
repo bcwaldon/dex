@@ -62,27 +62,36 @@ type clientIdentityModel struct {
 	Metadata []byte `db:"metadata"`
 }
 
-func newClientMetadataJSON(meta *oidc.ClientMetadata) *clientMetadataJSON {
-	return &clientMetadataJSON{
-		RedirectURLs: []string{(&meta.RedirectURL).String()},
+func newClientMetadataJSON(cm *oidc.ClientMetadata) *clientMetadataJSON {
+	cmj := clientMetadataJSON{
+		RedirectURLs: make([]string, len(cm.RedirectURLs)),
 	}
+
+	for i, u := range cm.RedirectURLs {
+		cmj.RedirectURLs[i] = (&u).String()
+	}
+
+	return &cmj
 }
 
 type clientMetadataJSON struct {
 	RedirectURLs []string `json:"redirectURLs"`
 }
 
-func (m clientMetadataJSON) ClientMetadata() (*oidc.ClientMetadata, error) {
-	u, err := url.Parse(m.RedirectURLs[0])
-	if err != nil {
-		return nil, err
+func (cmj clientMetadataJSON) ClientMetadata() (*oidc.ClientMetadata, error) {
+	cm := oidc.ClientMetadata{
+		RedirectURLs: make([]url.URL, len(cmj.RedirectURLs)),
 	}
 
-	meta := oidc.ClientMetadata{
-		RedirectURL: *u,
+	for i, us := range cmj.RedirectURLs {
+		up, err := url.Parse(us)
+		if err != nil {
+			return nil, err
+		}
+		cm.RedirectURLs[i] = *up
 	}
 
-	return &meta, nil
+	return &cm, nil
 }
 
 func (m *clientIdentityModel) ClientIdentity() (*oidc.ClientIdentity, error) {
@@ -160,7 +169,11 @@ func (r *clientIdentityRepo) Authenticate(creds oidc.ClientCredentials) (bool, e
 }
 
 func (r *clientIdentityRepo) New(meta oidc.ClientMetadata) (*oidc.ClientCredentials, error) {
-	id, err := oidc.GenClientID(meta.RedirectURL.Host)
+	if len(meta.RedirectURLs) == 0 {
+		return nil, errors.New("need at least one redirect URL")
+	}
+
+	id, err := oidc.GenClientID(meta.RedirectURLs[0].Host)
 	if err != nil {
 		return nil, err
 	}

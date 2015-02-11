@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coopernurse/gorp"
+
 	"github.com/coreos-inc/auth/db"
 	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oidc"
@@ -24,29 +26,27 @@ func init() {
 		fmt.Println("Unable to proceed with empty env var AUTHD_TEST_DSN")
 		os.Exit(1)
 	}
-
-	cleanup()
 }
 
-func cleanup() {
+func connect(t *testing.T) *gorp.DbMap {
 	c, err := db.NewConnection(db.Config{DSN: dsn})
 	if err != nil {
-		fmt.Printf("Unable to connect to database, err=%v\n", err)
-		os.Exit(1)
+		t.Fatalf("Unable to connect to database: %v", err)
 	}
 
 	if err = c.DropTablesIfExists(); err != nil {
-		fmt.Printf("Unable to drop database tables, err=%v\n", err)
-		os.Exit(1)
+		t.Fatalf("Unable to drop database tables: %v", err)
 	}
+
+	if err = c.CreateTablesIfNotExists(); err != nil {
+		t.Fatalf("Unable to create database tables: %v", err)
+	}
+
+	return c
 }
 
 func TestDBSessionKeyRepoPushPop(t *testing.T) {
-	c, err := db.NewConnection(db.Config{DSN: dsn})
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-	r := db.NewSessionKeyRepo(c)
+	r := db.NewSessionKeyRepo(connect(t))
 
 	key := "123"
 	sessionID := "456"
@@ -68,11 +68,7 @@ func TestDBSessionKeyRepoPushPop(t *testing.T) {
 }
 
 func TestDBSessionRepoCreateUpdate(t *testing.T) {
-	c, err := db.NewConnection(db.Config{DSN: dsn})
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-	r := db.NewSessionRepo(c)
+	r := db.NewSessionRepo(connect(t))
 
 	// postgres stores its time type with a lower precision
 	// than we generate here. Stripping off nanoseconds gives
@@ -114,12 +110,7 @@ func TestDBSessionRepoCreateUpdate(t *testing.T) {
 }
 
 func TestDBPrivateKeySetRepoSetGet(t *testing.T) {
-	c, err := db.NewConnection(db.Config{DSN: dsn})
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-
-	r, err := db.NewPrivateKeySetRepo(c, "roflroflroflroflroflroflroflrofl")
+	r, err := db.NewPrivateKeySetRepo(connect(t), "roflroflroflroflroflroflroflrofl")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -150,11 +141,7 @@ func TestDBPrivateKeySetRepoSetGet(t *testing.T) {
 }
 
 func TestDBClientIdentityRepoMetadata(t *testing.T) {
-	c, err := db.NewConnection(db.Config{DSN: dsn})
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-	r := db.NewClientIdentityRepo(c)
+	r := db.NewClientIdentityRepo(connect(t))
 
 	cm := oidc.ClientMetadata{
 		RedirectURL: url.URL{Scheme: "http", Host: "127.0.0.1:5556", Path: "/cb"},
@@ -183,11 +170,7 @@ func TestDBClientIdentityRepoMetadata(t *testing.T) {
 }
 
 func TestDBClientIdentityRepoAuthenticate(t *testing.T) {
-	c, err := db.NewConnection(db.Config{DSN: dsn})
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-	r := db.NewClientIdentityRepo(c)
+	r := db.NewClientIdentityRepo(connect(t))
 
 	cm := oidc.ClientMetadata{
 		RedirectURL: url.URL{Scheme: "http", Host: "127.0.0.1:5556", Path: "/cb"},
@@ -229,19 +212,13 @@ func TestDBClientIdentityRepoAuthenticate(t *testing.T) {
 }
 
 func TestDBClientIdentityAll(t *testing.T) {
-	cleanup()
-
-	c, err := db.NewConnection(db.Config{DSN: dsn})
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-	r := db.NewClientIdentityRepo(c)
+	r := db.NewClientIdentityRepo(connect(t))
 
 	cm := oidc.ClientMetadata{
 		RedirectURL: url.URL{Scheme: "http", Host: "127.0.0.1:5556", Path: "/cb"},
 	}
 
-	_, err = r.New(cm)
+	_, err := r.New(cm)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}

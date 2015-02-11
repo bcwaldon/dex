@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"io"
 	"io/ioutil"
 	"net/url"
@@ -27,9 +28,10 @@ type ClientIdentityRepo interface {
 	// All returns all registered Client Identities.
 	All() ([]oidc.ClientIdentity, error)
 
-	// New registers a new ClientIdentity with the repo for the given metadata.
-	// A unique Client ID and Secret will be generated and returned.
-	New(meta oidc.ClientMetadata) (*oidc.ClientCredentials, error)
+	// New registers a ClientIdentity with the repo for the given metadata.
+	// An unused ID must be provided. A corresponding secret will be returned
+	// in a ClientCredentials struct along with the provided ID.
+	New(id string, meta oidc.ClientMetadata) (*oidc.ClientCredentials, error)
 }
 
 func NewClientIdentityRepo(cs []oidc.ClientIdentity) ClientIdentityRepo {
@@ -49,10 +51,9 @@ type memClientIdentityRepo struct {
 	idents map[string]oidc.ClientIdentity
 }
 
-func (cr *memClientIdentityRepo) New(meta oidc.ClientMetadata) (*oidc.ClientCredentials, error) {
-	id, err := oidc.GenClientID(meta.RedirectURL.Host)
-	if err != nil {
-		return nil, err
+func (cr *memClientIdentityRepo) New(id string, meta oidc.ClientMetadata) (*oidc.ClientCredentials, error) {
+	if _, ok := cr.idents[id]; ok {
+		return nil, errors.New("client ID already exists")
 	}
 
 	secret, err := pcrypto.RandBytes(32)
@@ -134,17 +135,12 @@ type clientIdentity oidc.ClientIdentity
 
 func (ci *clientIdentity) UnmarshalJSON(data []byte) error {
 	c := struct {
-		ID          string `json:"id"`
-		Secret      string `json:"secret"`
-		RedirectURL string `json:"redirectURL"`
+		ID           string   `json:"id"`
+		Secret       string   `json:"secret"`
+		RedirectURLs []string `json:"redirectURL"`
 	}{}
 
 	if err := json.Unmarshal(data, &c); err != nil {
-		return err
-	}
-
-	ru, err := url.Parse(c.RedirectURL)
-	if err != nil {
 		return err
 	}
 
@@ -153,7 +149,15 @@ func (ci *clientIdentity) UnmarshalJSON(data []byte) error {
 		Secret: c.Secret,
 	}
 	ci.Metadata = oidc.ClientMetadata{
-		RedirectURL: *ru,
+		RedirectURLs: make([]url.URL, len(c.RedirectURLs)),
+	}
+
+	for i, us := range c.RedirectURLs {
+		up, err := url.Parse(us)
+		if err != nil {
+			return err
+		}
+		ci.Metadata.RedirectURLs[i] = *up
 	}
 
 	return nil

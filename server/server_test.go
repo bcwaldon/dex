@@ -102,15 +102,17 @@ func TestServerNewSession(t *testing.T) {
 			Secret: "secrete",
 		},
 		Metadata: oidc.ClientMetadata{
-			RedirectURL: url.URL{
-				Scheme: "http",
-				Host:   "client.example.com",
-				Path:   "/callback",
+			RedirectURLs: []url.URL{
+				url.URL{
+					Scheme: "http",
+					Host:   "client.example.com",
+					Path:   "/callback",
+				},
 			},
 		},
 	}
 
-	key, err := srv.NewSession(ci.Credentials.ID, state, ci.Metadata.RedirectURL)
+	key, err := srv.NewSession(ci.Credentials.ID, state, ci.Metadata.RedirectURLs[0])
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -125,8 +127,8 @@ func TestServerNewSession(t *testing.T) {
 		t.Fatalf("Unable to add Identity to Session: %v", err)
 	}
 
-	if !reflect.DeepEqual(ci.Metadata.RedirectURL, ses.RedirectURL) {
-		t.Fatalf("Session created with incorrect RedirectURL: want=%#v got=%#v", ci.Metadata.RedirectURL, ses.RedirectURL)
+	if !reflect.DeepEqual(ci.Metadata.RedirectURLs[0], ses.RedirectURL) {
+		t.Fatalf("Session created with incorrect RedirectURL: want=%#v got=%#v", ci.Metadata.RedirectURLs[0], ses.RedirectURL)
 	}
 
 	if ci.Credentials.ID != ses.ClientID {
@@ -145,10 +147,12 @@ func TestServerLogin(t *testing.T) {
 			Secret: "secrete",
 		},
 		Metadata: oidc.ClientMetadata{
-			RedirectURL: url.URL{
-				Scheme: "http",
-				Host:   "client.example.com",
-				Path:   "/callback",
+			RedirectURLs: []url.URL{
+				url.URL{
+					Scheme: "http",
+					Host:   "client.example.com",
+					Path:   "/callback",
+				},
 			},
 		},
 	}
@@ -160,7 +164,7 @@ func TestServerLogin(t *testing.T) {
 
 	sm := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())
 	sm.GenerateCode = staticGenerateCodeFunc("fakecode")
-	sessionID, err := sm.NewSession(ci.Credentials.ID, "bogus", ci.Metadata.RedirectURL)
+	sessionID, err := sm.NewSession(ci.Credentials.ID, "bogus", ci.Metadata.RedirectURLs[0])
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}

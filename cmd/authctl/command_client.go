@@ -9,8 +9,8 @@ import (
 var (
 	cmdNewClient = &command{
 		Name:    "new-client",
-		Summary: "Create a new client ID and secret",
-		Usage:   "<URL>",
+		Summary: "Create a new client with the provided redirect URL(s)",
+		Usage:   "<URL>...",
 		Run:     runNewClient,
 	}
 )
@@ -20,18 +20,22 @@ func init() {
 }
 
 func runNewClient(args []string) int {
-	if len(args) != 1 {
-		stderr("Provide a single argument.")
+	if len(args) < 1 {
+		stderr("Provide at least one redirect URL.")
 		return 2
 	}
 
-	redirectURL, err := url.Parse(args[0])
-	if err != nil {
-		stderr("Malformed redirectURL %q: %v", args[0], err)
-		return 1
+	redirectURLs := make([]url.URL, len(args))
+	for i, ua := range args {
+		u, err := url.Parse(ua)
+		if err != nil {
+			stderr("Malformed URL %q: %v", ua, err)
+			return 1
+		}
+		redirectURLs[i] = *u
 	}
 
-	cc, err := getDriver().NewClient(oidc.ClientMetadata{RedirectURL: *redirectURL})
+	cc, err := getDriver().NewClient(oidc.ClientMetadata{RedirectURLs: redirectURLs})
 	if err != nil {
 		stderr("Failed creating new client: %v", err)
 		return 1
@@ -40,7 +44,9 @@ func runNewClient(args []string) int {
 	stdout("Added new client:")
 	stdout("ID:          %s", cc.ID)
 	stdout("Secret:      %s", cc.Secret)
-	stdout("RedirectURL: %s", redirectURL.String())
+	for _, u := range redirectURLs {
+		stdout("RedirectURL: %s", u.String())
+	}
 
 	return 0
 }

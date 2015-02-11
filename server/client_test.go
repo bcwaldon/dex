@@ -11,21 +11,26 @@ import (
 
 func TestMemClientIdentityRepoNew(t *testing.T) {
 	tests := []struct {
+		id   string
 		meta oidc.ClientMetadata
 	}{
 		{
+			id: "foo",
 			meta: oidc.ClientMetadata{
-				RedirectURL: url.URL{
-					Scheme: "https",
-					Host:   "example.com",
+				RedirectURLs: []url.URL{
+					url.URL{
+						Scheme: "https",
+						Host:   "example.com",
+					},
 				},
 			},
 		},
 		{
+			id: "bar",
 			meta: oidc.ClientMetadata{
-				RedirectURL: url.URL{
-					Scheme: "https",
-					Host:   "example.com/foo",
+				RedirectURLs: []url.URL{
+					url.URL{Scheme: "https", Host: "example.com/foo"},
+					url.URL{Scheme: "https", Host: "example.com/bar"},
 				},
 			},
 		},
@@ -33,12 +38,12 @@ func TestMemClientIdentityRepoNew(t *testing.T) {
 
 	for i, tt := range tests {
 		cr := NewClientIdentityRepo(nil)
-		creds, err := cr.New(tt.meta)
+		creds, err := cr.New(tt.id, tt.meta)
 		if err != nil {
 			t.Errorf("case %d: unexpected error: %v", i, err)
 		}
 
-		if creds.ID == "" {
+		if creds.ID != tt.id {
 			t.Errorf("case %d: expected non-empty Client ID", i)
 		}
 
@@ -54,11 +59,35 @@ func TestMemClientIdentityRepoNew(t *testing.T) {
 			t.Errorf("case %d: expected repo to contain newly created Client", i)
 		}
 
-		uWant := tt.meta.RedirectURL
-		uGot := all[0].Metadata.RedirectURL
-		if uWant != uGot {
-			t.Errorf("case %d: redirect url mismatch, want=%v, got=%v", i, uWant, uGot)
+		wantURLs := tt.meta.RedirectURLs
+		gotURLs := all[0].Metadata.RedirectURLs
+		if !reflect.DeepEqual(wantURLs, gotURLs) {
+			t.Errorf("case %d: redirect url mismatch, want=%v, got=%v", i, wantURLs, gotURLs)
 		}
+	}
+}
+
+func TestMemClientIdentityRepoNewDuplicate(t *testing.T) {
+	cr := NewClientIdentityRepo(nil)
+
+	meta1 := oidc.ClientMetadata{
+		RedirectURLs: []url.URL{
+			url.URL{Scheme: "https", Host: "foo.example.com"},
+		},
+	}
+
+	if _, err := cr.New("foo", meta1); err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	meta2 := oidc.ClientMetadata{
+		RedirectURLs: []url.URL{
+			url.URL{Scheme: "https", Host: "bar.example.com"},
+		},
+	}
+
+	if _, err := cr.New("foo", meta2); err == nil {
+		t.Errorf("expected non-nil error")
 	}
 }
 

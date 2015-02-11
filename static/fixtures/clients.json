@@ -2,11 +2,11 @@
   {
     "id": "XXX",
     "secret": "secrete",
-    "redirectURL": "http://127.0.0.1:5555/callback"
+    "redirectURLs": ["http://127.0.0.1:5555/callback"]
   },
   {
     "id": "core-update",
     "secret": "secrete",
-    "redirectURL": "http://127.0.0.1:8000/admin/v1/oauth/login"
+    "redirectURLs": ["http://127.0.0.1:8000/admin/v1/oauth/login"]
   }
 ]

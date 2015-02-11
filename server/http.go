@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"net/url"
 	"reflect"
 	"time"
 
@@ -234,20 +235,45 @@ func handleAuthFunc(srv OIDCServer, idpcs []connector.Connector, tpl *template.T
 			writeAuthError(w, oauth2.NewError(oauth2.ErrorInvalidRequest), acr.State)
 			return
 		}
-		if cm == nil || (acr.RedirectURL != nil && !reflect.DeepEqual(cm.RedirectURL, *acr.RedirectURL)) {
-			log.Debugf("Mismatched redirect URL: want=%s got=%s", &cm.RedirectURL, acr.RedirectURL)
-			writeAuthError(w, oauth2.NewError(oauth2.ErrorInvalidRequest), acr.State)
+
+		if len(cm.RedirectURLs) == 0 {
+			log.Errorf("Client %q has no redirect URLs", acr.ClientID)
+			writeAuthError(w, oauth2.NewError(oauth2.ErrorServerError), acr.State)
 			return
+		}
+
+		var redirectURL *url.URL
+
+		if acr.RedirectURL == nil {
+			if len(cm.RedirectURLs) > 1 {
+				log.Debugf("Request must provide redirect URL as client %q has registered many", acr.ClientID)
+				writeAuthError(w, oauth2.NewError(oauth2.ErrorInvalidRequest), acr.State)
+				return
+			} else {
+				redirectURL = &cm.RedirectURLs[0]
+			}
+		} else {
+			for _, ru := range cm.RedirectURLs {
+				if reflect.DeepEqual(*acr.RedirectURL, ru) {
+					redirectURL = &ru
+				}
+			}
+
+			if redirectURL == nil {
+				log.Debugf("Request provided unregistered redirect URL: %s", acr.RedirectURL)
+				writeAuthError(w, oauth2.NewError(oauth2.ErrorInvalidRequest), acr.State)
+				return
+			}
 		}
 
 		if acr.ResponseType != oauth2.ResponseTypeCode {
-			redirectAuthError(w, oauth2.NewError(oauth2.ErrorUnsupportedResponseType), acr.State, cm.RedirectURL)
+			redirectAuthError(w, oauth2.NewError(oauth2.ErrorUnsupportedResponseType), acr.State, *redirectURL)
 			return
 		}
 
-		key, err := srv.NewSession(acr.ClientID, acr.State, cm.RedirectURL)
+		key, err := srv.NewSession(acr.ClientID, acr.State, *redirectURL)
 		if err != nil {
-			redirectAuthError(w, err, acr.State, cm.RedirectURL)
+			redirectAuthError(w, err, acr.State, *redirectURL)
 			return
 		}
 
@@ -258,7 +284,7 @@ func handleAuthFunc(srv OIDCServer, idpcs []connector.Connector, tpl *template.T
 		lu, err := idpc.LoginURL(key, p)
 		if err != nil {
 			log.Errorf("Connector.LoginURL failed: %v", err)
-			redirectAuthError(w, err, acr.State, cm.RedirectURL)
+			redirectAuthError(w, err, acr.State, *redirectURL)
 			return
 		}
 

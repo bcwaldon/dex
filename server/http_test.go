@@ -65,7 +65,7 @@ func TestHandleAuthFuncMethodNotAllowed(t *testing.T) {
 	}
 }
 
-func TestHandleAuthFuncResponses(t *testing.T) {
+func TestHandleAuthFuncResponsesSingleRedirectURL(t *testing.T) {
 	idpcs := []connector.Connector{
 		&fakeConnector{loginURL: "http://fake.example.com"},
 	}
@@ -79,10 +79,8 @@ func TestHandleAuthFuncResponses(t *testing.T) {
 					Secret: "secrete",
 				},
 				Metadata: oidc.ClientMetadata{
-					RedirectURL: url.URL{
-						Scheme: "http",
-						Host:   "client.example.com",
-						Path:   "/callback",
+					RedirectURLs: []url.URL{
+						url.URL{Scheme: "http", Host: "client.example.com", Path: "/callback"},
 					},
 				},
 			},
@@ -94,6 +92,7 @@ func TestHandleAuthFuncResponses(t *testing.T) {
 		wantCode     int
 		wantLocation string
 	}{
+		// no redirect_uri provided, but client only has one, so it's usable
 		{
 			query: url.Values{
 				"response_type": []string{"code"},
@@ -147,6 +146,103 @@ func TestHandleAuthFuncResponses(t *testing.T) {
 			},
 			wantCode:     http.StatusTemporaryRedirect,
 			wantLocation: "http://client.example.com/callback?error=unsupported_response_type&state=",
+		},
+	}
+
+	for i, tt := range tests {
+		hdlr := handleAuthFunc(srv, idpcs, nil)
+		w := httptest.NewRecorder()
+		u := fmt.Sprintf("http://server.example.com?%s", tt.query.Encode())
+		req, err := http.NewRequest("GET", u, nil)
+		if err != nil {
+			t.Errorf("case %d: unable to form HTTP request: %v", i, err)
+			continue
+		}
+
+		hdlr.ServeHTTP(w, req)
+		if tt.wantCode != w.Code {
+			t.Errorf("case %d: HTTP code mismatch: want=%d got=%d", i, tt.wantCode, w.Code)
+			continue
+		}
+
+		gotLocation := w.Header().Get("Location")
+		if tt.wantLocation != gotLocation {
+			t.Errorf("case %d: HTTP Location header mismatch: want=%s got=%s", i, tt.wantLocation, gotLocation)
+		}
+	}
+}
+
+func TestHandleAuthFuncResponsesMultipleRedirectURLs(t *testing.T) {
+	idpcs := []connector.Connector{
+		&fakeConnector{loginURL: "http://fake.example.com"},
+	}
+	srv := &Server{
+		IssuerURL:      url.URL{Scheme: "http", Host: "server.example.com"},
+		SessionManager: session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo()),
+		ClientIdentityRepo: NewClientIdentityRepo([]oidc.ClientIdentity{
+			oidc.ClientIdentity{
+				Credentials: oidc.ClientCredentials{
+					ID:     "XXX",
+					Secret: "secrete",
+				},
+				Metadata: oidc.ClientMetadata{
+					RedirectURLs: []url.URL{
+						url.URL{Scheme: "http", Host: "foo.example.com", Path: "/callback"},
+						url.URL{Scheme: "http", Host: "bar.example.com", Path: "/callback"},
+					},
+				},
+			},
+		}),
+	}
+
+	tests := []struct {
+		query        url.Values
+		wantCode     int
+		wantLocation string
+	}{
+		// provided redirect_uri matches client's first
+		{
+			query: url.Values{
+				"response_type": []string{"code"},
+				"redirect_uri":  []string{"http://foo.example.com/callback"},
+				"client_id":     []string{"XXX"},
+				"idpc_id":       []string{"fake"},
+			},
+			wantCode:     http.StatusTemporaryRedirect,
+			wantLocation: "http://fake.example.com",
+		},
+
+		// provided redirect_uri matches client's second
+		{
+			query: url.Values{
+				"response_type": []string{"code"},
+				"redirect_uri":  []string{"http://bar.example.com/callback"},
+				"client_id":     []string{"XXX"},
+				"idpc_id":       []string{"fake"},
+			},
+			wantCode:     http.StatusTemporaryRedirect,
+			wantLocation: "http://fake.example.com",
+		},
+
+		// provided redirect_uri does not match either of client's
+		{
+			query: url.Values{
+				"response_type": []string{"code"},
+				"redirect_uri":  []string{"http://unrecognized.example.com/callback"},
+				"client_id":     []string{"XXX"},
+				"idpc_id":       []string{"fake"},
+			},
+			wantCode: http.StatusBadRequest,
+		},
+
+		// no redirect_uri provided
+		{
+			query: url.Values{
+				"response_type": []string{"code"},
+				"client_id":     []string{"XXX"},
+				"idpc_id":       []string{"fake"},
+			},
+			wantCode: http.StatusBadRequest,
 		},
 	}
 

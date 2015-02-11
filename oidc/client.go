@@ -32,7 +32,23 @@ type ClientIdentity struct {
 }
 
 type ClientMetadata struct {
-	RedirectURL url.URL
+	RedirectURLs []url.URL
+}
+
+func (m *ClientMetadata) Valid() error {
+	if len(m.RedirectURLs) == 0 {
+		return errors.New("zero redirect URLs")
+	}
+
+	for _, u := range m.RedirectURLs {
+		if u.Scheme != "http" && u.Scheme != "https" {
+			return errors.New("invalid redirect URL: scheme not http/https")
+		} else if u.Host == "" {
+			return errors.New("invalid redirect URL: host empty")
+		}
+	}
+
+	return nil
 }
 
 type ClientConfig struct {

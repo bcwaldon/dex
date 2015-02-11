@@ -70,13 +70,13 @@ func TestCreateInvalidRequest(t *testing.T) {
 		{
 			req:      &http.Request{Method: "POST", URL: u, Header: h, Body: makeBody(`{"id":"foo"}`)},
 			wantCode: http.StatusBadRequest,
-			wantBody: `{"error":"invalid_client_metadata","error_description":"missing or invalid field: redirectURIs"}`,
+			wantBody: `{"error":"invalid_client_metadata","error_description":"zero redirect URLs"}`,
 		},
 		// empty url array
 		{
 			req:      &http.Request{Method: "POST", URL: u, Header: h, Body: makeBody(`{"redirectURIs":[]}`)},
 			wantCode: http.StatusBadRequest,
-			wantBody: `{"error":"invalid_client_metadata","error_description":"missing or invalid field: redirectURIs"}`,
+			wantBody: `{"error":"invalid_client_metadata","error_description":"zero redirect URLs"}`,
 		},
 		// array with empty string
 		{
@@ -84,17 +84,17 @@ func TestCreateInvalidRequest(t *testing.T) {
 			wantCode: http.StatusBadRequest,
 			wantBody: `{"error":"invalid_client_metadata","error_description":"missing or invalid field: redirectURIs"}`,
 		},
-		// uri missing scheme
+		// uri with unusable scheme
 		{
 			req:      &http.Request{Method: "POST", URL: u, Header: h, Body: makeBody(`{"redirectURIs":["asdf.com"]}`)},
 			wantCode: http.StatusBadRequest,
-			wantBody: `{"error":"invalid_client_metadata","error_description":"missing or invalid field: redirectURIs"}`,
+			wantBody: `{"error":"invalid_client_metadata","error_description":"invalid redirect URL: scheme not http/https"}`,
 		},
 		// uri missing host
 		{
 			req:      &http.Request{Method: "POST", URL: u, Header: h, Body: makeBody(`{"redirectURIs":["http://"]}`)},
 			wantCode: http.StatusBadRequest,
-			wantBody: `{"error":"invalid_client_metadata","error_description":"missing or invalid field: redirectURIs"}`,
+			wantBody: `{"error":"invalid_client_metadata","error_description":"invalid redirect URL: host empty"}`,
 		},
 	}
 
@@ -142,18 +142,12 @@ func TestCreate(t *testing.T) {
 		if err := json.Unmarshal(w.Body.Bytes(), &client); err != nil {
 			t.Errorf("case %d: unexpected error=%v", i, err)
 		}
-		if len(client.RedirectURIs) != 1 {
-			t.Errorf("case %d: unexpected number of redirect URIs, want=1, got=%d", i, len(client.RedirectURIs))
+		if len(client.RedirectURIs) != len(tt) {
+			t.Errorf("case %d: unexpected number of redirect URIs, want=%d, got=%d", i, len(tt), len(client.RedirectURIs))
 		}
 
-		gotURL := client.RedirectURIs[0]
-		for i, u := range tt {
-			if u == gotURL {
-				break
-			}
-			if i == len(tt)-1 {
-				t.Errorf("case %d: unexpected client URI, want one of=%v, got=%s", i, tt, gotURL)
-			}
+		if !reflect.DeepEqual(tt, client.RedirectURIs) {
+			t.Errorf("case %d: unexpected client redirect URIs: want=%v got=%v", i, tt, client.RedirectURIs)
 		}
 
 		if client.Id == "" {
@@ -188,7 +182,9 @@ func TestList(t *testing.T) {
 				oidc.ClientIdentity{
 					Credentials: oidc.ClientCredentials{ID: "foo", Secret: "bar"},
 					Metadata: oidc.ClientMetadata{
-						RedirectURL: url.URL{Scheme: "http", Host: "example.com"},
+						RedirectURLs: []url.URL{
+							url.URL{Scheme: "http", Host: "example.com"},
+						},
 					},
 				},
 			},
@@ -205,13 +201,17 @@ func TestList(t *testing.T) {
 				oidc.ClientIdentity{
 					Credentials: oidc.ClientCredentials{ID: "foo", Secret: "bar"},
 					Metadata: oidc.ClientMetadata{
-						RedirectURL: url.URL{Scheme: "http", Host: "example.com"},
+						RedirectURLs: []url.URL{
+							url.URL{Scheme: "http", Host: "example.com"},
+						},
 					},
 				},
 				oidc.ClientIdentity{
 					Credentials: oidc.ClientCredentials{ID: "biz", Secret: "bang"},
 					Metadata: oidc.ClientMetadata{
-						RedirectURL: url.URL{Scheme: "https", Host: "example.com", Path: "one/two/three"},
+						RedirectURLs: []url.URL{
+							url.URL{Scheme: "https", Host: "example.com", Path: "one/two/three"},
+						},
 					},
 				},
 			},

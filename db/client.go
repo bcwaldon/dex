@@ -2,6 +2,7 @@ package db
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -24,6 +25,9 @@ const (
 	// since the bcrypt library will silently ignore portions of
 	// a password past the first 72 characters.
 	maxSecretLength = 72
+
+	// postgres error codes
+	pgErrorCodeUniqueViolation = "23505" // unique_violation
 )
 
 func init() {
@@ -41,37 +45,78 @@ func newClientIdentityModel(id string, secret []byte, meta *oidc.ClientMetadata)
 		return nil, err
 	}
 
+	bmeta, err := json.Marshal(newClientMetadataJSON(meta))
+	if err != nil {
+		return nil, err
+	}
+
 	cim := clientIdentityModel{
-		ID:          id,
-		Secret:      hashed,
-		RedirectURL: meta.RedirectURL.String(),
+		ID:       id,
+		Secret:   hashed,
+		Metadata: bmeta,
 	}
 
 	return &cim, nil
 }
 
 type clientIdentityModel struct {
-	ID          string `db:"id"`
-	Secret      []byte `db:"secret"`
-	RedirectURL string `db:"redirectURL"`
+	ID       string `db:"id"`
+	Secret   []byte `db:"secret"`
+	Metadata []byte `db:"metadata"`
+}
+
+func newClientMetadataJSON(cm *oidc.ClientMetadata) *clientMetadataJSON {
+	cmj := clientMetadataJSON{
+		RedirectURLs: make([]string, len(cm.RedirectURLs)),
+	}
+
+	for i, u := range cm.RedirectURLs {
+		cmj.RedirectURLs[i] = (&u).String()
+	}
+
+	return &cmj
+}
+
+type clientMetadataJSON struct {
+	RedirectURLs []string `json:"redirectURLs"`
+}
+
+func (cmj clientMetadataJSON) ClientMetadata() (*oidc.ClientMetadata, error) {
+	cm := oidc.ClientMetadata{
+		RedirectURLs: make([]url.URL, len(cmj.RedirectURLs)),
+	}
+
+	for i, us := range cmj.RedirectURLs {
+		up, err := url.Parse(us)
+		if err != nil {
+			return nil, err
+		}
+		cm.RedirectURLs[i] = *up
+	}
+
+	return &cm, nil
 }
 
 func (m *clientIdentityModel) ClientIdentity() (*oidc.ClientIdentity, error) {
-	u, err := url.Parse(m.RedirectURL)
-	if err != nil {
-		return nil, err
-	}
-
 	ci := oidc.ClientIdentity{
 		Credentials: oidc.ClientCredentials{
 			ID:     m.ID,
 			Secret: string(m.Secret),
 		},
-		Metadata: oidc.ClientMetadata{
-			RedirectURL: *u,
-		},
 	}
 
+	var cmj clientMetadataJSON
+	err := json.Unmarshal(m.Metadata, &cmj)
+	if err != nil {
+		return nil, err
+	}
+
+	cm, err := cmj.ClientMetadata()
+	if err != nil {
+		return nil, err
+	}
+
+	ci.Metadata = *cm
 	return &ci, nil
 }
 
@@ -126,12 +171,7 @@ func (r *clientIdentityRepo) Authenticate(creds oidc.ClientCredentials) (bool, e
 	return ok, nil
 }
 
-func (r *clientIdentityRepo) New(meta oidc.ClientMetadata) (*oidc.ClientCredentials, error) {
-	id, err := oidc.GenClientID(meta.RedirectURL.Host)
-	if err != nil {
-		return nil, err
-	}
-
+func (r *clientIdentityRepo) New(id string, meta oidc.ClientMetadata) (*oidc.ClientCredentials, error) {
 	secret, err := pcrypto.RandBytes(maxSecretLength)
 	if err != nil {
 		return nil, err
@@ -143,6 +183,10 @@ func (r *clientIdentityRepo) New(meta oidc.ClientMetadata) (*oidc.ClientCredenti
 	}
 
 	if err := r.dbMap.Insert(cim); err != nil {
+		if perr, ok := err.(*pq.Error); ok && perr.Code == pgErrorCodeUniqueViolation {
+			err = errors.New("client ID already exists")
+		}
+
 		return nil, err
 	}
 

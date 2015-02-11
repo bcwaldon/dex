@@ -27,7 +27,16 @@ type dbDriver struct {
 }
 
 func (d *dbDriver) NewClient(meta oidc.ClientMetadata) (*oidc.ClientCredentials, error) {
-	return d.ciRepo.New(meta)
+	if err := meta.Valid(); err != nil {
+		return nil, err
+	}
+
+	clientID, err := oidc.GenClientID(meta.RedirectURLs[0].Host)
+	if err != nil {
+		return nil, err
+	}
+
+	return d.ciRepo.New(clientID, meta)
 }
 
 func (d *dbDriver) ConnectorConfigs() ([]connector.ConnectorConfig, error) {

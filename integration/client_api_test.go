@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 
 	"github.com/coreos-inc/auth/oidc"
@@ -67,7 +68,7 @@ func TestClientCreate(t *testing.T) {
 	}
 
 	newClientInput := &schema.Client{
-		RedirectURIs: []string{callbackURL},
+		RedirectURIs: []string{callbackURL, "http://example.com"},
 	}
 
 	call := svc.Clients.Create(newClientInput)
@@ -91,8 +92,11 @@ func TestClientCreate(t *testing.T) {
 		t.Error("Expected new client to exist in repo")
 	}
 
-	gotURL := meta.RedirectURL.String()
-	if gotURL != callbackURL {
-		t.Errorf("Callback URL mismatch, want=%s, got=%s", callbackURL, gotURL)
+	gotURLs := make([]string, len(meta.RedirectURLs))
+	for i, u := range meta.RedirectURLs {
+		gotURLs[i] = u.String()
+	}
+	if !reflect.DeepEqual(newClientInput.RedirectURIs, gotURLs) {
+		t.Errorf("Callback URL mismatch, want=%s, got=%s", newClientInput.RedirectURIs, gotURLs)
 	}
 }

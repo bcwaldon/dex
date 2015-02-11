@@ -1,6 +1,7 @@
 package oidc
 
 import (
+	"net/url"
 	"reflect"
 	"testing"
 	"time"
@@ -230,6 +231,79 @@ func TestClientKeysFuncWithID(t *testing.T) {
 		got := keysFunc()
 		if !reflect.DeepEqual(tt.want, got) {
 			t.Errorf("case %d: want=%#v got=%#v", i, tt.want, got)
+		}
+	}
+}
+
+func TestClientMetadataValid(t *testing.T) {
+	tests := []ClientMetadata{
+		// one RedirectURL
+		ClientMetadata{
+			RedirectURLs: []url.URL{url.URL{Scheme: "http", Host: "example.com"}},
+		},
+
+		// one RedirectURL w/ nonempty path
+		ClientMetadata{
+			RedirectURLs: []url.URL{url.URL{Scheme: "http", Host: "example.com", Path: "/foo"}},
+		},
+
+		// two RedirectURLs
+		ClientMetadata{
+			RedirectURLs: []url.URL{
+				url.URL{Scheme: "http", Host: "foo.example.com"},
+				url.URL{Scheme: "http", Host: "bar.example.com"},
+			},
+		},
+	}
+
+	for i, tt := range tests {
+		if err := tt.Valid(); err != nil {
+			t.Errorf("case %d: unexpected error: %v", i, err)
+		}
+	}
+}
+
+func TestClientMetadataInvalid(t *testing.T) {
+	tests := []ClientMetadata{
+		// nil RedirectURls slice
+		ClientMetadata{
+			RedirectURLs: nil,
+		},
+
+		// empty RedirectURLs slice
+		ClientMetadata{
+			RedirectURLs: []url.URL{},
+		},
+
+		// empty url.URL
+		ClientMetadata{
+			RedirectURLs: []url.URL{url.URL{}},
+		},
+
+		// empty url.URL following OK item
+		ClientMetadata{
+			RedirectURLs: []url.URL{url.URL{Scheme: "http", Host: "example.com"}, url.URL{}},
+		},
+
+		// url.URL with empty Host
+		ClientMetadata{
+			RedirectURLs: []url.URL{url.URL{Scheme: "http", Host: ""}},
+		},
+
+		// url.URL with empty Scheme
+		ClientMetadata{
+			RedirectURLs: []url.URL{url.URL{Scheme: "", Host: "example.com"}},
+		},
+
+		// url.URL with non-HTTP(S) Scheme
+		ClientMetadata{
+			RedirectURLs: []url.URL{url.URL{Scheme: "tcp", Host: "127.0.0.1"}},
+		},
+	}
+
+	for i, tt := range tests {
+		if err := tt.Valid(); err == nil {
+			t.Errorf("case %d: expected non-nil error", i)
 		}
 	}
 }

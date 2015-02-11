@@ -53,7 +53,7 @@ func newClientIdentityModel(id string, secret []byte, meta *oidc.ClientMetadata)
 	cim := clientIdentityModel{
 		ID:       id,
 		Secret:   hashed,
-		Metadata: bmeta,
+		Metadata: string(bmeta),
 	}
 
 	return &cim, nil
@@ -62,7 +62,7 @@ func newClientIdentityModel(id string, secret []byte, meta *oidc.ClientMetadata)
 type clientIdentityModel struct {
 	ID       string `db:"id"`
 	Secret   []byte `db:"secret"`
-	Metadata []byte `db:"metadata"`
+	Metadata string `db:"metadata"`
 }
 
 func newClientMetadataJSON(cm *oidc.ClientMetadata) *clientMetadataJSON {
@@ -106,7 +106,7 @@ func (m *clientIdentityModel) ClientIdentity() (*oidc.ClientIdentity, error) {
 	}
 
 	var cmj clientMetadataJSON
-	err := json.Unmarshal(m.Metadata, &cmj)
+	err := json.Unmarshal([]byte(m.Metadata), &cmj)
 	if err != nil {
 		return nil, err
 	}

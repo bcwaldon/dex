@@ -33,7 +33,7 @@ func newConnectorConfigModel(cfg connector.ConnectorConfig) (*connectorConfigMod
 	m := &connectorConfigModel{
 		ID:     cfg.ConnectorID(),
 		Type:   cfg.ConnectorType(),
-		Config: b,
+		Config: string(b),
 	}
 
 	return m, nil
@@ -42,7 +42,7 @@ func newConnectorConfigModel(cfg connector.ConnectorConfig) (*connectorConfigMod
 type connectorConfigModel struct {
 	ID     string `db:"id"`
 	Type   string `db:"type"`
-	Config []byte `db:"config"`
+	Config string `db:"config"`
 }
 
 func (m *connectorConfigModel) ConnectorConfig() (connector.ConnectorConfig, error) {
@@ -51,7 +51,7 @@ func (m *connectorConfigModel) ConnectorConfig() (connector.ConnectorConfig, err
 		return nil, err
 	}
 
-	if err = json.Unmarshal(m.Config, cfg); err != nil {
+	if err = json.Unmarshal([]byte(m.Config), cfg); err != nil {
 		return nil, err
 	}
 

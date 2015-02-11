@@ -294,6 +294,11 @@ func TestClientMetadataInvalid(t *testing.T) {
 		ClientMetadata{
 			RedirectURLs: []url.URL{url.URL{Scheme: "", Host: "example.com"}},
 		},
+
+		// url.URL with non-HTTP(S) Scheme
+		ClientMetadata{
+			RedirectURLs: []url.URL{url.URL{Scheme: "tcp", Host: "127.0.0.1"}},
+		},
 	}
 
 	for i, tt := range tests {

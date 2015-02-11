@@ -84,11 +84,11 @@ func TestCreateInvalidRequest(t *testing.T) {
 			wantCode: http.StatusBadRequest,
 			wantBody: `{"error":"invalid_client_metadata","error_description":"missing or invalid field: redirectURIs"}`,
 		},
-		// uri missing scheme
+		// uri with unusable scheme
 		{
 			req:      &http.Request{Method: "POST", URL: u, Header: h, Body: makeBody(`{"redirectURIs":["asdf.com"]}`)},
 			wantCode: http.StatusBadRequest,
-			wantBody: `{"error":"invalid_client_metadata","error_description":"invalid redirect URL: scheme empty"}`,
+			wantBody: `{"error":"invalid_client_metadata","error_description":"invalid redirect URL: scheme not http/https"}`,
 		},
 		// uri missing host
 		{

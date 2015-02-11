@@ -41,8 +41,8 @@ func (m *ClientMetadata) Valid() error {
 	}
 
 	for _, u := range m.RedirectURLs {
-		if u.Scheme == "" {
-			return errors.New("invalid redirect URL: scheme empty")
+		if u.Scheme != "http" && u.Scheme != "https" {
+			return errors.New("invalid redirect URL: scheme not http/https")
 		} else if u.Host == "" {
 			return errors.New("invalid redirect URL: host empty")
 		}

@@ -36,7 +36,7 @@ type sessionModel struct {
 	ClientID    string    `db:"clientID"`
 	ClientState string    `db:"clientState"`
 	RedirectURL string    `db:"RedirectURL"`
-	Identity    []byte    `db:"identity"`
+	Identity    string    `db:"identity"`
 }
 
 func (s *sessionModel) session() (*session.Session, error) {
@@ -46,7 +46,7 @@ func (s *sessionModel) session() (*session.Session, error) {
 	}
 
 	var ident oidc.Identity
-	if err = json.Unmarshal(s.Identity, &ident); err != nil {
+	if err = json.Unmarshal([]byte(s.Identity), &ident); err != nil {
 		return nil, err
 	}
 
@@ -78,7 +78,7 @@ func newSessionModel(s *session.Session) (*sessionModel, error) {
 		ClientID:    s.ClientID,
 		ClientState: s.ClientState,
 		RedirectURL: s.RedirectURL.String(),
-		Identity:    b,
+		Identity:    string(b),
 	}
 
 	return &sm, nil

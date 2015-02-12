@@ -22,7 +22,6 @@ type namedPurger struct {
 func NewGarbageCollector(dbm *gorp.DbMap, ival time.Duration) *GarbageCollector {
 	sRepo := NewSessionRepo(dbm)
 	skRepo := NewSessionKeyRepo(dbm)
-	cache := NewConnectorCache(dbm)
 
 	purgers := []namedPurger{
 		namedPurger{
@@ -32,10 +31,6 @@ func NewGarbageCollector(dbm *gorp.DbMap, ival time.Duration) *GarbageCollector 
 		namedPurger{
 			name:   "sessionkey",
 			purger: skRepo,
-		},
-		namedPurger{
-			name:   "connectorcache",
-			purger: cache,
 		},
 	}
 

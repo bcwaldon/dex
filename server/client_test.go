@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"net/url"
 	"reflect"
 	"sort"
@@ -134,6 +135,56 @@ func TestMemClientIdentityRepoAll(t *testing.T) {
 
 		if !reflect.DeepEqual(want, got) {
 			t.Errorf("case %d: want=%#v, got=%#v", i, want, got)
+		}
+	}
+}
+
+func TestClientIdentityUnmarshalJSON(t *testing.T) {
+	for i, test := range []struct {
+		json           string
+		expectedID     string
+		expectedSecret string
+		expectedURLs   []string
+	}{
+		{
+			json:           `{"id":"12345","secret":"rosebud","redirectURLs":["https://redirectone.com", "https://redirecttwo.com"]}`,
+			expectedID:     "12345",
+			expectedSecret: "rosebud",
+			expectedURLs: []string{
+				"https://redirectone.com",
+				"https://redirecttwo.com",
+			},
+		},
+	} {
+		var actual clientIdentity
+		err := json.Unmarshal([]byte(test.json), &actual)
+		if err != nil {
+			t.Errorf("case %d: error unmarshalling: %v", i, err)
+			continue
+		}
+
+		if actual.Credentials.ID != test.expectedID {
+			t.Errorf("case %d: actual.Credentials.ID == %v, want %v", i, actual.Credentials.ID, test.expectedID)
+		}
+
+		if actual.Credentials.Secret != test.expectedSecret {
+			t.Errorf("case %d: actual.Credentials.Secret == %v, want %v", i, actual.Credentials.Secret, test.expectedSecret)
+		}
+		expectedURLs := test.expectedURLs
+		sort.Strings(expectedURLs)
+
+		actualURLs := make([]string, 0)
+		for _, u := range actual.Metadata.RedirectURLs {
+			actualURLs = append(actualURLs, u.String())
+		}
+		sort.Strings(actualURLs)
+		if len(actualURLs) != len(expectedURLs) {
+			t.Errorf("case %d: len(actualURLs) == %v, want %v", i, len(actualURLs), len(expectedURLs))
+		}
+		for ui, actualURL := range actualURLs {
+			if actualURL != expectedURLs[ui] {
+				t.Errorf("case %d: actualURLs[%d] == %q, want %q", i, ui, actualURL, expectedURLs[ui])
+			}
 		}
 	}
 }

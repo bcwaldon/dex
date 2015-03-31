@@ -137,7 +137,7 @@ func (ci *clientIdentity) UnmarshalJSON(data []byte) error {
 	c := struct {
 		ID           string   `json:"id"`
 		Secret       string   `json:"secret"`
-		RedirectURLs []string `json:"redirectURL"`
+		RedirectURLs []string `json:"redirectURLs"`
 	}{}
 
 	if err := json.Unmarshal(data, &c); err != nil {

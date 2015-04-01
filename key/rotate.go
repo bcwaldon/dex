@@ -2,6 +2,7 @@ package key
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jonboulle/clockwork"
@@ -53,9 +54,15 @@ func (r *PrivateKeyRotator) Run() chan struct{} {
 		log.Infof("Rotated signing keys: id=%s expiresAt=%s", k.ID(), exp)
 	}
 
+	shouldRotate, err := r.shouldRotate()
+	if err != nil {
+		log.Errorf("failed to determine if keys should be rotated: %v", err)
+	} else if shouldRotate {
+		attempt()
+	}
+
 	stop := make(chan struct{})
 	go func() {
-		attempt()
 		for {
 			select {
 			case <-r.clock.After(r.ttl / 2):
@@ -67,6 +74,28 @@ func (r *PrivateKeyRotator) Run() chan struct{} {
 	}()
 
 	return stop
+}
+
+// shouldRotate returns true when the keys need to be rotated.
+// The following cases are handled:
+//  - The current time is after the expiration time of the KeySet.
+//  - The expiration time is after the current time + TTL;
+//    this can happen when the TTL has been shortened.
+//  - There are no keys in the current KeySet
+func (r *PrivateKeyRotator) shouldRotate() (bool, error) {
+	ks, err := r.repo.Get()
+	if err != nil {
+		return false, fmt.Errorf("failed to get keyset from repo: %v", err)
+	}
+	pks, ok := ks.(*PrivateKeySet)
+	if !ok {
+		return false, errors.New("unable to cast to PrivateKeySet")
+	}
+
+	expiresAt := pks.ExpiresAt()
+	now := r.clock.Now()
+	shouldRotate := now.After(expiresAt) || expiresAt.After(now.Add(r.ttl)) || len(pks.Keys()) == 0
+	return shouldRotate, nil
 }
 
 func rotatePrivateKeys(repo PrivateKeySetRepo, k *PrivateKey, keep int, exp time.Time) error {

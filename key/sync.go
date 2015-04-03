@@ -31,14 +31,19 @@ func (s *KeySetSyncer) Run() chan struct{} {
 		var next time.Duration
 		for {
 			exp, err := sync(s.readable, s.writable, s.clock)
-			if err != nil {
+			if err != nil || exp == 0 {
 				if !failing {
 					failing = true
 					next = time.Second
 				} else {
 					next = ptime.ExpBackoff(next, time.Minute)
 				}
-				log.Errorf("Failed syncing key set, retrying in %v: %v", next, err)
+				if exp == 0 {
+					log.Errorf("Synced to already expired key set, retrying in %v: %v", next, err)
+
+				} else {
+					log.Errorf("Failed syncing key set, retrying in %v: %v", next, err)
+				}
 			} else {
 				failing = false
 				next = exp / 2
@@ -61,6 +66,8 @@ func Sync(r ReadableKeySetRepo, w WritableKeySetRepo) (time.Duration, error) {
 	return sync(r, w, clockwork.NewRealClock())
 }
 
+// sync copies the keyset from r to the KeySet at w and returns the duration in which the KeySet will expire.
+// If keyset has already expired, returns a zero duration.
 func sync(r ReadableKeySetRepo, w WritableKeySetRepo, clock clockwork.Clock) (exp time.Duration, err error) {
 	var ks KeySet
 	ks, err = r.Get()
@@ -77,6 +84,9 @@ func sync(r ReadableKeySetRepo, w WritableKeySetRepo, clock clockwork.Clock) (ex
 		return
 	}
 
-	exp = ks.ExpiresAt().Sub(clock.Now().UTC())
+	now := clock.Now()
+	if ks.ExpiresAt().After(now) {
+		exp = ks.ExpiresAt().Sub(now)
+	}
 	return
 }

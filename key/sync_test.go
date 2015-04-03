@@ -157,6 +157,14 @@ func TestSync(t *testing.T) {
 			},
 			want: time.Hour,
 		},
+		{
+			keySet: &PrivateKeySet{
+				keys:        []*PrivateKey{k1},
+				ActiveKeyID: k1.KeyID,
+				expiresAt:   now.Add(-time.Hour),
+			},
+			want: 0,
+		},
 	}
 
 	for i, tt := range tests {

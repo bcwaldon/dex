@@ -124,7 +124,7 @@ func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idp
 	// Render error if remote IdP connector errored and redirected here.
 	q := r.URL.Query()
 	e := q.Get("error")
-	idpcID := q.Get("idpc_id")
+	connectorID := q.Get("connector_id")
 	if e != "" {
 		td.Error = true
 		td.Message = "Authentication Error"
@@ -132,10 +132,10 @@ func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idp
 		if remoteMsg == "" {
 			remoteMsg = q.Get("error")
 		}
-		if idpcID == "" {
+		if connectorID == "" {
 			td.Detail = remoteMsg
 		} else {
-			td.Detail = fmt.Sprintf("Error from %s: %s.", idpcID, remoteMsg)
+			td.Detail = fmt.Sprintf("Error from %s: %s.", connectorID, remoteMsg)
 		}
 		execTemplate(w, tpl, td)
 		return
@@ -177,7 +177,7 @@ func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idp
 		td.Links[n].ID = idpc.ID()
 
 		v := r.URL.Query()
-		v.Set("idpc_id", idpc.ID())
+		v.Set("connector_id", idpc.ID())
 		v.Set("response_type", "code")
 		td.Links[n].URL = httpPathAuth + "?" + v.Encode()
 		n++
@@ -211,7 +211,8 @@ func handleAuthFunc(srv OIDCServer, idpcs []connector.Connector, tpl *template.T
 			return
 		}
 
-		idpc, ok := idx[q.Get("idpc_id")]
+		connectorID := q.Get("connector_id")
+		idpc, ok := idx[connectorID]
 		if !ok {
 			renderLoginPage(w, r, srv, idpcs, tpl)
 			return
@@ -271,7 +272,7 @@ func handleAuthFunc(srv OIDCServer, idpcs []connector.Connector, tpl *template.T
 			return
 		}
 
-		key, err := srv.NewSession(acr.ClientID, acr.State, *redirectURL)
+		key, err := srv.NewSession(connectorID, acr.ClientID, acr.State, *redirectURL)
 		if err != nil {
 			redirectAuthError(w, err, acr.State, *redirectURL)
 			return

@@ -12,6 +12,7 @@ import (
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 	"github.com/coreos-inc/auth/session"
+	"github.com/coreos-inc/auth/user"
 )
 
 type StaticKeyManager struct {
@@ -112,7 +113,7 @@ func TestServerNewSession(t *testing.T) {
 		},
 	}
 
-	key, err := srv.NewSession(ci.Credentials.ID, state, ci.Metadata.RedirectURLs[0])
+	key, err := srv.NewSession("bogus_idpc", ci.Credentials.ID, state, ci.Metadata.RedirectURLs[0])
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -122,7 +123,7 @@ func TestServerNewSession(t *testing.T) {
 		t.Fatalf("Session not retreivable: %v", err)
 	}
 
-	ses, err := sm.Identify(sessionID, oidc.Identity{})
+	ses, err := sm.AttachRemoteIdentity(sessionID, oidc.Identity{})
 	if err != nil {
 		t.Fatalf("Unable to add Identity to Session: %v", err)
 	}
@@ -164,9 +165,24 @@ func TestServerLogin(t *testing.T) {
 
 	sm := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())
 	sm.GenerateCode = staticGenerateCodeFunc("fakecode")
-	sessionID, err := sm.NewSession(ci.Credentials.ID, "bogus", ci.Metadata.RedirectURLs[0])
+	sessionID, err := sm.NewSession("test_connector_id", ci.Credentials.ID, "bogus", ci.Metadata.RedirectURLs[0])
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	userRepo := user.NewUserRepo()
+	err = userRepo.Set(user.User{
+		ID:   "testid",
+		Name: "testname",
+		RemoteIdentities: []user.RemoteIdentity{
+			{
+				ConnectorID: "test_connector_id",
+				ID:          "YYY",
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("error adding user to repo: %v", err)
 	}
 
 	srv := &Server{
@@ -174,6 +190,7 @@ func TestServerLogin(t *testing.T) {
 		KeyManager:         km,
 		SessionManager:     sm,
 		ClientIdentityRepo: ciRepo,
+		UserRepo:           userRepo,
 	}
 
 	ident := oidc.Identity{ID: "YYY", Name: "elroy", Email: "elroy@example.com"}
@@ -236,18 +253,40 @@ func TestServerCodeToken(t *testing.T) {
 	}
 	sm := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())
 
+	usr := user.User{
+		ID:   "user_id",
+		Name: "mister_user",
+		RemoteIdentities: []user.RemoteIdentity{
+			{
+				ConnectorID: "bogus_idpc",
+				ID:          "bogus_id",
+			},
+		},
+	}
+	userRepo := user.NewUserRepo()
+	err := userRepo.Set(usr)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
 	srv := &Server{
 		IssuerURL:          url.URL{Scheme: "http", Host: "server.example.com"},
 		KeyManager:         km,
 		SessionManager:     sm,
 		ClientIdentityRepo: ciRepo,
+		UserRepo:           userRepo,
 	}
 
-	sessionID, err := sm.NewSession(ci.Credentials.ID, "bogus", url.URL{})
+	sessionID, err := sm.NewSession("bogus_idpc", ci.Credentials.ID, "bogus", url.URL{})
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
-	_, err = sm.Identify(sessionID, oidc.Identity{})
+	_, err = sm.AttachRemoteIdentity(sessionID, oidc.Identity{})
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	_, err = sm.AttachUser(sessionID, usr.ID)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -286,12 +325,12 @@ func TestServerTokenUnrecognizedKey(t *testing.T) {
 		ClientIdentityRepo: ciRepo,
 	}
 
-	sessionID, err := sm.NewSession(ci.Credentials.ID, "bogus", url.URL{})
+	sessionID, err := sm.NewSession("connector_id", ci.Credentials.ID, "bogus", url.URL{})
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	_, err = sm.Identify(sessionID, oidc.Identity{})
+	_, err = sm.AttachRemoteIdentity(sessionID, oidc.Identity{})
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -356,12 +395,12 @@ func TestServerTokenFail(t *testing.T) {
 		sm := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())
 		sm.GenerateCode = func() (string, error) { return keyFixture, nil }
 
-		sessionID, err := sm.NewSession(ccFixture.ID, "bogus", url.URL{})
+		sessionID, err := sm.NewSession("connector_id", ccFixture.ID, "bogus", url.URL{})
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		_, err = sm.Identify(sessionID, oidc.Identity{})
+		_, err = sm.AttachRemoteIdentity(sessionID, oidc.Identity{})
 		if err != nil {
 			t.Errorf("case %d: unexpected error: %v", i, err)
 			continue
@@ -372,11 +411,30 @@ func TestServerTokenFail(t *testing.T) {
 		ciRepo := NewClientIdentityRepo([]oidc.ClientIdentity{
 			oidc.ClientIdentity{Credentials: ccFixture},
 		})
+
+		_, err = sm.AttachUser(sessionID, "testid")
+		if err != nil {
+			t.Fatalf("case %d: Unexpected error: %v", i, err)
+		}
+
+		userRepo := user.NewUserRepo()
+		err = userRepo.Set(user.User{
+			ID:   "testid",
+			Name: "testname",
+			RemoteIdentities: []user.RemoteIdentity{
+				{
+					ConnectorID: "test_connector_id",
+					ID:          "YYY",
+				},
+			},
+		})
+
 		srv := &Server{
 			IssuerURL:          issuerURL,
 			KeyManager:         km,
 			SessionManager:     sm,
 			ClientIdentityRepo: ciRepo,
+			UserRepo:           userRepo,
 		}
 
 		_, err = sm.NewSessionKey(sessionID)

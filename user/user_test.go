@@ -4,6 +4,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/coreos-inc/auth/jose"
 )
 
 func TestNewUsersFromReader(t *testing.T) {
@@ -12,7 +14,7 @@ func TestNewUsersFromReader(t *testing.T) {
 		want []User
 	}{
 		{
-			json: `[{"id":"12345","name":"elroy", "displayName": "Elroy Canis", "remoteIdentities":[{"idpcID":"google", "id":"elroy@example.com"}] }]`,
+			json: `[{"id":"12345","name":"elroy", "displayName": "Elroy Canis", "remoteIdentities":[{"connectorID":"google", "id":"elroy@example.com"}] }]`,
 			want: []User{
 				{
 					ID:          "12345",
@@ -20,8 +22,8 @@ func TestNewUsersFromReader(t *testing.T) {
 					DisplayName: "Elroy Canis",
 					RemoteIdentities: []RemoteIdentity{
 						{
-							IDPCID: "google",
-							ID:     "elroy@example.com",
+							ConnectorID: "google",
+							ID:          "elroy@example.com",
 						},
 					},
 				},
@@ -42,36 +44,28 @@ func TestNewUsersFromReader(t *testing.T) {
 	}
 }
 
-func TestNewUserRepoFromUsers(t *testing.T) {
+func TestAddToClaims(t *testing.T) {
 	tests := []struct {
-		users []User
+		user         User
+		wantedClaims jose.Claims
 	}{
 		{
-			users: []User{
-				{
-					ID:   "123",
-					Name: "name123",
-				},
-				{
-					ID:   "456",
-					Name: "name456",
-				},
+			user: User{
+				Name:        "testUserName",
+				DisplayName: "Test User Name",
+			},
+			wantedClaims: jose.Claims{
+				"name":               "Test User Name",
+				"preferred_username": "testUserName",
 			},
 		},
 	}
 
 	for i, tt := range tests {
-		repo := newUserRepoFromUsers(tt.users)
-		for _, want := range tt.users {
-			got, err := repo.Get(want.ID)
-			if err != nil {
-				t.Errorf("case %d: want nil err: %v", i, err)
-			}
-
-			if !reflect.DeepEqual(want, got) {
-				t.Errorf("case %d: want=%#v got=%#v", i, want, got)
-			}
+		claims := jose.Claims{}
+		tt.user.AddToClaims(claims)
+		if !reflect.DeepEqual(claims, tt.wantedClaims) {
+			t.Errorf("case %d: want=%#v, got=%#v", i, claims, tt.wantedClaims)
 		}
 	}
-
 }

@@ -29,7 +29,7 @@ const (
 
 type OIDCServer interface {
 	ClientMetadata(string) (*oidc.ClientMetadata, error)
-	NewSession(clientID, clientState string, redirectURL url.URL) (string, error)
+	NewSession(connectorID, clientID, clientState string, redirectURL url.URL) (string, error)
 	Login(oidc.Identity, string) (string, error)
 	CodeToken(creds oidc.ClientCredentials, sessionKey string) (*jose.JWT, error)
 	ClientCredsToken(creds oidc.ClientCredentials) (*jose.JWT, error)
@@ -101,9 +101,9 @@ func (s *Server) ProviderConfig() oidc.ProviderConfig {
 }
 
 func (s *Server) AddConnector(cfg connector.ConnectorConfig) error {
-	idpcID := cfg.ConnectorID()
+	connectorID := cfg.ConnectorID()
 	ns := s.IssuerURL
-	ns.Path = path.Join(ns.Path, httpPathAuth, idpcID)
+	ns.Path = path.Join(ns.Path, httpPathAuth, connectorID)
 
 	idpc, err := cfg.Connector(ns, s.Login, s.Templates)
 	if err != nil {
@@ -115,7 +115,7 @@ func (s *Server) AddConnector(cfg connector.ConnectorConfig) error {
 	sortable := sortableIDPCs(s.Connectors)
 	sort.Sort(sortable)
 
-	log.Infof("Loaded IdP connector: id=%s type=%s", idpcID, cfg.ConnectorType())
+	log.Infof("Loaded IdP connector: id=%s type=%s", connectorID, cfg.ConnectorType())
 	return nil
 }
 
@@ -137,7 +137,7 @@ func (s *Server) HTTPHandler() http.Handler {
 
 	pcfg := s.ProviderConfig()
 	for _, idpc := range s.Connectors {
-		errorURL, err := url.Parse(fmt.Sprintf("%s?idpc_id=%s", pcfg.AuthEndpoint, idpc.ID()))
+		errorURL, err := url.Parse(fmt.Sprintf("%s?connector_id=%s", pcfg.AuthEndpoint, idpc.ID()))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -163,8 +163,8 @@ func (s *Server) ClientMetadata(clientID string) (*oidc.ClientMetadata, error) {
 	return s.ClientIdentityRepo.Metadata(clientID)
 }
 
-func (s *Server) NewSession(clientID, clientState string, redirectURL url.URL) (string, error) {
-	sessionID, err := s.SessionManager.NewSession(clientID, clientState, redirectURL)
+func (s *Server) NewSession(ipdcID, clientID, clientState string, redirectURL url.URL) (string, error) {
+	sessionID, err := s.SessionManager.NewSession(ipdcID, clientID, clientState, redirectURL)
 	if err != nil {
 		return "", err
 	}
@@ -179,12 +179,25 @@ func (s *Server) Login(ident oidc.Identity, key string) (string, error) {
 		return "", err
 	}
 
-	ses, err := s.SessionManager.Identify(sessionID, ident)
+	ses, err := s.SessionManager.AttachRemoteIdentity(sessionID, ident)
+	if err != nil {
+		return "", err
+	}
+	log.Infof("Session %s remote identity attached: clientID=%s identity=%#v", sessionID, ses.ClientID, ident)
+
+	usr, err := s.UserRepo.GetByRemoteIdentity(user.RemoteIdentity{
+		ConnectorID: ses.ConnectorID,
+		ID:          ses.Identity.ID,
+	})
 	if err != nil {
 		return "", err
 	}
 
-	log.Infof("Session %s identified: clientID=%s identity=%#v", sessionID, ses.ClientID, ident)
+	ses, err = s.SessionManager.AttachUser(sessionID, usr.ID)
+	if err != nil {
+		return "", err
+	}
+	log.Infof("Session %s user identified: clientID=%s user=%#v", sessionID, ses.ClientID, usr)
 
 	code, err := s.SessionManager.NewSessionKey(sessionID)
 	if err != nil {
@@ -260,7 +273,16 @@ func (s *Server) CodeToken(creds oidc.ClientCredentials, sessionKey string) (*jo
 		return nil, oauth2.NewError(oauth2.ErrorServerError)
 	}
 
-	jwt, err := jose.NewSignedJWT(ses.Claims(s.IssuerURL.String()), signer)
+	user, err := s.UserRepo.Get(ses.UserID)
+	if err != nil {
+		log.Errorf("Failed to fetch user %q from repo: %v: ", ses.UserID, err)
+		return nil, oauth2.NewError(oauth2.ErrorServerError)
+	}
+
+	claims := ses.Claims(s.IssuerURL.String())
+	user.AddToClaims(claims)
+
+	jwt, err := jose.NewSignedJWT(claims, signer)
 	if err != nil {
 		log.Errorf("Failed to generate ID token: %v", err)
 		return nil, oauth2.NewError(oauth2.ErrorServerError)

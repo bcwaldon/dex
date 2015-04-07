@@ -37,6 +37,8 @@ type sessionModel struct {
 	ClientState string    `db:"clientState"`
 	RedirectURL string    `db:"RedirectURL"`
 	Identity    string    `db:"identity"`
+	ConnectorID string    `db:"connectorID"`
+	UserID      string    `db:"userID"`
 }
 
 func (s *sessionModel) session() (*session.Session, error) {
@@ -59,6 +61,8 @@ func (s *sessionModel) session() (*session.Session, error) {
 		ClientState: s.ClientState,
 		RedirectURL: *ru,
 		Identity:    ident,
+		ConnectorID: s.ConnectorID,
+		UserID:      s.UserID,
 	}
 
 	return &ses, nil
@@ -79,6 +83,8 @@ func newSessionModel(s *session.Session) (*sessionModel, error) {
 		ClientState: s.ClientState,
 		RedirectURL: s.RedirectURL.String(),
 		Identity:    string(b),
+		ConnectorID: s.ConnectorID,
+		UserID:      s.UserID,
 	}
 
 	return &sm, nil

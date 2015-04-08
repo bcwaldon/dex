@@ -174,8 +174,6 @@ func TestShouldRotate(t *testing.T) {
 	fc := clockwork.NewFakeClock()
 	now := fc.Now().UTC()
 
-	kRepo := NewPrivateKeySetRepo()
-
 	tests := []struct {
 		expiresAt time.Time
 		ttl       time.Duration
@@ -196,6 +194,13 @@ func TestShouldRotate(t *testing.T) {
 			expected:  true,
 		},
 		{
+			// Nil keyset.
+			expiresAt: now.Add(time.Hour * 2),
+			ttl:       time.Hour * 4,
+			numKeys:   -1,
+			expected:  true,
+		},
+		{
 			// KeySet expired.
 			expiresAt: now.Add(time.Hour * -2),
 			ttl:       time.Hour * 4,
@@ -212,15 +217,18 @@ func TestShouldRotate(t *testing.T) {
 	}
 
 	for i, tt := range tests {
+		kRepo := NewPrivateKeySetRepo()
 		krot := NewPrivateKeyRotator(kRepo, tt.ttl)
 		krot.clock = fc
 		pks := &PrivateKeySet{
 			expiresAt: tt.expiresAt,
 		}
-		for n := 0; n < tt.numKeys; n++ {
-			pks.keys = append(pks.keys, generatePrivateKeyStatic(t, n))
+		if tt.numKeys != -1 {
+			for n := 0; n < tt.numKeys; n++ {
+				pks.keys = append(pks.keys, generatePrivateKeyStatic(t, n))
+			}
+			kRepo.Set(pks)
 		}
-		kRepo.Set(pks)
 		actual, err := krot.shouldRotate()
 		if err != nil {
 			t.Errorf("case %d: error calling shouldRotate(): %v", i, err)

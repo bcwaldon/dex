@@ -1,8 +1,8 @@
 package key
 
-import (
-	"errors"
-)
+import "errors"
+
+var ErrorNoKeys = errors.New("no keys found")
 
 type WritableKeySetRepo interface {
 	Set(KeySet) error
@@ -38,5 +38,8 @@ func (r *memPrivateKeySetRepo) Set(ks KeySet) error {
 }
 
 func (r *memPrivateKeySetRepo) Get() (KeySet, error) {
+	if r.pks.keys == nil {
+		return nil, ErrorNoKeys
+	}
 	return KeySet(&r.pks), nil
 }

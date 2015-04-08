@@ -139,7 +139,7 @@ func (r *PrivateKeySetRepo) Get() (key.KeySet, error) {
 	}
 
 	if len(objs) == 0 {
-		return nil, nil
+		return nil, key.ErrorNoKeys
 	}
 
 	b, ok := objs[0].(*privateKeySetBlob)

@@ -84,6 +84,10 @@ func (r *PrivateKeyRotator) Run() chan struct{} {
 //  - There are no keys in the current KeySet
 func (r *PrivateKeyRotator) shouldRotate() (bool, error) {
 	ks, err := r.repo.Get()
+	if err == ErrorNoKeys {
+		return true, nil
+	}
+
 	if err != nil {
 		return false, fmt.Errorf("failed to get keyset from repo: %v", err)
 	}
@@ -100,7 +104,7 @@ func (r *PrivateKeyRotator) shouldRotate() (bool, error) {
 
 func rotatePrivateKeys(repo PrivateKeySetRepo, k *PrivateKey, keep int, exp time.Time) error {
 	ks, err := repo.Get()
-	if err != nil {
+	if err != nil && err != ErrorNoKeys {
 		return err
 	}
 

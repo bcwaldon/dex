@@ -30,6 +30,7 @@ func main() {
 	// used only if --no-db is set
 	connectors := fs.String("connectors", "./static/fixtures/connectors.json", "JSON file containg set of IDPC configs")
 	clients := fs.String("clients", "./static/fixtures/clients.json", "json file containing set of clients")
+	users := fs.String("users", "./static/fixtures/users.json", "json file containing set of users")
 
 	logDebug := fs.Bool("log-debug", false, "log debug-level information")
 	logTimestamps := fs.Bool("log-timestamps", false, "prefix log lines with timestamps")
@@ -68,6 +69,7 @@ func main() {
 			TemplateDir:    *templates,
 			ClientsFile:    *clients,
 			ConnectorsFile: *connectors,
+			UsersFile:      *users,
 		}
 	} else {
 		if *dbMaxIdleConns == 0 {
@@ -86,6 +88,8 @@ func main() {
 			TemplateDir:    *templates,
 			KeySecret:      *keySecret,
 			DatabaseConfig: dbCfg,
+			//NOTE: This is temporary until we get the DB version ready.
+			UsersFile: *users,
 		}
 	}
 

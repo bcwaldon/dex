@@ -12,7 +12,7 @@ func TestNewUsersFromReader(t *testing.T) {
 		want []User
 	}{
 		{
-			json: `[{"id":"12345","name":"elroy", "displayName": "Elroy Canis", "remoteIdentities":[{"idpID":"google", "id":"elroy@example.com"}] }]`,
+			json: `[{"id":"12345","name":"elroy", "displayName": "Elroy Canis", "remoteIdentities":[{"idpcID":"google", "id":"elroy@example.com"}] }]`,
 			want: []User{
 				{
 					ID:          "12345",

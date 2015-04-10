@@ -126,7 +126,7 @@ func (u *User) UnmarshalJSON(data []byte) error {
 
 func (u *RemoteIdentity) UnmarshalJSON(data []byte) error {
 	var dec struct {
-		IDPCID string `json:"idpID"`
+		IDPCID string `json:"idpcID"`
 		ID     string `json:"id"`
 	}
 

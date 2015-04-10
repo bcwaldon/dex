@@ -19,6 +19,7 @@ import (
 	"github.com/coreos-inc/auth/pkg/health"
 	"github.com/coreos-inc/auth/pkg/log"
 	"github.com/coreos-inc/auth/session"
+	"github.com/coreos-inc/auth/user"
 )
 
 const (
@@ -46,6 +47,7 @@ type Server struct {
 	LoginTemplate       *template.Template
 	HealthChecks        []health.Checkable
 	Connectors          []connector.Connector
+	UserRepo            user.UserRepo
 }
 
 func (s *Server) Run() chan struct{} {

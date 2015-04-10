@@ -14,6 +14,7 @@ import (
 	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/pkg/health"
 	"github.com/coreos-inc/auth/session"
+	"github.com/coreos-inc/auth/user"
 )
 
 type ServerConfig interface {
@@ -25,6 +26,7 @@ type SingleServerConfig struct {
 	TemplateDir    string
 	ClientsFile    string
 	ConnectorsFile string
+	UsersFile      string
 }
 
 func (cfg *SingleServerConfig) Server() (*Server, error) {
@@ -72,6 +74,11 @@ func (cfg *SingleServerConfig) Server() (*Server, error) {
 		return nil, err
 	}
 
+	userRepo, err := user.NewUserRepoFromFile(cfg.UsersFile)
+	if err != nil {
+		return nil, fmt.Errorf("unable to read users from file: %v", err)
+	}
+
 	km := key.NewPrivateKeyManager()
 	srv := Server{
 		IssuerURL:           *iu,
@@ -84,6 +91,7 @@ func (cfg *SingleServerConfig) Server() (*Server, error) {
 		LoginTemplate:       ltpl,
 		HealthChecks:        []health.Checkable{km},
 		Connectors:          []connector.Connector{},
+		UserRepo:            userRepo,
 	}
 
 	return &srv, nil
@@ -94,6 +102,8 @@ type MultiServerConfig struct {
 	TemplateDir    string
 	KeySecret      string
 	DatabaseConfig db.Config
+	//NOTE: This is temporary until we get the DB version ready.
+	UsersFile string
 }
 
 func (cfg *MultiServerConfig) Server() (*Server, error) {
@@ -136,6 +146,12 @@ func (cfg *MultiServerConfig) Server() (*Server, error) {
 		return nil, err
 	}
 
+	//NOTE: This is temporary until we get the DB version ready.
+	userRepo, err := user.NewUserRepoFromFile(cfg.UsersFile)
+	if err != nil {
+		return nil, fmt.Errorf("unable to read users from file: %v", err)
+	}
+
 	dbh := db.NewHealthChecker(dbc)
 	km := key.NewPrivateKeyManager()
 	srv := Server{
@@ -149,6 +165,7 @@ func (cfg *MultiServerConfig) Server() (*Server, error) {
 		LoginTemplate:       ltpl,
 		HealthChecks:        []health.Checkable{km, dbh},
 		Connectors:          []connector.Connector{},
+		UserRepo:            userRepo,
 	}
 
 	return &srv, nil

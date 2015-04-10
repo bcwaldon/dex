@@ -1,0 +1,13 @@
+[
+    {
+        "id": "elroy-id",
+        "name": "elroy77",
+        "displayName": "Elroy Jonez",
+        "remoteIdentities": [
+            {
+                "idpcID": "local",
+                "id": "elroy77"
+            }
+        ]
+    }
+]

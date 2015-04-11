@@ -6,7 +6,7 @@ import (
 	"net/url"
 
 	"github.com/coreos-inc/auth/oidc"
-	"github.com/coreos-inc/auth/pkg/health"
+	"github.com/coreos/pkg/health"
 )
 
 type Connector interface {

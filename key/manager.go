@@ -7,7 +7,7 @@ import (
 	"github.com/jonboulle/clockwork"
 
 	"github.com/coreos-inc/auth/jose"
-	"github.com/coreos-inc/auth/pkg/health"
+	"github.com/coreos/pkg/health"
 )
 
 type PrivateKeyManager interface {

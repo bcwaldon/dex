@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"strings"
 
-	"google.golang.org/api/googleapi"
+	"github.com/coreos-inc/auth/Godeps/_workspace/src/google.golang.org/api/googleapi"
 )
 
 // Always reference these packages, just in case the auto-generated code

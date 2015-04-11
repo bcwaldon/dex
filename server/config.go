@@ -12,9 +12,9 @@ import (
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/db"
 	"github.com/coreos-inc/auth/key"
-	"github.com/coreos-inc/auth/pkg/health"
 	"github.com/coreos-inc/auth/session"
 	"github.com/coreos-inc/auth/user"
+	"github.com/coreos/pkg/health"
 )
 
 type ServerConfig interface {

@@ -19,8 +19,8 @@ import (
 	"github.com/coreos-inc/auth/jose"
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
-	"github.com/coreos-inc/auth/pkg/health"
 	"github.com/coreos-inc/auth/session"
+	"github.com/coreos/pkg/health"
 )
 
 type fakeConnector struct {

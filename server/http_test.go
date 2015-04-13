@@ -20,7 +20,6 @@ import (
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 	"github.com/coreos-inc/auth/session"
-	"github.com/coreos/pkg/health"
 )
 
 type fakeConnector struct {
@@ -506,44 +505,4 @@ func (c checkable) Healthy() (err error) {
 		err = errors.New("im unhealthy")
 	}
 	return
-}
-
-func TestHandleHealthFunc(t *testing.T) {
-	tests := []struct {
-		checks      []health.Checkable
-		wantCode    int
-		wantMessage string
-	}{
-		{
-			checks:      []health.Checkable{checkable{false}},
-			wantMessage: "fail",
-			wantCode:    http.StatusInternalServerError,
-		},
-		{
-			checks:      []health.Checkable{checkable{true}},
-			wantMessage: "ok",
-			wantCode:    http.StatusOK,
-		},
-	}
-
-	for i, tt := range tests {
-		hdlr := handleHealthFunc(tt.checks)
-		r, _ := http.NewRequest("GET", "/", nil)
-		w := httptest.NewRecorder()
-		hdlr(w, r)
-
-		if tt.wantCode != w.Code {
-			t.Errorf("case %d: want=%d, got=%d", i, tt.wantCode, w.Code)
-		}
-
-		var resp map[string]string
-		if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-			t.Errorf("case %d: unexpected error=%v", i, err)
-		}
-
-		got := resp["message"]
-		if tt.wantMessage != got {
-			t.Errorf("case %d: want=%s, got=%s", i, tt.wantMessage, got)
-		}
-	}
 }

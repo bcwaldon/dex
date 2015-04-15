@@ -16,9 +16,10 @@ const (
 type SessionState string
 
 const (
-	SessionStateNew        = SessionState("NEW")
-	SessionStateIdentified = SessionState("IDENTIFIED")
-	SessionStateDead       = SessionState("EXCHANGED")
+	SessionStateNew            = SessionState("NEW")
+	SessionStateRemoteAttached = SessionState("REMOTE_ATTACHED")
+	SessionStateIdentified     = SessionState("IDENTIFIED")
+	SessionStateDead           = SessionState("EXCHANGED")
 )
 
 type SessionKey struct {
@@ -27,6 +28,7 @@ type SessionKey struct {
 }
 
 type Session struct {
+	ConnectorID string
 	ID          string
 	State       SessionState
 	CreatedAt   time.Time
@@ -35,11 +37,15 @@ type Session struct {
 	ClientState string
 	RedirectURL url.URL
 	Identity    oidc.Identity
+	UserID      string
 }
 
+// Claims returns a new set of Claims for the current session.
+// The "sub" of the returned Claims is that of the authd User, not whatever
+// remote Identity was used to authenticate. However the "email" from the
+// Identity is used.
 func (s *Session) Claims(issuerURL string) jose.Claims {
-	claims := oidc.NewClaims(issuerURL, s.Identity.ID, s.ClientID, s.CreatedAt, s.ExpiresAt)
-	claims.Add("name", s.Identity.Name)
+	claims := oidc.NewClaims(issuerURL, s.UserID, s.ClientID, s.CreatedAt, s.ExpiresAt)
 	claims.Add("email", s.Identity.Email)
 
 	return claims

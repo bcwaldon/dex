@@ -16,7 +16,7 @@ func staticGenerateCodeFunc(code string) GenerateCodeFunc {
 func TestSessionManagerNewSession(t *testing.T) {
 	sm := NewSessionManager(NewSessionRepo(), NewSessionKeyRepo())
 	sm.GenerateCode = staticGenerateCodeFunc("boo")
-	got, err := sm.NewSession("XXX", "bogus", url.URL{})
+	got, err := sm.NewSession("bogus_idpc", "XXX", "bogus", url.URL{})
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -25,26 +25,26 @@ func TestSessionManagerNewSession(t *testing.T) {
 	}
 }
 
-func TestSessionIdentifyTwice(t *testing.T) {
+func TestSessionAttachRemoteIdentityTwice(t *testing.T) {
 	sm := NewSessionManager(NewSessionRepo(), NewSessionKeyRepo())
-	sessionID, err := sm.NewSession("XXX", "bogus", url.URL{})
+	sessionID, err := sm.NewSession("bogus_idpc", "XXX", "bogus", url.URL{})
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
 	ident := oidc.Identity{ID: "YYY", Name: "elroy", Email: "elroy@example.com"}
-	if _, err := sm.Identify(sessionID, ident); err != nil {
+	if _, err := sm.AttachRemoteIdentity(sessionID, ident); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	if _, err := sm.Identify(sessionID, ident); err == nil {
+	if _, err := sm.AttachRemoteIdentity(sessionID, ident); err == nil {
 		t.Fatalf("Expected non-nil error")
 	}
 }
 
 func TestSessionManagerExchangeKey(t *testing.T) {
 	sm := NewSessionManager(NewSessionRepo(), NewSessionKeyRepo())
-	sessionID, err := sm.NewSession("XXX", "bogus", url.URL{})
+	sessionID, err := sm.NewSession("connector_id", "XXX", "bogus", url.URL{})
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -80,7 +80,7 @@ func TestSessionManagerGetSessionInStateNoExist(t *testing.T) {
 
 func TestSessionManagerGetSessionInStateWrongState(t *testing.T) {
 	sm := NewSessionManager(NewSessionRepo(), NewSessionKeyRepo())
-	sessionID, err := sm.NewSession("XXX", "bogus", url.URL{})
+	sessionID, err := sm.NewSession("connector_id", "XXX", "bogus", url.URL{})
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -95,13 +95,13 @@ func TestSessionManagerGetSessionInStateWrongState(t *testing.T) {
 
 func TestSessionManagerKill(t *testing.T) {
 	sm := NewSessionManager(NewSessionRepo(), NewSessionKeyRepo())
-	sessionID, err := sm.NewSession("XXX", "bogus", url.URL{})
+	sessionID, err := sm.NewSession("connector_id", "XXX", "bogus", url.URL{})
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
 	ident := oidc.Identity{ID: "YYY", Name: "elroy", Email: "elroy@example.com"}
-	if _, err := sm.Identify(sessionID, ident); err != nil {
+	if _, err := sm.AttachRemoteIdentity(sessionID, ident); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 

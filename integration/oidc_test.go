@@ -15,6 +15,7 @@ import (
 	phttp "github.com/coreos-inc/auth/pkg/http"
 	"github.com/coreos-inc/auth/server"
 	"github.com/coreos-inc/auth/session"
+	"github.com/coreos-inc/auth/user"
 )
 
 func mockServer(cis []oidc.ClientIdentity) (*server.Server, error) {
@@ -66,7 +67,7 @@ func mockClient(srv *server.Server, ci oidc.ClientIdentity) (*oidc.Client, error
 }
 
 func TestHTTPExchangeToken(t *testing.T) {
-	user := connector.LocalUser{
+	localUser := connector.LocalUser{
 		ID:       "elroy77",
 		Name:     "Elroy",
 		Email:    "elroy@example.com",
@@ -74,7 +75,7 @@ func TestHTTPExchangeToken(t *testing.T) {
 	}
 
 	cfg := &connector.LocalConnectorConfig{
-		Users: []connector.LocalUser{user},
+		Users: []connector.LocalUser{localUser},
 	}
 
 	ci := oidc.ClientIdentity{
@@ -100,6 +101,22 @@ func TestHTTPExchangeToken(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
+	usr := user.User{
+		ID:          "testid",
+		Name:        "testname",
+		DisplayName: "displayname",
+		RemoteIdentities: []user.RemoteIdentity{
+			{
+				ConnectorID: "test_connector_id",
+				ID:          "YYY",
+			},
+		},
+	}
+	userRepo := user.NewUserRepo()
+	if err = userRepo.Set(usr); err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
 	srv := &server.Server{
 		IssuerURL:          issuerURL,
 		KeyManager:         km,
@@ -107,6 +124,7 @@ func TestHTTPExchangeToken(t *testing.T) {
 		ClientIdentityRepo: cir,
 		Templates:          template.New(connector.LoginPageTemplateName),
 		Connectors:         []connector.Connector{},
+		UserRepo:           userRepo,
 	}
 
 	if err = srv.AddConnector(cfg); err != nil {
@@ -135,16 +153,22 @@ func TestHTTPExchangeToken(t *testing.T) {
 	}
 
 	m := http.NewServeMux()
-	m.HandleFunc("/callback", handleCallbackFunc(cl))
+
+	var claims jose.Claims
+	m.HandleFunc("/callback", handleCallbackFunc(cl, &claims))
 	cClient := &phttp.HandlerClient{Handler: m}
 
 	// this will actually happen due to some interaction between the
 	// end-user and a remote identity provider
-	sessionID, err := sm.NewSession(ci.Credentials.ID, "bogus", url.URL{})
+	sessionID, err := sm.NewSession("bogus_idpc", ci.Credentials.ID, "bogus", url.URL{})
 	if err != nil {
 		t.Fatalf("Unexpected err: %v", err)
 	}
-	if _, err = sm.Identify(sessionID, user.Identity()); err != nil {
+	if _, err = sm.AttachRemoteIdentity(sessionID, localUser.Identity()); err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	if _, err = sm.AttachUser(sessionID, usr.ID); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
@@ -161,6 +185,13 @@ func TestHTTPExchangeToken(t *testing.T) {
 	resp, err := cClient.Do(req)
 	if err != nil {
 		t.Fatalf("Failed resolving HTTP requests against /callback: %v", err)
+	}
+
+	if claims["name"] != usr.DisplayName {
+		t.Errorf("want=%#v, got=%#v", usr.DisplayName, claims["name"])
+	}
+	if claims["preferred_username"] != usr.Name {
+		t.Errorf("want=%#v, got=%#v", usr.Name, claims["preferred_name"])
 	}
 
 	if resp.StatusCode != http.StatusOK {
@@ -215,7 +246,7 @@ func TestHTTPClientCredsToken(t *testing.T) {
 	}
 }
 
-func handleCallbackFunc(c *oidc.Client) http.HandlerFunc {
+func handleCallbackFunc(c *oidc.Client, claims *jose.Claims) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		code := r.URL.Query().Get("code")
 		if code == "" {
@@ -229,7 +260,7 @@ func handleCallbackFunc(c *oidc.Client) http.HandlerFunc {
 			return
 		}
 
-		if _, err := tok.Claims(); err != nil {
+		if *claims, err = tok.Claims(); err != nil {
 			phttp.WriteError(w, http.StatusBadRequest, fmt.Sprintf("unable to construct claims: %v", err))
 			return
 		}

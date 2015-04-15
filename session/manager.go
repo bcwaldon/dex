@@ -44,7 +44,7 @@ type SessionManager struct {
 	keys           SessionKeyRepo
 }
 
-func (m *SessionManager) NewSession(clientID, clientState string, redirectURL url.URL) (string, error) {
+func (m *SessionManager) NewSession(connectorID, clientID, clientState string, redirectURL url.URL) (string, error) {
 	sID, err := m.GenerateCode()
 	if err != nil {
 		return "", err
@@ -52,6 +52,7 @@ func (m *SessionManager) NewSession(clientID, clientState string, redirectURL ur
 
 	now := m.Clock.Now().UTC()
 	s := Session{
+		ConnectorID: connectorID,
 		ID:          sID,
 		State:       SessionStateNew,
 		CreatedAt:   now,
@@ -105,13 +106,29 @@ func (m *SessionManager) getSessionInState(sessionID string, state SessionState)
 	return s, nil
 }
 
-func (m *SessionManager) Identify(sessionID string, ident oidc.Identity) (*Session, error) {
+func (m *SessionManager) AttachRemoteIdentity(sessionID string, ident oidc.Identity) (*Session, error) {
 	s, err := m.getSessionInState(sessionID, SessionStateNew)
 	if err != nil {
 		return nil, err
 	}
 
 	s.Identity = ident
+	s.State = SessionStateRemoteAttached
+
+	if err = m.sessions.Update(*s); err != nil {
+		return nil, err
+	}
+
+	return s, nil
+}
+
+func (m *SessionManager) AttachUser(sessionID string, userID string) (*Session, error) {
+	s, err := m.getSessionInState(sessionID, SessionStateRemoteAttached)
+	if err != nil {
+		return nil, err
+	}
+
+	s.UserID = userID
 	s.State = SessionStateIdentified
 
 	if err = m.sessions.Update(*s); err != nil {

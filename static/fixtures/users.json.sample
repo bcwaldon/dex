@@ -5,7 +5,7 @@
         "displayName": "Elroy Jonez",
         "remoteIdentities": [
             {
-                "idpcID": "local",
+                "connectorID": "local",
                 "id": "elroy77"
             }
         ]

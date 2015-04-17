@@ -8,6 +8,7 @@ import (
 
 	"github.com/coreos-inc/auth/jose"
 	"github.com/coreos-inc/auth/key"
+	"github.com/coreos-inc/auth/oauth2"
 )
 
 func TestNewClientScopeDefault(t *testing.T) {
@@ -304,6 +305,63 @@ func TestClientMetadataInvalid(t *testing.T) {
 	for i, tt := range tests {
 		if err := tt.Valid(); err == nil {
 			t.Errorf("case %d: expected non-nil error", i)
+		}
+	}
+}
+
+func TestChooseAuthMethod(t *testing.T) {
+	tests := []struct {
+		supported []string
+		chosen    string
+		err       bool
+	}{
+		{
+			supported: []string{},
+			chosen:    oauth2.AuthMethodClientSecretBasic,
+		},
+		{
+			supported: []string{oauth2.AuthMethodClientSecretBasic},
+			chosen:    oauth2.AuthMethodClientSecretBasic,
+		},
+		{
+			supported: []string{oauth2.AuthMethodClientSecretPost},
+			chosen:    oauth2.AuthMethodClientSecretPost,
+		},
+		{
+			supported: []string{oauth2.AuthMethodClientSecretPost, oauth2.AuthMethodClientSecretBasic},
+			chosen:    oauth2.AuthMethodClientSecretPost,
+		},
+		{
+			supported: []string{oauth2.AuthMethodClientSecretBasic, oauth2.AuthMethodClientSecretPost},
+			chosen:    oauth2.AuthMethodClientSecretBasic,
+		},
+		{
+			supported: []string{oauth2.AuthMethodClientSecretJWT, oauth2.AuthMethodClientSecretPost},
+			chosen:    oauth2.AuthMethodClientSecretPost,
+		},
+		{
+			supported: []string{oauth2.AuthMethodClientSecretJWT},
+			chosen:    "",
+			err:       true,
+		},
+	}
+
+	for i, tt := range tests {
+		client := Client{
+			providerConfig: ProviderConfig{
+				TokenEndpointAuthMethodsSupported: tt.supported,
+			},
+		}
+		got, err := client.chooseAuthMethod()
+		if tt.err {
+			if err == nil {
+				t.Errorf("case %d: expected non-nil err", i)
+			}
+			continue
+		}
+
+		if got != tt.chosen {
+			t.Errorf("case %d: want=%q, got=%q", i, tt.chosen, got)
 		}
 	}
 }

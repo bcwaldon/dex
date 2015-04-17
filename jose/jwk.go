@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"math/big"
+	"strings"
 )
 
 // JSON Web Key
@@ -70,7 +71,7 @@ func (j *JWK) UnmarshalJSON(data []byte) error {
 }
 
 func decodeExponent(e string) (int, error) {
-	decE, err := base64.URLEncoding.DecodeString(e)
+	decE, err := decodeBase64URLPaddingOptional(e)
 	if err != nil {
 		return 0, err
 	}
@@ -104,7 +105,7 @@ func encodeExponent(e int) string {
 
 // Turns a URL encoded modulus of a key into a big int.
 func decodeModulus(n string) (*big.Int, error) {
-	decN, err := base64.URLEncoding.DecodeString(n)
+	decN, err := decodeBase64URLPaddingOptional(n)
 	if err != nil {
 		return nil, err
 	}
@@ -115,4 +116,16 @@ func decodeModulus(n string) (*big.Int, error) {
 
 func encodeModulus(n *big.Int) string {
 	return base64.URLEncoding.EncodeToString(n.Bytes())
+}
+
+// decodeBase64URLPaddingOptional decodes Base64 whether there is padding or not.
+// The stdlib version currently doesn't handle this.
+// We can get rid of this is if this bug:
+//   https://github.com/golang/go/issues/4237
+// ever closes.
+func decodeBase64URLPaddingOptional(e string) ([]byte, error) {
+	if m := len(e) % 4; m != 0 {
+		e += strings.Repeat("=", 4-m)
+	}
+	return base64.URLEncoding.DecodeString(e)
 }

@@ -22,6 +22,11 @@ const (
 
 var (
 	DefaultScope = []string{"openid", "email", "profile"}
+
+	supportedAuthMethods = map[string]struct{}{
+		oauth2.AuthMethodClientSecretBasic: struct{}{},
+		oauth2.AuthMethodClientSecretPost:  struct{}{},
+	}
 )
 
 type ClientCredentials oauth2.ClientCredentials
@@ -109,15 +114,35 @@ func (c *Client) Healthy() error {
 }
 
 func (c *Client) OAuthClient() (*oauth2.Client, error) {
+	authMethod, err := c.chooseAuthMethod()
+	if err != nil {
+		return nil, err
+	}
+
 	ocfg := oauth2.Config{
 		Credentials: oauth2.ClientCredentials(c.credentials),
 		RedirectURL: c.redirectURL,
 		AuthURL:     c.providerConfig.AuthEndpoint,
 		TokenURL:    c.providerConfig.TokenEndpoint,
 		Scope:       c.scope,
+		AuthMethod:  authMethod,
 	}
 
 	return oauth2.NewClient(c.httpClient, ocfg)
+}
+
+func (c *Client) chooseAuthMethod() (string, error) {
+	if len(c.providerConfig.TokenEndpointAuthMethodsSupported) == 0 {
+		return oauth2.AuthMethodClientSecretBasic, nil
+	}
+
+	for _, authMethod := range c.providerConfig.TokenEndpointAuthMethodsSupported {
+		if _, ok := supportedAuthMethods[authMethod]; ok {
+			return authMethod, nil
+		}
+	}
+
+	return "", errors.New("no supported auth methods")
 }
 
 func (c *Client) SyncProviderConfig(discoveryURL string) chan struct{} {

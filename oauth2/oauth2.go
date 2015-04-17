@@ -3,6 +3,7 @@ package oauth2
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"mime"
 	"net/http"
@@ -21,6 +22,11 @@ const (
 	GrantTypeAuthCode    = "authorization_code"
 	GrantTypeClientCreds = "client_credentials"
 	GrantTypeImplicit    = "implicit"
+
+	AuthMethodClientSecretPost  = "client_secret_post"
+	AuthMethodClientSecretBasic = "client_secret_basic"
+	AuthMethodClientSecretJWT   = "client_secret_jwt"
+	AuthMethodPrivateKeyJWT     = "private_key_jwt"
 )
 
 type Config struct {
@@ -29,6 +35,10 @@ type Config struct {
 	RedirectURL string
 	AuthURL     string
 	TokenURL    string
+
+	// Must be one of the AuthMethodXXX methods above. Right now, only
+	// AuthMethodClientSecretPost and AuthMethodClientSecretBasic are supported.
+	AuthMethod string
 }
 
 type Client struct {
@@ -38,6 +48,7 @@ type Client struct {
 	authURL     *url.URL
 	redirectURL *url.URL
 	tokenURL    *url.URL
+	authMethod  string
 }
 
 type ClientCredentials struct {
@@ -53,6 +64,13 @@ func NewClient(hc phttp.Client, cfg Config) (c *Client, err error) {
 
 	if len(cfg.Credentials.Secret) == 0 {
 		err = errors.New("missing client secret")
+		return
+	}
+
+	if cfg.AuthMethod == "" {
+		cfg.AuthMethod = AuthMethodClientSecretBasic
+	} else if cfg.AuthMethod != AuthMethodClientSecretPost && cfg.AuthMethod != AuthMethodClientSecretBasic {
+		err = fmt.Errorf("auth method %q is not supported", cfg.AuthMethod)
 		return
 	}
 
@@ -78,6 +96,7 @@ func NewClient(hc phttp.Client, cfg Config) (c *Client, err error) {
 		authURL:     au,
 		tokenURL:    tu,
 		hc:          hc,
+		authMethod:  cfg.AuthMethod,
 	}
 
 	return
@@ -113,6 +132,31 @@ func (c *Client) commonURLValues() url.Values {
 	}
 }
 
+func (c *Client) newAuthenticatedRequest(url string, values url.Values) (*http.Request, error) {
+	var req *http.Request
+	var err error
+	switch c.authMethod {
+	case AuthMethodClientSecretPost:
+		values.Set("client_secret", c.creds.Secret)
+		req, err = http.NewRequest("POST", url, strings.NewReader(values.Encode()))
+		if err != nil {
+			return nil, err
+		}
+	case AuthMethodClientSecretBasic:
+		req, err = http.NewRequest("POST", url, strings.NewReader(values.Encode()))
+		if err != nil {
+			return nil, err
+		}
+		req.SetBasicAuth(c.creds.ID, c.creds.Secret)
+	default:
+		panic("misconfigured client: auth method not supported")
+	}
+
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	return req, nil
+
+}
+
 // ClientCredsToken posts the client id and secret to obtain a token scoped to the OAuth2 client via the "client_credentials" grant type.
 // May not be supported by all OAuth2 servers.
 func (c *Client) ClientCredsToken(scope []string) (result TokenResponse, err error) {
@@ -121,12 +165,10 @@ func (c *Client) ClientCredsToken(scope []string) (result TokenResponse, err err
 		"grant_type": {GrantTypeClientCreds},
 	}
 
-	req, err := http.NewRequest("POST", c.tokenURL.String(), strings.NewReader(v.Encode()))
+	req, err := c.newAuthenticatedRequest(c.tokenURL.String(), v)
 	if err != nil {
 		return
 	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.SetBasicAuth(c.creds.ID, c.creds.Secret)
 
 	resp, err := c.hc.Do(req)
 	if err != nil {
@@ -140,17 +182,16 @@ func (c *Client) ClientCredsToken(scope []string) (result TokenResponse, err err
 // Exchange auth code for series of tokens.
 func (c *Client) Exchange(code string) (result TokenResponse, err error) {
 	v := c.commonURLValues()
+
 	v.Set("grant_type", GrantTypeAuthCode)
 	v.Set("code", code)
 	v.Set("client_secret", c.creds.Secret)
 
-	req, err := http.NewRequest("POST", c.tokenURL.String(), strings.NewReader(v.Encode()))
+	req, err := c.newAuthenticatedRequest(c.tokenURL.String(), v)
 	if err != nil {
 		return
 	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	req.SetBasicAuth(c.creds.ID, c.creds.Secret)
 	resp, err := c.hc.Do(req)
 	if err != nil {
 		return

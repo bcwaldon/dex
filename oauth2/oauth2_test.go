@@ -135,6 +135,7 @@ func TestClientCredsToken(t *testing.T) {
 		Credentials: ClientCredentials{ID: "cid", Secret: "csecret"},
 		Scope:       []string{"foo-scope", "bar-scope"},
 		TokenURL:    "http://example.com/token",
+		AuthMethod:  AuthMethodClientSecretBasic,
 	}
 
 	c, err := NewClient(hc, cfg)
@@ -184,5 +185,74 @@ func TestClientCredsToken(t *testing.T) {
 	sc := strings.Split(hc.Request.PostForm.Get("scope"), " ")
 	if !reflect.DeepEqual(scope, sc) {
 		t.Errorf("wrong scope, want=%v, got=%v", scope, sc)
+	}
+}
+
+func TestNewAuthenticatedRequest(t *testing.T) {
+	tests := []struct {
+		authMethod string
+		url        string
+		values     url.Values
+	}{
+		{
+			authMethod: AuthMethodClientSecretBasic,
+			url:        "http://example.com/token",
+			values:     url.Values{},
+		},
+		{
+			authMethod: AuthMethodClientSecretPost,
+			url:        "http://example.com/token",
+			values:     url.Values{},
+		},
+	}
+
+	for i, tt := range tests {
+		hc := &phttp.HandlerClient{}
+		cfg := Config{
+			Credentials: ClientCredentials{ID: "cid", Secret: "csecret"},
+			Scope:       []string{"foo-scope", "bar-scope"},
+			TokenURL:    "http://example.com/token",
+			AuthMethod:  tt.authMethod,
+		}
+		c, err := NewClient(hc, cfg)
+		req, err := c.newAuthenticatedRequest(tt.url, tt.values)
+		if err != nil {
+			t.Errorf("case %d: unexpected error: %v", i, err)
+			continue
+		}
+		err = req.ParseForm()
+		if err != nil {
+			t.Errorf("case %d: want nil err, got %v", i, err)
+		}
+
+		if tt.authMethod == AuthMethodClientSecretBasic {
+			cid, secret, ok := phttp.BasicAuth(req)
+			if !ok {
+				t.Errorf("case %d: !ok parsing Basic Auth headers", i)
+				continue
+			}
+			if cid != cfg.Credentials.ID {
+				t.Errorf("case %d: want CID == %q, got CID == %q", i, cfg.Credentials.ID, cid)
+			}
+			if secret != cfg.Credentials.Secret {
+				t.Errorf("case %d: want secret == %q, got secret == %q", i, cfg.Credentials.Secret, secret)
+			}
+		} else if tt.authMethod == AuthMethodClientSecretPost {
+			if req.PostFormValue("client_secret") != cfg.Credentials.Secret {
+				t.Errorf("case %d: want client_secret == %q, got client_secret == %q",
+					i, cfg.Credentials.Secret, req.PostFormValue("client_secret"))
+			}
+		}
+
+		for k, v := range tt.values {
+			if !reflect.DeepEqual(v, req.PostForm[k]) {
+				t.Errorf("case %d: key:%q want==%q, got==%q", i, k, v, req.PostForm[k])
+			}
+		}
+
+		if req.URL.String() != tt.url {
+			t.Errorf("case %d: want URL==%q, got URL==%q", i, tt.url, req.URL.String())
+		}
+
 	}
 }

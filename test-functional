@@ -1,3 +1,4 @@
 #!/bin/bash -e
 
-godep go test $@ github.com/coreos-inc/auth/functional
+source ./build
+go test $@ github.com/coreos-inc/auth/functional

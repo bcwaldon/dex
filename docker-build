@@ -1,4 +1,0 @@
-#!/bin/sh -e
-
-echo "Building with docker, might take a while to pull..."
-docker run --rm -v `pwd`:/go/src/github.com/coreos-inc/auth -w /go/src/github.com/coreos-inc/auth golang:1.3.3 ./build

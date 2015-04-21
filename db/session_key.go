@@ -21,7 +21,7 @@ func init() {
 		name:    sessionKeyTableName,
 		model:   sessionKeyModel{},
 		autoinc: false,
-		pkey:    "key",
+		pkey:    []string{"key"},
 	})
 }
 

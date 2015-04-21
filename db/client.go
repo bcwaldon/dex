@@ -35,7 +35,7 @@ func init() {
 		name:    clientIdentityTableName,
 		model:   clientIdentityModel{},
 		autoinc: false,
-		pkey:    "id",
+		pkey:    []string{"id"},
 	})
 }
 

@@ -20,7 +20,7 @@ func init() {
 		name:    connectorConfigTableName,
 		model:   connectorConfigModel{},
 		autoinc: false,
-		pkey:    "id",
+		pkey:    []string{"id"},
 	})
 }
 

@@ -11,11 +11,11 @@ import (
 func TestNewUsersFromReader(t *testing.T) {
 	tests := []struct {
 		json string
-		want []totalUser
+		want []UserWithRemoteIdentities
 	}{
 		{
 			json: `[{"user":{"id":"12345","name":"elroy", "displayName": "Elroy Canis"}, "remoteIdentities":[{"connectorID":"google", "id":"elroy@example.com"}] }]`,
-			want: []totalUser{
+			want: []UserWithRemoteIdentities{
 				{
 					User: User{
 						ID:          "12345",

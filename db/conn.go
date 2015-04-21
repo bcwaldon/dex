@@ -73,3 +73,10 @@ func NewConnection(cfg Config) (*gorp.DbMap, error) {
 
 	return &dbm, nil
 }
+
+func rollback(tx *gorp.Transaction) {
+	err := tx.Rollback()
+	if err != nil {
+		log.Errorf("unable to rollback: %v", err)
+	}
+}

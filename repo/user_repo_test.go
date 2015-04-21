@@ -1,18 +1,25 @@
-package user
+package repo
 
 import (
+	"fmt"
+	"os"
 	"reflect"
 	"testing"
+
+	"github.com/coreos-inc/auth/db"
+	"github.com/coreos-inc/auth/user"
 )
 
-func makeTestUserRepo() UserRepo {
-	users := []totalUser{
+var makeTestUserRepo func() user.UserRepo
+
+var (
+	testUsers = []user.UserWithRemoteIdentities{
 		{
-			User: User{
+			User: user.User{
 				ID:   "ID-1",
 				Name: "Name-1",
 			},
-			RemoteIdentities: []RemoteIdentity{
+			RemoteIdentities: []user.RemoteIdentity{
 				{
 					ConnectorID: "IDPC-1",
 					ID:          "RID-1",
@@ -20,11 +27,11 @@ func makeTestUserRepo() UserRepo {
 			},
 		},
 		{
-			User: User{
+			User: user.User{
 				ID:   "ID-2",
 				Name: "Name-2",
 			},
-			RemoteIdentities: []RemoteIdentity{
+			RemoteIdentities: []user.RemoteIdentity{
 				{
 					ConnectorID: "IDPC-2",
 					ID:          "RID-2",
@@ -32,41 +39,76 @@ func makeTestUserRepo() UserRepo {
 			},
 		},
 	}
+)
 
-	return newUserRepoFromUsers(users)
+func init() {
+	dsn := os.Getenv("AUTHD_TEST_DSN")
+	if dsn == "" {
+		makeTestUserRepo = makeTestUserRepoMem
+	} else {
+		makeTestUserRepo = makeTestUserRepoDB(dsn)
+	}
+}
+
+func makeTestUserRepoMem() user.UserRepo {
+	return user.NewUserRepoFromUsers(testUsers)
+}
+
+func makeTestUserRepoDB(dsn string) func() user.UserRepo {
+	return func() user.UserRepo {
+		c, err := db.NewConnection(db.Config{DSN: dsn})
+		if err != nil {
+			panic(fmt.Sprintf("Unable to connect to database: %v", err))
+		}
+
+		if err = c.DropTablesIfExists(); err != nil {
+			panic(fmt.Sprintf("Unable to drop database tables: %v", err))
+		}
+
+		if err = c.CreateTablesIfNotExists(); err != nil {
+			panic(fmt.Sprintf("Unable to create database tables: %v", err))
+		}
+
+		repo, err := db.NewUserRepoFromUsers(c, testUsers)
+		if err != nil {
+			panic(fmt.Sprintf("Unable to add users: %v", err))
+		}
+		return repo
+	}
+
 }
 
 func TestNewUser(t *testing.T) {
 	tests := []struct {
-		user User
+		user user.User
 		err  error
 	}{
 		{
-			user: User{
+			user: user.User{
 				Name: "AnotherName",
 			},
 			err: nil,
 		},
 		{
-			user: User{
+			user: user.User{
 				Name:        "Name-1",
 				DisplayName: "Oops Same Name",
 			},
-			err: ErrorDuplicateName,
+			err: user.ErrorDuplicateName,
 		},
 		{
-			user: User{
+			user: user.User{
 				ID:          "MyOwnID",
 				Name:        "AnotherName",
 				DisplayName: "Can't set your own ID!",
 			},
-			err: ErrorInvalidID,
+			err: user.ErrorInvalidID,
 		},
 		{
-			user: User{
+			user: user.User{
 				DisplayName: "No Name",
 			},
-			err: ErrorInvalidName,
+			err: user.ErrorInvalidName,
 		},
 	}
 
@@ -98,12 +140,12 @@ func TestNewUser(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	tests := []struct {
-		user User
+		user user.User
 		err  error
 	}{
 		{
 			// Update the name.
-			user: User{
+			user: user.User{
 				ID:   "ID-1",
 				Name: "Name-1.1",
 			},
@@ -111,7 +153,7 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			// No-op.
-			user: User{
+			user: user.User{
 				ID:   "ID-1",
 				Name: "Name-1",
 			},
@@ -119,27 +161,27 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			// No name.
-			user: User{
+			user: user.User{
 				ID:   "ID-1",
 				Name: "",
 			},
-			err: ErrorInvalidName,
+			err: user.ErrorInvalidName,
 		},
 		{
 			// Try Update on non-existent user.
-			user: User{
+			user: user.User{
 				ID:   "NonExistent",
 				Name: "GoodName",
 			},
-			err: ErrorNotFound,
+			err: user.ErrorNotFound,
 		},
 		{
 			// Try update to someone else's name.
-			user: User{
+			user: user.User{
 				ID:   "ID-2",
 				Name: "Name-1",
 			},
-			err: ErrorDuplicateName,
+			err: user.ErrorDuplicateName,
 		},
 	}
 
@@ -171,31 +213,31 @@ func TestUpdate(t *testing.T) {
 func TestAttachRemoteIdentity(t *testing.T) {
 	tests := []struct {
 		id  string
-		rid RemoteIdentity
+		rid user.RemoteIdentity
 		err error
 	}{
 		{
 			id: "ID-1",
-			rid: RemoteIdentity{
+			rid: user.RemoteIdentity{
 				ConnectorID: "IDPC-1",
 				ID:          "RID-1.1",
 			},
 		},
 		{
 			id: "ID-1",
-			rid: RemoteIdentity{
+			rid: user.RemoteIdentity{
 				ConnectorID: "IDPC-2",
 				ID:          "RID-2",
 			},
-			err: ErrorDuplicateRemoteIdentity,
+			err: user.ErrorDuplicateRemoteIdentity,
 		},
 		{
 			id: "NoSuchUser",
-			rid: RemoteIdentity{
+			rid: user.RemoteIdentity{
 				ConnectorID: "IDPC-3",
 				ID:          "RID-3",
 			},
-			err: ErrorNotFound,
+			err: user.ErrorNotFound,
 		},
 	}
 
@@ -227,7 +269,7 @@ func TestAttachRemoteIdentity(t *testing.T) {
 			}
 
 			if findRemoteIdentity(gotRIDs, tt.rid) == -1 {
-				t.Errorf("case %d: RemoteIdentity not found", i)
+				t.Errorf("case %d: user.RemoteIdentity not found", i)
 			}
 
 			if !reflect.DeepEqual(wantUser, gotUser) {
@@ -241,31 +283,31 @@ func TestAttachRemoteIdentity(t *testing.T) {
 func TestRemoveRemoteIdentity(t *testing.T) {
 	tests := []struct {
 		id  string
-		rid RemoteIdentity
+		rid user.RemoteIdentity
 		err error
 	}{
 		{
 			id: "ID-1",
-			rid: RemoteIdentity{
+			rid: user.RemoteIdentity{
 				ConnectorID: "IDPC-1",
 				ID:          "RID-1",
 			},
 		},
 		{
 			id: "ID-1",
-			rid: RemoteIdentity{
+			rid: user.RemoteIdentity{
 				ConnectorID: "IDPC-2",
 				ID:          "RID-2",
 			},
-			err: ErrorNotFound,
+			err: user.ErrorNotFound,
 		},
 		{
 			id: "NoSuchUser",
-			rid: RemoteIdentity{
+			rid: user.RemoteIdentity{
 				ConnectorID: "IDPC-3",
 				ID:          "RID-3",
 			},
-			err: ErrorNotFound,
+			err: user.ErrorNotFound,
 		},
 	}
 
@@ -287,8 +329,8 @@ func TestRemoveRemoteIdentity(t *testing.T) {
 					t.Errorf("case %d: user found.", i)
 
 				}
-			} else if err != ErrorNotFound {
-				t.Errorf("case %d: want %q err, got %q err", i, ErrorNotFound, err)
+			} else if err != user.ErrorNotFound {
+				t.Errorf("case %d: want %q err, got %q err", i, user.ErrorNotFound, err)
 			}
 
 			gotRIDs, err := repo.GetRemoteIdentities(tt.id)
@@ -297,14 +339,14 @@ func TestRemoveRemoteIdentity(t *testing.T) {
 			}
 
 			if findRemoteIdentity(gotRIDs, tt.rid) != -1 {
-				t.Errorf("case %d: RemoteIdentity found", i)
+				t.Errorf("case %d: user.RemoteIdentity found", i)
 			}
 
 		}
 	}
 }
 
-func findRemoteIdentity(rids []RemoteIdentity, rid RemoteIdentity) int {
+func findRemoteIdentity(rids []user.RemoteIdentity, rid user.RemoteIdentity) int {
 	for i, curRID := range rids {
 		if curRID == rid {
 			return i
@@ -315,23 +357,23 @@ func findRemoteIdentity(rids []RemoteIdentity, rid RemoteIdentity) int {
 
 func TestNewUserRepoFromUsers(t *testing.T) {
 	tests := []struct {
-		users []totalUser
+		users []user.UserWithRemoteIdentities
 	}{
 		{
-			users: []totalUser{
+			users: []user.UserWithRemoteIdentities{
 				{
-					User: User{
+					User: user.User{
 						ID:   "123",
 						Name: "name123",
 					},
-					RemoteIdentities: []RemoteIdentity{},
+					RemoteIdentities: []user.RemoteIdentity{},
 				},
 				{
-					User: User{
+					User: user.User{
 						ID:   "456",
 						Name: "name456",
 					},
-					RemoteIdentities: []RemoteIdentity{
+					RemoteIdentities: []user.RemoteIdentity{
 						{
 							ID:          "remoteID",
 							ConnectorID: "connID",
@@ -343,7 +385,7 @@ func TestNewUserRepoFromUsers(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		repo := newUserRepoFromUsers(tt.users)
+		repo := user.NewUserRepoFromUsers(tt.users)
 		for _, want := range tt.users {
 			gotUser, err := repo.Get(want.User.ID)
 			if err != nil {

@@ -237,7 +237,7 @@ func (r *memUserRepo) set(user User) error {
 	return nil
 }
 
-type totalUser struct {
+type UserWithRemoteIdentities struct {
 	User             User             `json:"user"`
 	RemoteIdentities []RemoteIdentity `json:"remoteIdentities"`
 }
@@ -248,10 +248,10 @@ func NewUserRepoFromFile(loc string) (UserRepo, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newUserRepoFromUsers(us), nil
+	return NewUserRepoFromUsers(us), nil
 }
 
-func newUserRepoFromUsers(us []totalUser) UserRepo {
+func NewUserRepoFromUsers(us []UserWithRemoteIdentities) UserRepo {
 	memUserRepo := NewUserRepo().(*memUserRepo)
 	for _, u := range us {
 		memUserRepo.set(u.User)
@@ -262,13 +262,13 @@ func newUserRepoFromUsers(us []totalUser) UserRepo {
 	return memUserRepo
 }
 
-func newUsersFromReader(r io.Reader) ([]totalUser, error) {
-	var us []totalUser
+func newUsersFromReader(r io.Reader) ([]UserWithRemoteIdentities, error) {
+	var us []UserWithRemoteIdentities
 	err := json.NewDecoder(r).Decode(&us)
 	return us, err
 }
 
-func readUsersFromFile(loc string) ([]totalUser, error) {
+func readUsersFromFile(loc string) ([]UserWithRemoteIdentities, error) {
 	uf, err := os.Open(loc)
 	if err != nil {
 		return nil, fmt.Errorf("unable to read users from file %q: %v", loc, err)

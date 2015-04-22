@@ -4,6 +4,6 @@ ExecStart=/usr/bin/docker run \
 --name %n \
 --env AUTHD_OVERLORD_DB_URL=${AUTHD_OVERLORD_DB_URL} \
 --env AUTHD_OVERLORD_KEY_SECRET=${AUTHD_OVERLORD_KEY_SECRET} \
-quay.io/coreosinc/authd /opt/authd/bin/authd-overlord
+quay.io/coreos/authd /opt/authd/bin/authd-overlord
 
 ExecStop=/usr/bin/docker kill %n

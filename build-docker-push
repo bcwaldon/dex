@@ -1,7 +1,7 @@
 #!/bin/sh -e
 
 registry=quay.io
-repo=$registry/coreosinc/authd
+repo=$registry/coreos/authd
 
 if [ -v $DOCKER_USER ] || [ -v $DOCKER_PASSWORD ]; then
     echo "env variables not set: DOCKER_USER, DOCKER_PASSWORD. skipping login, assuming creds in .dockercfg"

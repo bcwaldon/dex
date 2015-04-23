@@ -7,8 +7,6 @@ rm $GOPATH/src/github.com/coreos-inc/auth 2> /dev/null || true
 mkdir -p $GOPATH/src/github.com/coreos-inc/
 ln -s ${PWD} $GOPATH/src/github.com/coreos-inc/auth
 
-eval $(go env)
-
 go build -o bin/authd-worker github.com/coreos-inc/auth/cmd/authd-worker
 go build -o bin/authctl github.com/coreos-inc/auth/cmd/authctl
 go build -o bin/authd-overlord github.com/coreos-inc/auth/cmd/authd-overlord

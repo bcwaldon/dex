@@ -1,6 +1,0 @@
-#!/bin/bash -e
-
-REPO=github.com/coreos-inc/auth
-
-echo "Building with docker, might take a while to pull..."
-docker run --rm -v `pwd`:/go/src/$REPO -w /go/src/$REPO golang:1.3.3 ./build

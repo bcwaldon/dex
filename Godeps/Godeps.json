@@ -23,6 +23,14 @@
 			"Rev": "3f831b65b61282ba6bece21b91beea2edc4c887a"
 		},
 		{
+			"ImportPath": "github.com/kylelemons/godebug/diff",
+			"Rev": "808ac284003ce2b08ef590da08f95379e8a06936"
+		},
+		{
+			"ImportPath": "github.com/kylelemons/godebug/pretty",
+			"Rev": "808ac284003ce2b08ef590da08f95379e8a06936"
+		},
+		{
 			"ImportPath": "github.com/lib/pq",
 			"Rev": "7175accbed18058468c07811f76440d6e8d7cf19"
 		},

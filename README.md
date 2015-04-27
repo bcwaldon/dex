@@ -53,20 +53,21 @@ OpenID Connect (OIDC) is broken up into several specifications. The following (a
 
 # Building
 
-## Local build
+## With Host Go Environment
 `./build`
 
-## Compile binaries with Docker
-`./docker-build`
+## With Docker
+`./go-docker ./build`
 
 ## Docker Build and Push
-Compile binaries, build docker image, push to quay repo.
-Tags the image with the git sha and 'latest'.
+Binaries must be compiled first.
+Builds a docker image and pushes it to the quay repo.
+The image is tagged with the git sha and 'latest'.
 
 ```
-./docker-build
-docker build .
-QUAY_USER=xxx QUAY_PASSWORD=yyy ./docker-push <image-id-from-prev>
+export QUAY_USER=xxx
+export QUAY_PASSWORD=yyy
+./build-docker-push
 ```
 
 ## Rebuild API from JSON schema
@@ -80,7 +81,16 @@ For updating generator dependencies see docs in: `schema/generator_import.go`.
 ## Runing Tests
 
 Run all tests: `./test`  
+
 Single package only: `PKG=<pkgname> ./test`
+
+Functional tests: `./test-functional`
+
+Run with docker:
+```
+./go-docker ./test
+./go-docker ./test-functional
+```
 
 # Running
 

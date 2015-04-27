@@ -96,7 +96,7 @@ func NewPrivateKeySet(keys []*PrivateKey, exp time.Time) *PrivateKeySet {
 	return &PrivateKeySet{
 		keys:        keys,
 		ActiveKeyID: keys[0].ID(),
-		expiresAt:   exp,
+		expiresAt:   exp.UTC(),
 	}
 }
 

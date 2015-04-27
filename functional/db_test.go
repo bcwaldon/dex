@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"reflect"
 	"testing"
 	"time"
 
 	"github.com/coopernurse/gorp"
+	"github.com/kylelemons/godebug/pretty"
 
 	"github.com/coreos-inc/auth/db"
 	"github.com/coreos-inc/auth/key"
@@ -104,8 +104,8 @@ func TestDBSessionRepoCreateUpdate(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	if !reflect.DeepEqual(ses, *got) {
-		t.Fatalf("Retrieved incorrect Session: want=%#v got=%#v", ses, *got)
+	if diff := pretty.Compare(ses, got); diff != "" {
+		t.Fatalf("Retrieved incorrect KeySet: Compare(want,got): %v", diff)
 	}
 }
 
@@ -135,8 +135,8 @@ func TestDBPrivateKeySetRepoSetGet(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	if !reflect.DeepEqual(ks, got) {
-		t.Fatalf("Retrieved incorrect KeySet: want=%#v got=%#v", ks, got)
+	if diff := pretty.Compare(ks, got); diff != "" {
+		t.Fatalf("Retrieved incorrect KeySet: Compare(want,got): %v", diff)
 	}
 }
 
@@ -159,8 +159,9 @@ func TestDBClientIdentityRepoMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	if !reflect.DeepEqual(cm, *got) {
-		t.Fatalf("Retrieved incorrect ClientMetadata: want=%#v got=%#v", cm, *got)
+
+	if diff := pretty.Compare(cm, *got); diff != "" {
+		t.Fatalf("Retrieved incorrect ClientMetadata: Compare(want,got): %v", diff)
 	}
 }
 
@@ -271,8 +272,8 @@ func TestDBClientIdentityAll(t *testing.T) {
 		t.Fatalf("Retrieved incorrect number of ClientIdentities: want=1 got=%d", count)
 	}
 
-	if !reflect.DeepEqual(cm, got[0].Metadata) {
-		t.Fatalf("Retrieved incorrect ClientMetadata: want=%#v got=%#v", cm, got[0])
+	if diff := pretty.Compare(cm, got[0].Metadata); diff != "" {
+		t.Fatalf("Retrieved incorrect ClientMetadata: Compare(want,got): %v", diff)
 	}
 
 	cm = oidc.ClientMetadata{

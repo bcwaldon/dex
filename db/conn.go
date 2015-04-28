@@ -17,7 +17,7 @@ type table struct {
 	name    string
 	model   interface{}
 	autoinc bool
-	pkey    string
+	pkey    []string
 }
 
 var (
@@ -58,7 +58,7 @@ func NewConnection(cfg Config) (*gorp.DbMap, error) {
 	}
 
 	for _, t := range tables {
-		dbm.AddTableWithName(t.model, t.name).SetKeys(t.autoinc, t.pkey)
+		dbm.AddTableWithName(t.model, t.name).SetKeys(t.autoinc, t.pkey...)
 	}
 
 	var sleep time.Duration
@@ -72,4 +72,11 @@ func NewConnection(cfg Config) (*gorp.DbMap, error) {
 	}
 
 	return &dbm, nil
+}
+
+func rollback(tx *gorp.Transaction) {
+	err := tx.Rollback()
+	if err != nil {
+		log.Errorf("unable to rollback: %v", err)
+	}
 }

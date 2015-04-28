@@ -102,19 +102,14 @@ func TestHTTPExchangeToken(t *testing.T) {
 	}
 
 	usr := user.User{
-		ID:          "testid",
 		Name:        "testname",
 		DisplayName: "displayname",
-		RemoteIdentities: []user.RemoteIdentity{
-			{
-				ConnectorID: "test_connector_id",
-				ID:          "YYY",
-			},
-		},
 	}
 	userRepo := user.NewUserRepo()
-	if err = userRepo.Set(usr); err != nil {
+	if userID, err := userRepo.Create(usr); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
+	} else {
+		usr.ID = userID
 	}
 
 	srv := &server.Server{

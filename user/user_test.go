@@ -11,15 +11,17 @@ import (
 func TestNewUsersFromReader(t *testing.T) {
 	tests := []struct {
 		json string
-		want []User
+		want []UserWithRemoteIdentities
 	}{
 		{
-			json: `[{"id":"12345","name":"elroy", "displayName": "Elroy Canis", "remoteIdentities":[{"connectorID":"google", "id":"elroy@example.com"}] }]`,
-			want: []User{
+			json: `[{"user":{"id":"12345","name":"elroy", "displayName": "Elroy Canis"}, "remoteIdentities":[{"connectorID":"google", "id":"elroy@example.com"}] }]`,
+			want: []UserWithRemoteIdentities{
 				{
-					ID:          "12345",
-					Name:        "elroy",
-					DisplayName: "Elroy Canis",
+					User: User{
+						ID:          "12345",
+						Name:        "elroy",
+						DisplayName: "Elroy Canis",
+					},
 					RemoteIdentities: []RemoteIdentity{
 						{
 							ConnectorID: "google",

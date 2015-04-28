@@ -13,6 +13,7 @@ import (
 	"github.com/coreos-inc/auth/oidc"
 	"github.com/coreos-inc/auth/session"
 	"github.com/coreos-inc/auth/user"
+	"github.com/coreos-inc/auth/user/usertest"
 )
 
 type StaticKeyManager struct {
@@ -67,6 +68,30 @@ func staticGenerateCodeFunc(code string) session.GenerateCodeFunc {
 	return func() (string, error) {
 		return code, nil
 	}
+}
+
+func makeNewUserRepo() (user.UserRepo, error) {
+	userRepo, err := usertest.NewTestUserRepo()
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := userRepo.Create(user.User{
+		Name: "testname",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	err = userRepo.AddRemoteIdentity(id, user.RemoteIdentity{
+		ConnectorID: "test_connector_id",
+		ID:          "YYY",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return userRepo, nil
 }
 
 func TestServerProviderConfig(t *testing.T) {
@@ -170,19 +195,9 @@ func TestServerLogin(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	userRepo := user.NewUserRepo()
-	err = userRepo.Set(user.User{
-		ID:   "testid",
-		Name: "testname",
-		RemoteIdentities: []user.RemoteIdentity{
-			{
-				ConnectorID: "test_connector_id",
-				ID:          "YYY",
-			},
-		},
-	})
+	userRepo, err := makeNewUserRepo()
 	if err != nil {
-		t.Fatalf("error adding user to repo: %v", err)
+		t.Fatalf("Unexpected error: %v", err)
 	}
 
 	srv := &Server{
@@ -253,18 +268,7 @@ func TestServerCodeToken(t *testing.T) {
 	}
 	sm := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())
 
-	usr := user.User{
-		ID:   "user_id",
-		Name: "mister_user",
-		RemoteIdentities: []user.RemoteIdentity{
-			{
-				ConnectorID: "bogus_idpc",
-				ID:          "bogus_id",
-			},
-		},
-	}
-	userRepo := user.NewUserRepo()
-	err := userRepo.Set(usr)
+	userRepo, err := makeNewUserRepo()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -286,7 +290,7 @@ func TestServerCodeToken(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	_, err = sm.AttachUser(sessionID, usr.ID)
+	_, err = sm.AttachUser(sessionID, "testid-1")
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -412,22 +416,15 @@ func TestServerTokenFail(t *testing.T) {
 			oidc.ClientIdentity{Credentials: ccFixture},
 		})
 
-		_, err = sm.AttachUser(sessionID, "testid")
+		_, err = sm.AttachUser(sessionID, "testid-1")
 		if err != nil {
 			t.Fatalf("case %d: Unexpected error: %v", i, err)
 		}
 
-		userRepo := user.NewUserRepo()
-		err = userRepo.Set(user.User{
-			ID:   "testid",
-			Name: "testname",
-			RemoteIdentities: []user.RemoteIdentity{
-				{
-					ConnectorID: "test_connector_id",
-					ID:          "YYY",
-				},
-			},
-		})
+		userRepo, err := makeNewUserRepo()
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
 
 		srv := &Server{
 			IssuerURL:          issuerURL,

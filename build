@@ -3,7 +3,7 @@
 export GOPATH=${PWD}/Godeps/_workspace
 export GOBIN=${PWD}/bin
 
-rm $GOPATH/src/github.com/coreos-inc/auth 2> /dev/null || true
+rm -rf $GOPATH/src/github.com/coreos-inc/auth
 mkdir -p $GOPATH/src/github.com/coreos-inc/
 ln -s ${PWD} $GOPATH/src/github.com/coreos-inc/auth
 

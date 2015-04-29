@@ -1,7 +1,7 @@
 authd
 =====
 
-[![Build Status](https://semaphoreci.com/api/v1/projects/68e2872c-a4ee-4d74-92b0-fe5cf92a14c8/404607/badge.svg)](https://semaphoreci.com/coreos-inc/auth)
+[![Build Status](https://semaphoreci.com/api/v1/projects/52d56c45-8487-42ac-b124-056df1630122/411983/badge.svg)](https://semaphoreci.com/coreos-inc/auth)
 
 authd is a federated identity management service.
 It provides OpenID Connect (OIDC) to users, while it proxies to multiple remote identity providers (IdP) to drive actual authentication.

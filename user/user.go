@@ -54,6 +54,8 @@ func (u *User) AddToClaims(claims jose.Claims) {
 type UserRepo interface {
 	Get(id string) (User, error)
 
+	GetByName(name string) (User, error)
+
 	Create(User) (userID string, err error)
 
 	Update(User) error
@@ -119,6 +121,14 @@ func (r *memUserRepo) Get(id string) (User, error) {
 		return User{}, ErrorNotFound
 	}
 	return user, nil
+}
+
+func (r *memUserRepo) GetByName(name string) (User, error) {
+	userID, ok := r.userIDsByName[name]
+	if !ok {
+		return User{}, ErrorNotFound
+	}
+	return r.Get(userID)
 }
 
 func (r *memUserRepo) Create(user User) (string, error) {

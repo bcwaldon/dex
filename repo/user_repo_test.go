@@ -399,3 +399,38 @@ func TestNewUserRepoFromUsers(t *testing.T) {
 		}
 	}
 }
+
+func TestGetByName(t *testing.T) {
+	tests := []struct {
+		name    string
+		wantErr error
+	}{
+		{
+			name:    "Name-1",
+			wantErr: nil,
+		},
+		{
+			name:    "NoSuchName",
+			wantErr: user.ErrorNotFound,
+		},
+	}
+
+	for i, tt := range tests {
+		repo := makeTestUserRepo()
+		gotUser, gotErr := repo.GetByName(tt.name)
+		if tt.wantErr != nil {
+			if tt.wantErr != gotErr {
+				t.Errorf("case %d: wantErr=%q, gotErr=%q", i, tt.wantErr, gotErr)
+			}
+			continue
+		}
+
+		if gotErr != nil {
+			t.Errorf("case %d: want nil err: %q", i, gotErr)
+		}
+
+		if tt.name != gotUser.Name {
+			t.Errorf("case %d: want=%q, got=%q", i, tt.name, gotUser.Name)
+		}
+	}
+}

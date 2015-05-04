@@ -65,6 +65,10 @@ func (r *userRepo) Get(userID string) (user.User, error) {
 	return r.get(nil, userID)
 }
 
+func (r *userRepo) GetByName(name string) (user.User, error) {
+	return r.getByName(nil, name)
+}
+
 func (r *userRepo) Create(usr user.User) (userID string, err error) {
 	if usr.ID != "" {
 		return "", user.ErrorInvalidID

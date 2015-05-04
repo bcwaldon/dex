@@ -12,15 +12,15 @@ import (
 	"github.com/coreos-inc/auth/jose"
 )
 
+const (
+	MaxNameLength = 100
+)
+
 type UserIDGenerator func() (string, error)
 
 func DefaultUserIDGenerator() (string, error) {
 	return uuid.New(), nil
 }
-
-const (
-	MaxNameLength = 100
-)
 
 type User struct {
 	// ID is the machine-generated, stable, unique identifier for this User.
@@ -34,6 +34,8 @@ type User struct {
 	// DisplayName is human readable name meant for display purposes.
 	// DisplayName is not neccesarily unique with a UserRepo.
 	DisplayName string
+
+	Email string
 }
 
 // AddToClaims adds basic information about the user to the given Claims.
@@ -288,6 +290,7 @@ func (u *User) UnmarshalJSON(data []byte) error {
 		ID          string `json:"id"`
 		Name        string `json:"name"`
 		DisplayName string `json:"displayName"`
+		Email       string `json:"email"`
 	}
 
 	err := json.Unmarshal(data, &dec)
@@ -298,7 +301,7 @@ func (u *User) UnmarshalJSON(data []byte) error {
 	u.ID = dec.ID
 	u.Name = dec.Name
 	u.DisplayName = dec.DisplayName
-
+	u.Email = dec.Email
 	return nil
 }
 

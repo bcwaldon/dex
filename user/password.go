@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
+
+	"github.com/coreos-inc/auth/oidc"
 )
 
 const (
@@ -22,8 +24,11 @@ const (
 )
 
 var (
-	ErrorInvalidPassword = errors.New("invalid Password")
-	PasswordHasher       = DefaultPasswordHasher
+	PasswordHasher = DefaultPasswordHasher
+
+	ErrorInvalidPassword     = errors.New("invalid Password")
+	ErrorPasswordHashNoMatch = errors.New("password and hash don't match")
+	ErrorPasswordExpired     = errors.New("password has expired")
 )
 
 type Hasher func(string) ([]byte, error)
@@ -44,6 +49,25 @@ type PasswordInfo struct {
 	Password Password
 
 	PasswordExpires time.Time
+}
+
+func (p PasswordInfo) Authenticate(plaintext string) (*oidc.Identity, error) {
+	if err := bcrypt.CompareHashAndPassword(p.Password, []byte(plaintext)); err != nil {
+		return nil, ErrorPasswordHashNoMatch
+	}
+
+	if !p.PasswordExpires.IsZero() && time.Now().After(p.PasswordExpires) {
+		return nil, ErrorPasswordExpired
+	}
+
+	ident := p.Identity()
+	return &ident, nil
+}
+
+func (p PasswordInfo) Identity() oidc.Identity {
+	return oidc.Identity{
+		ID: p.UserID,
+	}
 }
 
 type PasswordInfoRepo interface {

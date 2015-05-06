@@ -25,7 +25,7 @@ type Connector interface {
 type ConnectorConfig interface {
 	ConnectorID() string
 	ConnectorType() string
-	Connector(url.URL, oidc.LoginFunc, *template.Template) (Connector, error)
+	Connector(ns url.URL, loginFunc oidc.LoginFunc, tpls *template.Template) (Connector, error)
 }
 
 type ConnectorConfigRepo interface {

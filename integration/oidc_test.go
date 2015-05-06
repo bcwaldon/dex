@@ -67,15 +67,18 @@ func mockClient(srv *server.Server, ci oidc.ClientIdentity) (*oidc.Client, error
 }
 
 func TestHTTPExchangeToken(t *testing.T) {
-	localUser := connector.LocalUser{
-		ID:       "elroy77",
-		Name:     "Elroy",
-		Email:    "elroy@example.com",
-		Password: "bones",
+	password, err := user.NewPasswordFromPlaintext("woof")
+	if err != nil {
+		t.Fatalf("unexpectd error: %q", err)
+	}
+
+	passwordInfo := user.PasswordInfo{
+		UserID:   "elroy77",
+		Password: password,
 	}
 
 	cfg := &connector.LocalConnectorConfig{
-		Users: []connector.LocalUser{localUser},
+		PasswordInfos: []user.PasswordInfo{passwordInfo},
 	}
 
 	ci := oidc.ClientIdentity{
@@ -112,6 +115,8 @@ func TestHTTPExchangeToken(t *testing.T) {
 		usr.ID = userID
 	}
 
+	passwordInfoRepo := user.NewPasswordInfoRepo()
+
 	srv := &server.Server{
 		IssuerURL:          issuerURL,
 		KeyManager:         km,
@@ -120,6 +125,7 @@ func TestHTTPExchangeToken(t *testing.T) {
 		Templates:          template.New(connector.LoginPageTemplateName),
 		Connectors:         []connector.Connector{},
 		UserRepo:           userRepo,
+		PasswordInfoRepo:   passwordInfoRepo,
 	}
 
 	if err = srv.AddConnector(cfg); err != nil {
@@ -159,7 +165,7 @@ func TestHTTPExchangeToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected err: %v", err)
 	}
-	if _, err = sm.AttachRemoteIdentity(sessionID, localUser.Identity()); err != nil {
+	if _, err = sm.AttachRemoteIdentity(sessionID, passwordInfo.Identity()); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 

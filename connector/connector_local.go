@@ -1,19 +1,17 @@
 package connector
 
 import (
-	"encoding/json"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"net/http"
 	"net/url"
-	"os"
 	"path"
 
 	"github.com/coreos-inc/auth/oauth2"
 	"github.com/coreos-inc/auth/oidc"
 	phttp "github.com/coreos-inc/auth/pkg/http"
 	"github.com/coreos-inc/auth/pkg/log"
+	"github.com/coreos-inc/auth/user"
 )
 
 const (
@@ -26,8 +24,8 @@ func init() {
 }
 
 type LocalConnectorConfig struct {
-	ID    string      `json:"id"`
-	Users []LocalUser `json:"users"`
+	ID            string              `json:"id"`
+	PasswordInfos []user.PasswordInfo `json:"passwordInfos"`
 }
 
 func (cfg *LocalConnectorConfig) ConnectorID() string {
@@ -44,10 +42,8 @@ func (cfg *LocalConnectorConfig) Connector(ns url.URL, lf oidc.LoginFunc, tpls *
 		return nil, fmt.Errorf("unable to find necessary HTML template")
 	}
 
-	idp := NewLocalIdentityProvider(cfg.Users)
 	idpc := &LocalConnector{
 		id:        cfg.ID,
-		idp:       idp,
 		namespace: ns,
 		loginFunc: lf,
 		loginTpl:  tpl,
@@ -77,6 +73,10 @@ func (c *LocalConnector) ID() string {
 
 func (c *LocalConnector) Healthy() error {
 	return nil
+}
+
+func (c *LocalConnector) SetLocalIdentityProvider(idp *LocalIdentityProvider) {
+	c.idp = idp
 }
 
 func (c *LocalConnector) LoginURL(sessionKey, prompt string) (string, error) {
@@ -135,8 +135,10 @@ func handleLoginFunc(lf oidc.LoginFunc, tpl *template.Template, idp *LocalIdenti
 			return
 		}
 
-		ident := idp.Identity(userid, password)
-		if ident == nil {
+		ident, err := idp.Identity(userid, password)
+		log.Errorf("IDENTITY: err: %v", err)
+
+		if ident == nil || err != nil {
 			handleGET(w, r, "invalid login")
 			return
 		}
@@ -176,61 +178,23 @@ func handleLoginFunc(lf oidc.LoginFunc, tpl *template.Template, idp *LocalIdenti
 	}
 }
 
-type LocalUser struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+type LocalIdentityProvider struct {
+	PasswordInfoRepo user.PasswordInfoRepo
+	UserRepo         user.UserRepo
 }
 
-func (u LocalUser) Identity() oidc.Identity {
-	return oidc.Identity{
-		ID:    u.ID,
-		Name:  u.Name,
-		Email: u.Email,
-	}
-}
-
-func ReadUsersFromFile(loc string) ([]LocalUser, error) {
-	uf, err := os.Open(loc)
-	if err != nil {
-		return nil, fmt.Errorf("unable to read users from file %q: %v", loc, err)
-	}
-	defer uf.Close()
-
-	b, err := ioutil.ReadAll(uf)
+func (m *LocalIdentityProvider) Identity(name, password string) (*oidc.Identity, error) {
+	user, err := m.UserRepo.GetByName(name)
 	if err != nil {
 		return nil, err
 	}
 
-	var us []LocalUser
-	err = json.Unmarshal(b, &us)
-	return us, err
-}
+	id := user.ID
 
-func NewLocalIdentityProvider(users []LocalUser) *LocalIdentityProvider {
-	p := LocalIdentityProvider{
-		users: make(map[string]LocalUser, len(users)),
+	pi, err := m.PasswordInfoRepo.Get(id)
+	if err != nil {
+		return nil, err
 	}
 
-	for _, u := range users {
-		u := u
-		p.users[u.ID] = u
-	}
-
-	return &p
-}
-
-type LocalIdentityProvider struct {
-	users map[string]LocalUser
-}
-
-func (m *LocalIdentityProvider) Identity(id, password string) *oidc.Identity {
-	u, ok := m.users[id]
-	if !ok || u.Password != password {
-		return nil
-	}
-
-	ident := u.Identity()
-	return &ident
+	return pi.Authenticate(password)
 }

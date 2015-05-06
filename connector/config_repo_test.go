@@ -1,8 +1,14 @@
 package connector
 
 import (
+	"encoding/base64"
 	"reflect"
+	"strings"
 	"testing"
+
+	"github.com/kylelemons/godebug/pretty"
+
+	"github.com/coreos-inc/auth/user"
 )
 
 func TestNewConnectorConfigFromType(t *testing.T) {
@@ -40,6 +46,18 @@ func TestNewConnectorConfigFromTypeUnrecognized(t *testing.T) {
 }
 
 func TestNewConnectorConfigFromMap(t *testing.T) {
+	user.PasswordHasher = func(plaintext string) ([]byte, error) {
+		return []byte(strings.ToUpper(plaintext)), nil
+	}
+	defer func() {
+		user.PasswordHasher = user.DefaultPasswordHasher
+	}()
+	encodeBase64 := func(s string) string {
+		dst := make([]byte, base64.StdEncoding.EncodedLen(len(s)))
+		base64.StdEncoding.Encode(dst, []byte(s))
+		return string(dst)
+	}
+
 	tests := []struct {
 		m    map[string]interface{}
 		want ConnectorConfig
@@ -48,16 +66,22 @@ func TestNewConnectorConfigFromMap(t *testing.T) {
 			m: map[string]interface{}{
 				"type": "local",
 				"id":   "foo",
-				"users": []map[string]string{
-					{"id": "abc", "name": "ping"},
-					{"id": "271", "name": "pong"},
+				"passwordInfos": []map[string]string{
+					{"userId": "abc", "passwordHash": encodeBase64("PING")},
+					{"userId": "271", "passwordPlaintext": "pong"},
 				},
 			},
 			want: &LocalConnectorConfig{
 				ID: "foo",
-				Users: []LocalUser{
-					LocalUser{ID: "abc", Name: "ping"},
-					LocalUser{ID: "271", Name: "pong"},
+				PasswordInfos: []user.PasswordInfo{
+					user.PasswordInfo{
+						UserID:   "abc",
+						Password: user.Password("PING"),
+					},
+					user.PasswordInfo{
+						UserID:   "271",
+						Password: user.Password("PONG"),
+					},
 				},
 			},
 		},
@@ -84,8 +108,9 @@ func TestNewConnectorConfigFromMap(t *testing.T) {
 			t.Errorf("case %d: want nil error: %v", i, err)
 			continue
 		}
-		if !reflect.DeepEqual(tt.want, got) {
-			t.Errorf("case %d: want=%v got=%v", i, tt.want, got)
+
+		if diff := pretty.Compare(tt.want, got); diff != "" {
+			t.Errorf("case %d: Compare(want, got): %v", i, diff)
 		}
 	}
 }
@@ -94,8 +119,8 @@ func TestNewConnectorConfigFromMapFail(t *testing.T) {
 	tests := []map[string]interface{}{
 		// invalid local connector
 		map[string]interface{}{
-			"type":  "local",
-			"users": "invalid",
+			"type":          "local",
+			"passwordInfos": "invalid",
 		},
 
 		// no type

@@ -79,6 +79,8 @@ func (cfg *SingleServerConfig) Server() (*Server, error) {
 		return nil, fmt.Errorf("unable to read users from file: %v", err)
 	}
 
+	passwordInfoRepo := user.NewPasswordInfoRepo()
+
 	km := key.NewPrivateKeyManager()
 	srv := Server{
 		IssuerURL:           *iu,
@@ -92,6 +94,7 @@ func (cfg *SingleServerConfig) Server() (*Server, error) {
 		HealthChecks:        []health.Checkable{km},
 		Connectors:          []connector.Connector{},
 		UserRepo:            userRepo,
+		PasswordInfoRepo:    passwordInfoRepo,
 	}
 
 	return &srv, nil

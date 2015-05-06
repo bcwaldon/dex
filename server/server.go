@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -48,6 +49,7 @@ type Server struct {
 	HealthChecks        []health.Checkable
 	Connectors          []connector.Connector
 	UserRepo            user.UserRepo
+	PasswordInfoRepo    user.PasswordInfoRepo
 }
 
 func (s *Server) Run() chan struct{} {
@@ -114,6 +116,39 @@ func (s *Server) AddConnector(cfg connector.ConnectorConfig) error {
 
 	sortable := sortableIDPCs(s.Connectors)
 	sort.Sort(sortable)
+
+	// We handle the LocalConnector specially because it needs access to the
+	// UserRepo and the PasswordInfoRepo; if it turns out that other connectors
+	// need access to these resources we'll figure out how to provide it in a
+	// cleaner manner.
+	localConn, ok := idpc.(*connector.LocalConnector)
+	if ok {
+		if s.UserRepo == nil {
+			return errors.New("UserRepo cannot be nil")
+		}
+
+		if s.PasswordInfoRepo == nil {
+			return errors.New("PasswordInfoRepo cannot be nil")
+		}
+
+		localConn.SetLocalIdentityProvider(&connector.LocalIdentityProvider{
+			UserRepo:         s.UserRepo,
+			PasswordInfoRepo: s.PasswordInfoRepo,
+		})
+
+		localCfg, ok := cfg.(*connector.LocalConnectorConfig)
+		if !ok {
+			return errors.New("config for LocalConnector not a LocalConnectorConfig?")
+		}
+
+		if len(localCfg.PasswordInfos) > 0 {
+			err := user.LoadPasswordInfos(s.PasswordInfoRepo,
+				localCfg.PasswordInfos)
+			if err != nil {
+				return err
+			}
+		}
+	}
 
 	log.Infof("Loaded IdP connector: id=%s type=%s", connectorID, cfg.ConnectorType())
 	return nil

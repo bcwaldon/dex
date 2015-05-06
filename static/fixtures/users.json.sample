@@ -1,12 +1,14 @@
 [
     {
-        "id": "elroy-id",
-        "name": "elroy77",
-        "displayName": "Elroy Jonez",
+        "user":{
+            "id": "elroy-id",
+            "name": "elroy77",
+            "displayName": "Elroy Jonez"
+        },
         "remoteIdentities": [
             {
                 "connectorID": "local",
-                "id": "elroy77"
+                "id": "elroy-id"
             }
         ]
     }

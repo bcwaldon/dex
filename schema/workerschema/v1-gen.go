@@ -1,13 +1,13 @@
-// Package schema provides access to the Authd API.
+// Package workerschema provides access to the Authd API.
 //
 // See http://github.com/coreos-inc/auth
 //
 // Usage example:
 //
-//   import "github.com/coreos-inc/auth/Godeps/_workspace/src/google.golang.org/api/schema/v1"
+//   import "github.com/coreos-inc/auth/Godeps/_workspace/src/google.golang.org/api/workerschema/v1"
 //   ...
-//   schemaService, err := schema.New(oauthHttpClient)
-package schema
+//   workerschemaService, err := workerschema.New(oauthHttpClient)
+package workerschema
 
 import (
 	"bytes"
@@ -36,7 +36,7 @@ var _ = errors.New
 var _ = strings.Replace
 
 const apiId = "authd:v1"
-const apiName = "schema"
+const apiName = "workerschema"
 const apiVersion = "v1"
 const basePath = "$ENDPOINT/api/v1/"
 

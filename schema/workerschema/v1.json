@@ -2,7 +2,7 @@
   "kind": "discovery#restDescription",
   "discoveryVersion": "v1",
   "id": "authd:v1",
-  "name": "schema",
+  "name": "workerschema",
   "version": "v1",
   "title": "Authd API",
   "description": "The Authd REST API",

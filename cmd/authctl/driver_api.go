@@ -6,7 +6,7 @@ import (
 
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/oidc"
-	"github.com/coreos-inc/auth/schema"
+	schema "github.com/coreos-inc/auth/schema/workerschema"
 )
 
 func newAPIDriver(pcfg oidc.ProviderConfig, creds oidc.ClientCredentials) (driver, error) {

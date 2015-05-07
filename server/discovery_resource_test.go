@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/coreos-inc/auth/schema"
+	schema "github.com/coreos-inc/auth/schema/workerschema"
 )
 
 func TestDiscoveryInvalidMethods(t *testing.T) {

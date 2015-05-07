@@ -5,7 +5,7 @@ import (
 	"path"
 
 	"github.com/coreos-inc/auth/pkg/log"
-	"github.com/coreos-inc/auth/schema"
+	schema "github.com/coreos-inc/auth/schema/workerschema"
 )
 
 type discoveryResource struct{}

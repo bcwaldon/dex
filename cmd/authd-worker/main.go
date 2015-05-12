@@ -88,8 +88,6 @@ func main() {
 			TemplateDir:    *templates,
 			KeySecret:      *keySecret,
 			DatabaseConfig: dbCfg,
-			//NOTE: This is temporary until we get the DB version ready.
-			UsersFile: *users,
 		}
 	}
 

@@ -2,12 +2,10 @@
 	{
 		"type": "local",
 		"id": "local",
-		"users": [
+		"passwordInfos": [
 			{
-				"id":"elroy77",
-				"name":"Elroy",
-				"email":"elroy@example.com",
-				"password": "bones"
+				"id":"elroy-id",
+				"passwordPlaintext": "bones"
 			},
 			{
 				"id":"penny",

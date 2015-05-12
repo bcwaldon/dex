@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/kylelemons/godebug/pretty"
+
 	"github.com/coreos-inc/auth/jose"
 )
 
@@ -14,13 +16,14 @@ func TestNewUsersFromReader(t *testing.T) {
 		want []UserWithRemoteIdentities
 	}{
 		{
-			json: `[{"user":{"id":"12345","name":"elroy", "displayName": "Elroy Canis"}, "remoteIdentities":[{"connectorID":"google", "id":"elroy@example.com"}] }]`,
+			json: `[{"user":{"id":"12345","name":"elroy", "displayName": "Elroy Canis", "email":"elroy23@example.com"}, "remoteIdentities":[{"connectorID":"google", "id":"elroy@example.com"}] }]`,
 			want: []UserWithRemoteIdentities{
 				{
 					User: User{
 						ID:          "12345",
 						Name:        "elroy",
 						DisplayName: "Elroy Canis",
+						Email:       "elroy23@example.com",
 					},
 					RemoteIdentities: []RemoteIdentity{
 						{
@@ -40,8 +43,8 @@ func TestNewUsersFromReader(t *testing.T) {
 			t.Errorf("case %d: want nil err: %v", i, err)
 			continue
 		}
-		if !reflect.DeepEqual(us, tt.want) {
-			t.Errorf("case %d: want=%#v got=%#v", i, tt.want, us)
+		if diff := pretty.Compare(tt.want, us); diff != "" {
+			t.Errorf("case %d: Compare(want, got): %v", i, diff)
 		}
 	}
 }

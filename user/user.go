@@ -12,15 +12,15 @@ import (
 	"github.com/coreos-inc/auth/jose"
 )
 
+const (
+	MaxNameLength = 100
+)
+
 type UserIDGenerator func() (string, error)
 
 func DefaultUserIDGenerator() (string, error) {
 	return uuid.New(), nil
 }
-
-const (
-	MaxNameLength = 100
-)
 
 type User struct {
 	// ID is the machine-generated, stable, unique identifier for this User.
@@ -34,6 +34,8 @@ type User struct {
 	// DisplayName is human readable name meant for display purposes.
 	// DisplayName is not neccesarily unique with a UserRepo.
 	DisplayName string
+
+	Email string
 }
 
 // AddToClaims adds basic information about the user to the given Claims.
@@ -51,6 +53,8 @@ func (u *User) AddToClaims(claims jose.Claims) {
 //    users. (This constraint may be relaxed in the future)
 type UserRepo interface {
 	Get(id string) (User, error)
+
+	GetByName(name string) (User, error)
 
 	Create(User) (userID string, err error)
 
@@ -117,6 +121,14 @@ func (r *memUserRepo) Get(id string) (User, error) {
 		return User{}, ErrorNotFound
 	}
 	return user, nil
+}
+
+func (r *memUserRepo) GetByName(name string) (User, error) {
+	userID, ok := r.userIDsByName[name]
+	if !ok {
+		return User{}, ErrorNotFound
+	}
+	return r.Get(userID)
 }
 
 func (r *memUserRepo) Create(user User) (string, error) {
@@ -288,6 +300,7 @@ func (u *User) UnmarshalJSON(data []byte) error {
 		ID          string `json:"id"`
 		Name        string `json:"name"`
 		DisplayName string `json:"displayName"`
+		Email       string `json:"email"`
 	}
 
 	err := json.Unmarshal(data, &dec)
@@ -298,7 +311,7 @@ func (u *User) UnmarshalJSON(data []byte) error {
 	u.ID = dec.ID
 	u.Name = dec.Name
 	u.DisplayName = dec.DisplayName
-
+	u.Email = dec.Email
 	return nil
 }
 

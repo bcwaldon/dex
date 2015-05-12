@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/kylelemons/godebug/pretty"
+
 	"github.com/coreos-inc/auth/db"
 	"github.com/coreos-inc/auth/user"
 )
@@ -56,18 +58,7 @@ func makeTestUserRepoMem() user.UserRepo {
 
 func makeTestUserRepoDB(dsn string) func() user.UserRepo {
 	return func() user.UserRepo {
-		c, err := db.NewConnection(db.Config{DSN: dsn})
-		if err != nil {
-			panic(fmt.Sprintf("Unable to connect to database: %v", err))
-		}
-
-		if err = c.DropTablesIfExists(); err != nil {
-			panic(fmt.Sprintf("Unable to drop database tables: %v", err))
-		}
-
-		if err = c.CreateTablesIfNotExists(); err != nil {
-			panic(fmt.Sprintf("Unable to create database tables: %v", err))
-		}
+		c := initDB(dsn)
 
 		repo, err := db.NewUserRepoFromUsers(c, testUsers)
 		if err != nil {
@@ -85,7 +76,8 @@ func TestNewUser(t *testing.T) {
 	}{
 		{
 			user: user.User{
-				Name: "AnotherName",
+				Name:  "AnotherName",
+				Email: "bob@example.com",
 			},
 			err: nil,
 		},
@@ -130,15 +122,15 @@ func TestNewUser(t *testing.T) {
 			}
 
 			tt.user.ID = id
-			if !reflect.DeepEqual(tt.user, gotUser) {
-				t.Errorf("case %d: want=%#v, got=%#v", i,
-					tt.user, gotUser)
+			if diff := pretty.Compare(tt.user, gotUser); diff != "" {
+				t.Errorf("case %d: Compare(want, got) = %v", i,
+					diff)
 			}
 		}
 	}
 }
 
-func TestUpdate(t *testing.T) {
+func TestUpdateUser(t *testing.T) {
 	tests := []struct {
 		user user.User
 		err  error
@@ -202,9 +194,9 @@ func TestUpdate(t *testing.T) {
 				t.Errorf("case %d: want nil err, got %q", i, err)
 			}
 
-			if !reflect.DeepEqual(tt.user, gotUser) {
-				t.Errorf("case %d: want=%#v, got=%#v", i,
-					tt.user, gotUser)
+			if diff := pretty.Compare(tt.user, gotUser); diff != "" {
+				t.Errorf("case %d: Compare(want, got) = %v", i,
+					diff)
 			}
 		}
 	}
@@ -404,6 +396,41 @@ func TestNewUserRepoFromUsers(t *testing.T) {
 			if !reflect.DeepEqual(want.RemoteIdentities, gotRIDs) {
 				t.Errorf("case %d: want=%#v got=%#v", i, want.RemoteIdentities, gotRIDs)
 			}
+		}
+	}
+}
+
+func TestGetByName(t *testing.T) {
+	tests := []struct {
+		name    string
+		wantErr error
+	}{
+		{
+			name:    "Name-1",
+			wantErr: nil,
+		},
+		{
+			name:    "NoSuchName",
+			wantErr: user.ErrorNotFound,
+		},
+	}
+
+	for i, tt := range tests {
+		repo := makeTestUserRepo()
+		gotUser, gotErr := repo.GetByName(tt.name)
+		if tt.wantErr != nil {
+			if tt.wantErr != gotErr {
+				t.Errorf("case %d: wantErr=%q, gotErr=%q", i, tt.wantErr, gotErr)
+			}
+			continue
+		}
+
+		if gotErr != nil {
+			t.Errorf("case %d: want nil err: %q", i, gotErr)
+		}
+
+		if tt.name != gotUser.Name {
+			t.Errorf("case %d: want=%q, got=%q", i, tt.name, gotUser.Name)
 		}
 	}
 }

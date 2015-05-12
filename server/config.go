@@ -79,6 +79,8 @@ func (cfg *SingleServerConfig) Server() (*Server, error) {
 		return nil, fmt.Errorf("unable to read users from file: %v", err)
 	}
 
+	passwordInfoRepo := user.NewPasswordInfoRepo()
+
 	km := key.NewPrivateKeyManager()
 	srv := Server{
 		IssuerURL:           *iu,
@@ -92,6 +94,7 @@ func (cfg *SingleServerConfig) Server() (*Server, error) {
 		HealthChecks:        []health.Checkable{km},
 		Connectors:          []connector.Connector{},
 		UserRepo:            userRepo,
+		PasswordInfoRepo:    passwordInfoRepo,
 	}
 
 	return &srv, nil
@@ -102,8 +105,6 @@ type MultiServerConfig struct {
 	TemplateDir    string
 	KeySecret      string
 	DatabaseConfig db.Config
-	//NOTE: This is temporary until we get the DB version ready.
-	UsersFile string
 }
 
 func (cfg *MultiServerConfig) Server() (*Server, error) {
@@ -134,6 +135,8 @@ func (cfg *MultiServerConfig) Server() (*Server, error) {
 	sRepo := db.NewSessionRepo(dbc)
 	skRepo := db.NewSessionKeyRepo(dbc)
 	cfgRepo := db.NewConnectorConfigRepo(dbc)
+	userRepo := db.NewUserRepo(dbc)
+	pwiRepo := db.NewPasswordInfoRepo(dbc)
 
 	sm := session.NewSessionManager(sRepo, skRepo)
 
@@ -144,12 +147,6 @@ func (cfg *MultiServerConfig) Server() (*Server, error) {
 	ltpl, err := findLoginTemplate(tpl)
 	if err != nil {
 		return nil, err
-	}
-
-	//NOTE: This is temporary until we get the DB version ready.
-	userRepo, err := user.NewUserRepoFromFile(cfg.UsersFile)
-	if err != nil {
-		return nil, fmt.Errorf("unable to read users from file: %v", err)
 	}
 
 	dbh := db.NewHealthChecker(dbc)
@@ -166,6 +163,7 @@ func (cfg *MultiServerConfig) Server() (*Server, error) {
 		HealthChecks:        []health.Checkable{km, dbh},
 		Connectors:          []connector.Connector{},
 		UserRepo:            userRepo,
+		PasswordInfoRepo:    pwiRepo,
 	}
 
 	return &srv, nil

@@ -1,7 +1,6 @@
 package user
 
 import (
-	"encoding/base64"
 	"fmt"
 	"strings"
 	"testing"
@@ -19,18 +18,12 @@ func TestNewPasswordInfosFromReader(t *testing.T) {
 		PasswordHasher = DefaultPasswordHasher
 	}()
 
-	encodeBase64 := func(s string) string {
-		dst := make([]byte, base64.StdEncoding.EncodedLen(len(s)))
-		base64.StdEncoding.Encode(dst, []byte(s))
-		return string(dst)
-	}
-
 	tests := []struct {
 		json string
 		want []PasswordInfo
 	}{
 		{
-			json: fmt.Sprintf(`[{"userId":"12345","passwordPlaintext":"password"},{"userId":"78901","passwordHash":%q, "passwordExpires":"2006-01-01T15:04:05Z"}]`, encodeBase64("WORDPASS")),
+			json: fmt.Sprintf(`[{"userId":"12345","passwordPlaintext":"password"},{"userId":"78901","passwordHash":%q, "passwordExpires":"2006-01-01T15:04:05Z"}]`, Password("WORDPASS").EncodeBase64()),
 			want: []PasswordInfo{
 				{
 					UserID:   "12345",

@@ -45,10 +45,171 @@ func New(client *http.Client) (*Service, error) {
 		return nil, errors.New("client is nil")
 	}
 	s := &Service{client: client, BasePath: basePath}
+	s.Admin = NewAdminService(s)
 	return s, nil
 }
 
 type Service struct {
 	client   *http.Client
 	BasePath string // API endpoint base URL
+
+	Admin *AdminService
+}
+
+func NewAdminService(s *Service) *AdminService {
+	rs := &AdminService{s: s}
+	return rs
+}
+
+type AdminService struct {
+	s *Service
+}
+
+type Admin struct {
+	Id string `json:"id,omitempty"`
+
+	Name string `json:"name,omitempty"`
+
+	PasswordHash string `json:"passwordHash,omitempty"`
+}
+
+// method id "authd.admin.Admin.Create":
+
+type AdminCreateCall struct {
+	s     *Service
+	admin *Admin
+	opt_  map[string]interface{}
+}
+
+// Create: Create a new admin user.
+func (r *AdminService) Create(admin *Admin) *AdminCreateCall {
+	c := &AdminCreateCall{s: r.s, opt_: make(map[string]interface{})}
+	c.admin = admin
+	return c
+}
+
+// Fields allows partial responses to be retrieved.
+// See https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *AdminCreateCall) Fields(s ...googleapi.Field) *AdminCreateCall {
+	c.opt_["fields"] = googleapi.CombineFields(s)
+	return c
+}
+
+func (c *AdminCreateCall) Do() (*Admin, error) {
+	var body io.Reader = nil
+	body, err := googleapi.WithoutDataWrapper.JSONReader(c.admin)
+	if err != nil {
+		return nil, err
+	}
+	ctype := "application/json"
+	params := make(url.Values)
+	params.Set("alt", "json")
+	if v, ok := c.opt_["fields"]; ok {
+		params.Set("fields", fmt.Sprintf("%v", v))
+	}
+	urls := googleapi.ResolveRelative(c.s.BasePath, "admin")
+	urls += "?" + params.Encode()
+	req, _ := http.NewRequest("POST", urls, body)
+	googleapi.SetOpaque(req.URL)
+	req.Header.Set("Content-Type", ctype)
+	req.Header.Set("User-Agent", "google-api-go-client/0.5")
+	res, err := c.s.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	var ret *Admin
+	if err := json.NewDecoder(res.Body).Decode(&ret); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Create a new admin user.",
+	//   "httpMethod": "POST",
+	//   "id": "authd.admin.Admin.Create",
+	//   "path": "admin",
+	//   "request": {
+	//     "$ref": "Admin"
+	//   },
+	//   "response": {
+	//     "$ref": "Admin"
+	//   }
+	// }
+
+}
+
+// method id "authd.admin.Admin.Get":
+
+type AdminGetCall struct {
+	s    *Service
+	id   string
+	opt_ map[string]interface{}
+}
+
+// Get: Retrieve information about an admin user.
+func (r *AdminService) Get(id string) *AdminGetCall {
+	c := &AdminGetCall{s: r.s, opt_: make(map[string]interface{})}
+	c.id = id
+	return c
+}
+
+// Fields allows partial responses to be retrieved.
+// See https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *AdminGetCall) Fields(s ...googleapi.Field) *AdminGetCall {
+	c.opt_["fields"] = googleapi.CombineFields(s)
+	return c
+}
+
+func (c *AdminGetCall) Do() (*Admin, error) {
+	var body io.Reader = nil
+	params := make(url.Values)
+	params.Set("alt", "json")
+	if v, ok := c.opt_["fields"]; ok {
+		params.Set("fields", fmt.Sprintf("%v", v))
+	}
+	urls := googleapi.ResolveRelative(c.s.BasePath, "admin/{id}")
+	urls += "?" + params.Encode()
+	req, _ := http.NewRequest("GET", urls, body)
+	googleapi.Expand(req.URL, map[string]string{
+		"id": c.id,
+	})
+	req.Header.Set("User-Agent", "google-api-go-client/0.5")
+	res, err := c.s.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	var ret *Admin
+	if err := json.NewDecoder(res.Body).Decode(&ret); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Retrieve information about an admin user.",
+	//   "httpMethod": "GET",
+	//   "id": "authd.admin.Admin.Get",
+	//   "parameterOrder": [
+	//     "id"
+	//   ],
+	//   "parameters": {
+	//     "id": {
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "admin/{id}",
+	//   "response": {
+	//     "$ref": "Admin"
+	//   }
+	// }
+
 }

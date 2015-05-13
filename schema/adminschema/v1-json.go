@@ -26,7 +26,60 @@ const DiscoveryJSON = `{
   "batchPath": "batch",
   "parameters": {},
   "auth": {},
-  "schemas": {},
-  "resources": {}
+  "schemas": {
+      "Admin": {
+          "id": "Admin",
+          "type": "object",
+          "properties": {
+              "id": {
+                  "type": "string"
+              },
+              "name": {
+                  "type": "string"
+              },
+              "passwordHash": {
+                  "type": "string"
+              }
+          }
+      }
+  },
+  "resources": {
+      "Admin": {
+          "methods": {
+              "Get": {
+                  "id": "authd.admin.Admin.Get",
+                  "description": "Retrieve information about an admin user.",
+                  "httpMethod": "GET",
+                  "path": "admin/{id}",
+                  "parameters": {
+                      "id": {
+                          "type": "string",
+                          "required": true,
+                          "location": "path"
+                      }
+                  },
+                  "parameterOrder": [
+                      "id"
+                  ],
+                  "response": {
+                      "$ref": "Admin"
+                  }
+                  
+              },
+              "Create": {
+                  "id": "authd.admin.Admin.Create",
+                  "description": "Create a new admin user.",
+                  "httpMethod": "POST",
+                  "path": "admin",
+                  "request": {
+                      "$ref": "Admin"
+                  },
+                  "response": {
+                      "$ref": "Admin"
+                  }
+              }
+          }
+      }
+  }
 }
 `

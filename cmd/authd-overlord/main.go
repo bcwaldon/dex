@@ -3,13 +3,17 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net/http"
+	"net/url"
 	"os"
 	"time"
 
+	"github.com/coreos-inc/auth/admin"
 	"github.com/coreos-inc/auth/db"
 	"github.com/coreos-inc/auth/key"
 	pflag "github.com/coreos-inc/auth/pkg/flag"
 	"github.com/coreos-inc/auth/pkg/log"
+	"github.com/coreos-inc/auth/server"
 )
 
 func main() {
@@ -18,6 +22,8 @@ func main() {
 	dbURL := fs.String("db-url", "", "DSN-formatted database connection string")
 	keyPeriod := fs.Duration("key-period", 24*time.Hour, "length of time for-which a given key will be valid")
 	gcInterval := fs.Duration("gc-interval", time.Hour, "length of time between garbage collection runs")
+
+	adminListen := fs.String("admin-listen", "http://0.0.0.0:5557", "scheme, host and port for listening for administrative operation requests ")
 
 	logDebug := fs.Bool("log-debug", false, "log debug-level information")
 	logTimestamps := fs.Bool("log-timestamps", false, "prefix log lines with timestamps")
@@ -43,6 +49,11 @@ func main() {
 		log.Fatalf("--key-secret unset")
 	}
 
+	adminURL, err := url.Parse(*adminListen)
+	if err != nil {
+		log.Fatalf("Unable to use --admin-listen flag: %v", err)
+	}
+
 	dbCfg := db.Config{
 		DSN:                *dbURL,
 		MaxIdleConnections: 1,
@@ -53,6 +64,16 @@ func main() {
 		log.Fatalf(err.Error())
 	}
 
+	userRepo := db.NewUserRepo(dbc)
+	pwiRepo := db.NewPasswordInfoRepo(dbc)
+	adminAPI := admin.NewAdminAPI(userRepo, pwiRepo)
+	s := server.NewAdminServer(adminAPI)
+	h := s.HTTPHandler()
+	httpsrv := &http.Server{
+		Addr:    adminURL.Host,
+		Handler: h,
+	}
+
 	gc := db.NewGarbageCollector(dbc, *gcInterval)
 
 	kRepo, err := db.NewPrivateKeySetRepo(dbc, *secret)
@@ -60,6 +81,11 @@ func main() {
 		log.Fatalf(err.Error())
 	}
 	krot := key.NewPrivateKeyRotator(kRepo, *keyPeriod)
+
+	log.Infof("Binding to %s...", httpsrv.Addr)
+	go func() {
+		log.Fatal(httpsrv.ListenAndServe())
+	}()
 
 	gc.Run()
 	<-krot.Run()

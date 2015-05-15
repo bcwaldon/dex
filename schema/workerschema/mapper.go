@@ -1,4 +1,4 @@
-package schema
+package workerschema
 
 import (
 	"errors"

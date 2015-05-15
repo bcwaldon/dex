@@ -9,7 +9,7 @@ import (
 	"github.com/coreos-inc/auth/oidc"
 	phttp "github.com/coreos-inc/auth/pkg/http"
 	"github.com/coreos-inc/auth/pkg/log"
-	"github.com/coreos-inc/auth/schema"
+	schema "github.com/coreos-inc/auth/schema/workerschema"
 )
 
 type clientResource struct {

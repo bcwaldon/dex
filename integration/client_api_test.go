@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/coreos-inc/auth/oidc"
-	"github.com/coreos-inc/auth/schema"
+	schema "github.com/coreos-inc/auth/schema/workerschema"
 )
 
 type tokenHandlerTransport struct {

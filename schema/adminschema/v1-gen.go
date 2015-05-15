@@ -1,13 +1,13 @@
-// Package schema provides access to the Authd API.
+// Package adminschema provides access to the Authd Admin API.
 //
 // See http://github.com/coreos-inc/auth
 //
 // Usage example:
 //
-//   import "github.com/coreos-inc/auth/Godeps/_workspace/src/google.golang.org/api/schema/v1"
+//   import "github.com/coreos-inc/auth/Godeps/_workspace/src/google.golang.org/api/adminschema/v1"
 //   ...
-//   schemaService, err := schema.New(oauthHttpClient)
-package schema
+//   adminschemaService, err := adminschema.New(oauthHttpClient)
+package adminschema
 
 import (
 	"bytes"
@@ -36,7 +36,7 @@ var _ = errors.New
 var _ = strings.Replace
 
 const apiId = "authd:v1"
-const apiName = "schema"
+const apiName = "adminschema"
 const apiVersion = "v1"
 const basePath = "$ENDPOINT/api/v1/"
 
@@ -45,7 +45,7 @@ func New(client *http.Client) (*Service, error) {
 		return nil, errors.New("client is nil")
 	}
 	s := &Service{client: client, BasePath: basePath}
-	s.Clients = NewClientsService(s)
+	s.Admin = NewAdminService(s)
 	return s, nil
 }
 
@@ -53,70 +53,52 @@ type Service struct {
 	client   *http.Client
 	BasePath string // API endpoint base URL
 
-	Clients *ClientsService
+	Admin *AdminService
 }
 
-func NewClientsService(s *Service) *ClientsService {
-	rs := &ClientsService{s: s}
+func NewAdminService(s *Service) *AdminService {
+	rs := &AdminService{s: s}
 	return rs
 }
 
-type ClientsService struct {
+type AdminService struct {
 	s *Service
 }
 
-type Client struct {
+type Admin struct {
 	Id string `json:"id,omitempty"`
 
-	RedirectURIs []string `json:"redirectURIs,omitempty"`
+	Name string `json:"name,omitempty"`
+
+	PasswordHash string `json:"passwordHash,omitempty"`
 }
 
-type ClientPage struct {
-	Clients []*Client `json:"clients,omitempty"`
+// method id "authd.admin.Admin.Create":
 
-	NextPageToken string `json:"nextPageToken,omitempty"`
+type AdminCreateCall struct {
+	s     *Service
+	admin *Admin
+	opt_  map[string]interface{}
 }
 
-type ClientWithSecret struct {
-	Id string `json:"id,omitempty"`
-
-	RedirectURIs []string `json:"redirectURIs,omitempty"`
-
-	Secret string `json:"secret,omitempty"`
-}
-
-type Error struct {
-	Error string `json:"error,omitempty"`
-
-	Error_description string `json:"error_description,omitempty"`
-}
-
-// method id "authd.Client.Create":
-
-type ClientsCreateCall struct {
-	s      *Service
-	client *Client
-	opt_   map[string]interface{}
-}
-
-// Create: Register a new Client.
-func (r *ClientsService) Create(client *Client) *ClientsCreateCall {
-	c := &ClientsCreateCall{s: r.s, opt_: make(map[string]interface{})}
-	c.client = client
+// Create: Create a new admin user.
+func (r *AdminService) Create(admin *Admin) *AdminCreateCall {
+	c := &AdminCreateCall{s: r.s, opt_: make(map[string]interface{})}
+	c.admin = admin
 	return c
 }
 
 // Fields allows partial responses to be retrieved.
 // See https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
 // for more information.
-func (c *ClientsCreateCall) Fields(s ...googleapi.Field) *ClientsCreateCall {
+func (c *AdminCreateCall) Fields(s ...googleapi.Field) *AdminCreateCall {
 	c.opt_["fields"] = googleapi.CombineFields(s)
 	return c
 }
 
-func (c *ClientsCreateCall) Do() (*ClientWithSecret, error) {
+func (c *AdminCreateCall) Do() (*Admin, error) {
 	var body io.Reader = nil
-	body, err := googleapi.WithoutDataWrapper.JSONReader(c.client)
+	body, err := googleapi.WithoutDataWrapper.JSONReader(c.admin)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +108,7 @@ func (c *ClientsCreateCall) Do() (*ClientWithSecret, error) {
 	if v, ok := c.opt_["fields"]; ok {
 		params.Set("fields", fmt.Sprintf("%v", v))
 	}
-	urls := googleapi.ResolveRelative(c.s.BasePath, "clients")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "admin")
 	urls += "?" + params.Encode()
 	req, _ := http.NewRequest("POST", urls, body)
 	googleapi.SetOpaque(req.URL)
@@ -140,67 +122,62 @@ func (c *ClientsCreateCall) Do() (*ClientWithSecret, error) {
 	if err := googleapi.CheckResponse(res); err != nil {
 		return nil, err
 	}
-	var ret *ClientWithSecret
+	var ret *Admin
 	if err := json.NewDecoder(res.Body).Decode(&ret); err != nil {
 		return nil, err
 	}
 	return ret, nil
 	// {
-	//   "description": "Register a new Client.",
+	//   "description": "Create a new admin user.",
 	//   "httpMethod": "POST",
-	//   "id": "authd.Client.Create",
-	//   "path": "clients",
+	//   "id": "authd.admin.Admin.Create",
+	//   "path": "admin",
 	//   "request": {
-	//     "$ref": "Client"
+	//     "$ref": "Admin"
 	//   },
 	//   "response": {
-	//     "$ref": "ClientWithSecret"
+	//     "$ref": "Admin"
 	//   }
 	// }
 
 }
 
-// method id "authd.Client.List":
+// method id "authd.admin.Admin.Get":
 
-type ClientsListCall struct {
+type AdminGetCall struct {
 	s    *Service
+	id   string
 	opt_ map[string]interface{}
 }
 
-// List: Retrieve a page of Client objects.
-func (r *ClientsService) List() *ClientsListCall {
-	c := &ClientsListCall{s: r.s, opt_: make(map[string]interface{})}
-	return c
-}
-
-// NextPageToken sets the optional parameter "nextPageToken":
-func (c *ClientsListCall) NextPageToken(nextPageToken string) *ClientsListCall {
-	c.opt_["nextPageToken"] = nextPageToken
+// Get: Retrieve information about an admin user.
+func (r *AdminService) Get(id string) *AdminGetCall {
+	c := &AdminGetCall{s: r.s, opt_: make(map[string]interface{})}
+	c.id = id
 	return c
 }
 
 // Fields allows partial responses to be retrieved.
 // See https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
 // for more information.
-func (c *ClientsListCall) Fields(s ...googleapi.Field) *ClientsListCall {
+func (c *AdminGetCall) Fields(s ...googleapi.Field) *AdminGetCall {
 	c.opt_["fields"] = googleapi.CombineFields(s)
 	return c
 }
 
-func (c *ClientsListCall) Do() (*ClientPage, error) {
+func (c *AdminGetCall) Do() (*Admin, error) {
 	var body io.Reader = nil
 	params := make(url.Values)
 	params.Set("alt", "json")
-	if v, ok := c.opt_["nextPageToken"]; ok {
-		params.Set("nextPageToken", fmt.Sprintf("%v", v))
-	}
 	if v, ok := c.opt_["fields"]; ok {
 		params.Set("fields", fmt.Sprintf("%v", v))
 	}
-	urls := googleapi.ResolveRelative(c.s.BasePath, "clients")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "admin/{id}")
 	urls += "?" + params.Encode()
 	req, _ := http.NewRequest("GET", urls, body)
-	googleapi.SetOpaque(req.URL)
+	googleapi.Expand(req.URL, map[string]string{
+		"id": c.id,
+	})
 	req.Header.Set("User-Agent", "google-api-go-client/0.5")
 	res, err := c.s.client.Do(req)
 	if err != nil {
@@ -210,24 +187,28 @@ func (c *ClientsListCall) Do() (*ClientPage, error) {
 	if err := googleapi.CheckResponse(res); err != nil {
 		return nil, err
 	}
-	var ret *ClientPage
+	var ret *Admin
 	if err := json.NewDecoder(res.Body).Decode(&ret); err != nil {
 		return nil, err
 	}
 	return ret, nil
 	// {
-	//   "description": "Retrieve a page of Client objects.",
+	//   "description": "Retrieve information about an admin user.",
 	//   "httpMethod": "GET",
-	//   "id": "authd.Client.List",
+	//   "id": "authd.admin.Admin.Get",
+	//   "parameterOrder": [
+	//     "id"
+	//   ],
 	//   "parameters": {
-	//     "nextPageToken": {
-	//       "location": "query",
+	//     "id": {
+	//       "location": "path",
+	//       "required": true,
 	//       "type": "string"
 	//     }
 	//   },
-	//   "path": "clients",
+	//   "path": "admin/{id}",
 	//   "response": {
-	//     "$ref": "ClientPage"
+	//     "$ref": "Admin"
 	//   }
 	// }
 

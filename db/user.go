@@ -318,6 +318,11 @@ func (r *userRepo) GetRemoteIdentities(userID string) ([]user.RemoteIdentity, er
 	return ris, nil
 }
 
+func (r *userRepo) GetAdminCount() (int, error) {
+	i, err := r.dbMap.SelectInt(fmt.Sprintf("SELECT count(*) FROM %s where admin=true", userTableName))
+	return int(i), err
+}
+
 func (r *userRepo) executor(tx *gorp.Transaction) gorp.SqlExecutor {
 	if tx == nil {
 		return r.dbMap
@@ -414,6 +419,7 @@ type userModel struct {
 	Name        string `db:"name"`
 	Email       string `db:"email"`
 	DisplayName string `db:"displayName"`
+	Admin       bool   `db:"admin"`
 }
 
 func (u *userModel) user() (user.User, error) {
@@ -422,6 +428,7 @@ func (u *userModel) user() (user.User, error) {
 		Name:        u.Name,
 		DisplayName: u.DisplayName,
 		Email:       u.Email,
+		Admin:       u.Admin,
 	}
 
 	return usr, nil
@@ -433,6 +440,7 @@ func newUserModel(u *user.User) (*userModel, error) {
 		Name:        u.Name,
 		DisplayName: u.DisplayName,
 		Email:       u.Email,
+		Admin:       u.Admin,
 	}
 
 	return &um, nil

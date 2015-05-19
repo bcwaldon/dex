@@ -83,6 +83,14 @@ func TestNewUser(t *testing.T) {
 		},
 		{
 			user: user.User{
+				Name:  "TheAdmin",
+				Email: "admin@example.com",
+				Admin: true,
+			},
+			err: nil,
+		},
+		{
+			user: user.User{
 				Name:        "Name-1",
 				DisplayName: "Oops Same Name",
 			},
@@ -426,11 +434,73 @@ func TestGetByName(t *testing.T) {
 		}
 
 		if gotErr != nil {
-			t.Errorf("case %d: want nil err: %q", i, gotErr)
+			t.Errorf("case %d: want nil err:% q", i, gotErr)
 		}
 
 		if tt.name != gotUser.Name {
 			t.Errorf("case %d: want=%q, got=%q", i, tt.name, gotUser.Name)
 		}
 	}
+}
+
+func TestGetAdminCount(t *testing.T) {
+	tests := []struct {
+		addUsers []user.User
+		want     int
+	}{
+		{
+			addUsers: []user.User{
+				user.User{
+					Name:  "Admin",
+					Admin: true,
+				},
+			},
+			want: 1,
+		},
+		{
+			want: 0,
+		},
+		{
+			addUsers: []user.User{
+				user.User{
+					Name: "NotAdmin",
+				},
+			},
+			want: 0,
+		},
+		{
+			addUsers: []user.User{
+				user.User{
+					Name:  "Admin",
+					Admin: true,
+				},
+				user.User{
+					Name:  "AnotherAdmin",
+					Admin: true,
+				},
+			},
+			want: 2,
+		},
+	}
+
+	for i, tt := range tests {
+		repo := makeTestUserRepo()
+		for _, addUser := range tt.addUsers {
+			_, err := repo.Create(addUser)
+			if err != nil {
+				t.Fatalf("case %d: couldn't add user: %q", i, err)
+			}
+		}
+
+		got, err := repo.GetAdminCount()
+		if err != nil {
+			t.Errorf("case %d: couldn't get admin count: %q", i, err)
+			continue
+		}
+
+		if tt.want != got {
+			t.Errorf("case %d: want=%d, got=%d", i, tt.want, got)
+		}
+	}
+
 }

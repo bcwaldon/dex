@@ -36,6 +36,8 @@ type User struct {
 	DisplayName string
 
 	Email string
+
+	Admin bool
 }
 
 // AddToClaims adds basic information about the user to the given Claims.
@@ -67,6 +69,8 @@ type UserRepo interface {
 	RemoveRemoteIdentity(userID string, remoteID RemoteIdentity) error
 
 	GetRemoteIdentities(userID string) ([]RemoteIdentity, error)
+
+	GetAdminCount() (int, error)
 }
 
 var (
@@ -241,6 +245,16 @@ func (r *memUserRepo) GetRemoteIdentities(userID string) ([]RemoteIdentity, erro
 		ids = append(ids, id)
 	}
 	return ids, nil
+}
+
+func (r *memUserRepo) GetAdminCount() (int, error) {
+	var i int
+	for _, usr := range r.usersByID {
+		if usr.Admin {
+			i++
+		}
+	}
+	return i, nil
 }
 
 func (r *memUserRepo) set(user User) error {

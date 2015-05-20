@@ -41,6 +41,15 @@ const DiscoveryJSON = `{
                   "type": "string"
               }
           }
+      },
+      "State": {
+          "id": "State",
+          "type": "object",
+          "properties": {
+              "AdminUserCreated": {
+                  "type": "boolean"
+              }
+          }
       }
   },
   "resources": {
@@ -76,6 +85,19 @@ const DiscoveryJSON = `{
                   },
                   "response": {
                       "$ref": "Admin"
+                  }
+              }
+          }
+      },
+      "State": {
+          "methods": {
+              "Get": {
+                  "id": "authd.admin.State.Get",
+                  "description": "Get the state of the AuthD DB",
+                  "httpMethod": "GET",
+                  "path": "state",
+                  "response": {
+                      "$ref": "State"
                   }
               }
           }

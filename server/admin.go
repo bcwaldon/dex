@@ -17,8 +17,9 @@ const (
 )
 
 var (
-	AdminGetEndpoint    = addBasePath("/admin/:id")
-	AdminCreateEndpoint = addBasePath("/admin")
+	AdminGetEndpoint      = addBasePath("/admin/:id")
+	AdminCreateEndpoint   = addBasePath("/admin")
+	AdminGetStateEndpoint = addBasePath("/state")
 )
 
 // AdminServer serves the admin API.
@@ -36,6 +37,7 @@ func (s *AdminServer) HTTPHandler() http.Handler {
 	r := httprouter.New()
 	r.GET(AdminGetEndpoint, s.getAdmin)
 	r.POST(AdminCreateEndpoint, s.createAdmin)
+	r.GET(AdminGetStateEndpoint, s.getState)
 	return r
 }
 
@@ -68,6 +70,16 @@ func (s *AdminServer) createAdmin(w http.ResponseWriter, r *http.Request, _ http
 	admn.Id = id
 	w.Header().Set("Location", AdminCreateEndpoint+"/"+id)
 	writeResponseWithBody(w, http.StatusOK, admn)
+}
+
+func (s *AdminServer) getState(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	state, err := s.adminAPI.GetState()
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+
+	writeResponseWithBody(w, http.StatusOK, state)
 }
 
 func (s *AdminServer) writeError(w http.ResponseWriter, err error) {

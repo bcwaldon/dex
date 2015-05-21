@@ -152,3 +152,45 @@ func TestCreateAdmin(t *testing.T) {
 		}
 	}
 }
+
+func TestGetState(t *testing.T) {
+	tests := []struct {
+		addUsers []user.User
+		want     adminschema.State
+	}{
+		{
+			addUsers: []user.User{
+				user.User{
+					Name:  "Admin",
+					Admin: true,
+				},
+			},
+			want: adminschema.State{
+				AdminUserCreated: true,
+			},
+		},
+		{
+			want: adminschema.State{
+				AdminUserCreated: false,
+			},
+		},
+	}
+	for i, tt := range tests {
+		f := makeTestFixtures()
+		for _, usr := range tt.addUsers {
+			_, err := f.ur.Create(usr)
+			if err != nil {
+				t.Fatalf("case %d: err != nil", i, err)
+			}
+		}
+
+		got, err := f.adAPI.GetState()
+		if err != nil {
+			t.Errorf("case %d: err != nil", i, err)
+		}
+
+		if diff := pretty.Compare(tt.want, got); diff != "" {
+			t.Errorf("case %d: Compare(want, got) = %v", i, diff)
+		}
+	}
+}

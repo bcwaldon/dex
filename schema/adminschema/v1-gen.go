@@ -46,6 +46,7 @@ func New(client *http.Client) (*Service, error) {
 	}
 	s := &Service{client: client, BasePath: basePath}
 	s.Admin = NewAdminService(s)
+	s.State = NewStateService(s)
 	return s, nil
 }
 
@@ -54,6 +55,8 @@ type Service struct {
 	BasePath string // API endpoint base URL
 
 	Admin *AdminService
+
+	State *StateService
 }
 
 func NewAdminService(s *Service) *AdminService {
@@ -65,12 +68,25 @@ type AdminService struct {
 	s *Service
 }
 
+func NewStateService(s *Service) *StateService {
+	rs := &StateService{s: s}
+	return rs
+}
+
+type StateService struct {
+	s *Service
+}
+
 type Admin struct {
 	Id string `json:"id,omitempty"`
 
 	Name string `json:"name,omitempty"`
 
 	PasswordHash string `json:"passwordHash,omitempty"`
+}
+
+type State struct {
+	AdminUserCreated bool `json:"AdminUserCreated,omitempty"`
 }
 
 // method id "authd.admin.Admin.Create":
@@ -209,6 +225,64 @@ func (c *AdminGetCall) Do() (*Admin, error) {
 	//   "path": "admin/{id}",
 	//   "response": {
 	//     "$ref": "Admin"
+	//   }
+	// }
+
+}
+
+// method id "authd.admin.State.Get":
+
+type StateGetCall struct {
+	s    *Service
+	opt_ map[string]interface{}
+}
+
+// Get: Get the state of the AuthD DB
+func (r *StateService) Get() *StateGetCall {
+	c := &StateGetCall{s: r.s, opt_: make(map[string]interface{})}
+	return c
+}
+
+// Fields allows partial responses to be retrieved.
+// See https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *StateGetCall) Fields(s ...googleapi.Field) *StateGetCall {
+	c.opt_["fields"] = googleapi.CombineFields(s)
+	return c
+}
+
+func (c *StateGetCall) Do() (*State, error) {
+	var body io.Reader = nil
+	params := make(url.Values)
+	params.Set("alt", "json")
+	if v, ok := c.opt_["fields"]; ok {
+		params.Set("fields", fmt.Sprintf("%v", v))
+	}
+	urls := googleapi.ResolveRelative(c.s.BasePath, "state")
+	urls += "?" + params.Encode()
+	req, _ := http.NewRequest("GET", urls, body)
+	googleapi.SetOpaque(req.URL)
+	req.Header.Set("User-Agent", "google-api-go-client/0.5")
+	res, err := c.s.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	var ret *State
+	if err := json.NewDecoder(res.Body).Decode(&ret); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Get the state of the AuthD DB",
+	//   "httpMethod": "GET",
+	//   "id": "authd.admin.State.Get",
+	//   "path": "state",
+	//   "response": {
+	//     "$ref": "State"
 	//   }
 	// }
 

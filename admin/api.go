@@ -79,6 +79,7 @@ func (a *AdminAPI) GetAdmin(id string) (adminschema.Admin, error) {
 func (a *AdminAPI) CreateAdmin(admn adminschema.Admin) (string, error) {
 	usr := user.User{}
 	usr.Name = admn.Name
+	usr.Admin = true
 
 	id, err := a.userRepo.Create(usr)
 	if err != nil {
@@ -104,13 +105,27 @@ func (a *AdminAPI) CreateAdmin(admn adminschema.Admin) (string, error) {
 	return id, nil
 }
 
+func (a *AdminAPI) GetState() (adminschema.State, error) {
+	state := adminschema.State{}
+
+	admins, err := a.userRepo.GetAdminCount()
+	if err != nil {
+		return adminschema.State{}, err
+	}
+
+	state.AdminUserCreated = admins > 0
+
+	return state, nil
+}
+
 func mapError(e error) error {
 	if mapped, ok := errorMap[e]; ok {
 		return mapped(e)
 	}
 	return Error{
-		Code: http.StatusInternalServerError,
-		Type: "server_error",
-		Desc: "",
+		Code:     http.StatusInternalServerError,
+		Type:     "server_error",
+		Desc:     "",
+		Internal: e,
 	}
 }

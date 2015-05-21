@@ -1,7 +1,6 @@
 package connector
 
 import (
-	"encoding/base64"
 	"reflect"
 	"strings"
 	"testing"
@@ -52,11 +51,6 @@ func TestNewConnectorConfigFromMap(t *testing.T) {
 	defer func() {
 		user.PasswordHasher = user.DefaultPasswordHasher
 	}()
-	encodeBase64 := func(s string) string {
-		dst := make([]byte, base64.StdEncoding.EncodedLen(len(s)))
-		base64.StdEncoding.Encode(dst, []byte(s))
-		return string(dst)
-	}
 
 	tests := []struct {
 		m    map[string]interface{}
@@ -67,7 +61,7 @@ func TestNewConnectorConfigFromMap(t *testing.T) {
 				"type": "local",
 				"id":   "foo",
 				"passwordInfos": []map[string]string{
-					{"userId": "abc", "passwordHash": encodeBase64("PING")},
+					{"userId": "abc", "passwordHash": "PING"},
 					{"userId": "271", "passwordPlaintext": "pong"},
 				},
 			},

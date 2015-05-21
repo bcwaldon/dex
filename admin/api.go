@@ -70,9 +70,9 @@ func (a *AdminAPI) GetAdmin(id string) (adminschema.Admin, error) {
 	}
 
 	return adminschema.Admin{
-		Id:           id,
-		Name:         usr.Name,
-		PasswordHash: pwi.Password.EncodeBase64(),
+		Id:       id,
+		Name:     usr.Name,
+		Password: string(pwi.Password),
 	}, nil
 }
 
@@ -86,14 +86,9 @@ func (a *AdminAPI) CreateAdmin(admn adminschema.Admin) (string, error) {
 		return "", mapError(err)
 	}
 
-	pw, err := user.NewPasswordFromBase64(admn.PasswordHash)
-	if err != nil {
-		return "", mapError(err)
-	}
-
 	pwi := user.PasswordInfo{
 		UserID:   id,
-		Password: pw,
+		Password: user.Password(admn.Password),
 	}
 
 	// TODO(bobbyrullo): This is racy and difficult to recover from since we're not using transactions.

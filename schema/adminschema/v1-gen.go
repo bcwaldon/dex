@@ -82,7 +82,7 @@ type Admin struct {
 
 	Name string `json:"name,omitempty"`
 
-	PasswordHash string `json:"passwordHash,omitempty"`
+	Password string `json:"password,omitempty"`
 }
 
 type State struct {

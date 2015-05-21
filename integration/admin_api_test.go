@@ -114,23 +114,23 @@ func TestCreateAdmin(t *testing.T) {
 	}{
 		{
 			admn: &adminschema.Admin{
-				Name:         "foo",
-				PasswordHash: user.Password([]byte("foopass")).EncodeBase64(),
+				Name:     "foo",
+				Password: "foopass",
 			},
 			errCode: -1,
 		},
 		{
 			// duplicate Name
 			admn: &adminschema.Admin{
-				Name:         "Name-1",
-				PasswordHash: user.Password([]byte("foopass")).EncodeBase64(),
+				Name:     "Name-1",
+				Password: "foopass",
 			},
 			errCode: http.StatusBadRequest,
 		},
 		{
 			// missing Name
 			admn: &adminschema.Admin{
-				PasswordHash: user.Password([]byte("foopass")).EncodeBase64(),
+				Password: "foopass",
 			},
 			errCode: http.StatusBadRequest,
 		},

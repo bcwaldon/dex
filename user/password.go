@@ -1,7 +1,6 @@
 package user
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -46,15 +45,6 @@ type Password []byte
 
 func NewPasswordFromPlaintext(plaintext string) (Password, error) {
 	return PasswordHasher(plaintext)
-}
-
-// NewPasswordFromBase64 takes base64 encoded hash and creates a Password.
-func NewPasswordFromBase64(s string) (Password, error) {
-	return base64.StdEncoding.DecodeString(s)
-}
-
-func (p Password) EncodeBase64() string {
-	return base64.StdEncoding.EncodeToString(p)
 }
 
 type PasswordInfo struct {
@@ -147,7 +137,7 @@ func (m *memPasswordInfoRepo) Update(pw PasswordInfo) error {
 func (u *PasswordInfo) UnmarshalJSON(data []byte) error {
 	var dec struct {
 		UserID            string    `json:"userId"`
-		PasswordHash      []byte    `json:"passwordHash"`
+		PasswordHash      string    `json:"passwordHash"`
 		PasswordPlaintext string    `json:"passwordPlaintext"`
 		PasswordExpires   time.Time `json:"passwordExpires"`
 	}

@@ -1,7 +1,6 @@
 package user
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -23,7 +22,7 @@ func TestNewPasswordInfosFromReader(t *testing.T) {
 		want []PasswordInfo
 	}{
 		{
-			json: fmt.Sprintf(`[{"userId":"12345","passwordPlaintext":"password"},{"userId":"78901","passwordHash":%q, "passwordExpires":"2006-01-01T15:04:05Z"}]`, Password("WORDPASS").EncodeBase64()),
+			json: `[{"userId":"12345","passwordPlaintext":"password"},{"userId":"78901","passwordHash":"WORDPASS", "passwordExpires":"2006-01-01T15:04:05Z"}]`,
 			want: []PasswordInfo{
 				{
 					UserID:   "12345",
@@ -48,6 +47,7 @@ func TestNewPasswordInfosFromReader(t *testing.T) {
 		}
 		if diff := pretty.Compare(tt.want, us); diff != "" {
 			t.Errorf("case %d: Compare(want, got): %v", i, diff)
+			t.Errorf("oops: %v", string(us[1].Password))
 		}
 	}
 }

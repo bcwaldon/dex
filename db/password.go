@@ -26,7 +26,7 @@ func init() {
 
 type passwordInfoModel struct {
 	UserID          string `db:"userId"`
-	PasswordHash    []byte `db:"passwordHash"`
+	Password        string `db:"password"`
 	PasswordExpires int64  `db:"passwordExpires"`
 }
 
@@ -163,7 +163,7 @@ func (r *passwordInfoRepo) update(tx *gorp.Transaction, pw user.PasswordInfo) er
 func (p *passwordInfoModel) passwordInfo() (user.PasswordInfo, error) {
 	pw := user.PasswordInfo{
 		UserID:   p.UserID,
-		Password: p.PasswordHash,
+		Password: user.Password(p.Password),
 	}
 
 	if p.PasswordExpires != 0 {
@@ -175,8 +175,8 @@ func (p *passwordInfoModel) passwordInfo() (user.PasswordInfo, error) {
 
 func newPasswordInfoModel(p *user.PasswordInfo) (*passwordInfoModel, error) {
 	pw := passwordInfoModel{
-		UserID:       p.UserID,
-		PasswordHash: []byte(p.Password),
+		UserID:   p.UserID,
+		Password: string(p.Password),
 	}
 
 	if !p.PasswordExpires.IsZero() {

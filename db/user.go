@@ -415,20 +415,22 @@ func (r *userRepo) insertRemoteIdentity(tx *gorp.Transaction, userID string, ri 
 }
 
 type userModel struct {
-	ID          string `db:"id"`
-	Name        string `db:"name"`
-	Email       string `db:"email"`
-	DisplayName string `db:"displayName"`
-	Admin       bool   `db:"admin"`
+	ID            string `db:"id"`
+	Name          string `db:"name"`
+	Email         string `db:"email"`
+	EmailVerified bool   `db:"emailVerified"`
+	DisplayName   string `db:"displayName"`
+	Admin         bool   `db:"admin"`
 }
 
 func (u *userModel) user() (user.User, error) {
 	usr := user.User{
-		ID:          u.ID,
-		Name:        u.Name,
-		DisplayName: u.DisplayName,
-		Email:       u.Email,
-		Admin:       u.Admin,
+		ID:            u.ID,
+		Name:          u.Name,
+		DisplayName:   u.DisplayName,
+		Email:         u.Email,
+		EmailVerified: u.EmailVerified,
+		Admin:         u.Admin,
 	}
 
 	return usr, nil
@@ -436,11 +438,12 @@ func (u *userModel) user() (user.User, error) {
 
 func newUserModel(u *user.User) (*userModel, error) {
 	um := userModel{
-		ID:          u.ID,
-		Name:        u.Name,
-		DisplayName: u.DisplayName,
-		Email:       u.Email,
-		Admin:       u.Admin,
+		ID:            u.ID,
+		Name:          u.Name,
+		DisplayName:   u.DisplayName,
+		Email:         u.Email,
+		EmailVerified: u.EmailVerified,
+		Admin:         u.Admin,
 	}
 
 	return &um, nil

@@ -91,6 +91,14 @@ func TestNewUser(t *testing.T) {
 		},
 		{
 			user: user.User{
+				Name:          "Very",
+				Email:         "verified@example.com",
+				EmailVerified: true,
+			},
+			err: nil,
+		},
+		{
+			user: user.User{
 				Name:        "Name-1",
 				DisplayName: "Oops Same Name",
 			},

@@ -37,6 +37,8 @@ type User struct {
 
 	Email string
 
+	EmailVerified bool
+
 	Admin bool
 }
 
@@ -45,6 +47,9 @@ type User struct {
 func (u *User) AddToClaims(claims jose.Claims) {
 	claims.Add("name", u.DisplayName)
 	claims.Add("preferred_username", u.Name)
+	if u.Email != "" && u.EmailVerified {
+		claims.Add("email", u.Email)
+	}
 }
 
 // UserRepo implementations maintain a persistent set of users.
@@ -311,10 +316,11 @@ func readUsersFromFile(loc string) ([]UserWithRemoteIdentities, error) {
 
 func (u *User) UnmarshalJSON(data []byte) error {
 	var dec struct {
-		ID          string `json:"id"`
-		Name        string `json:"name"`
-		DisplayName string `json:"displayName"`
-		Email       string `json:"email"`
+		ID            string `json:"id"`
+		Name          string `json:"name"`
+		DisplayName   string `json:"displayName"`
+		Email         string `json:"email"`
+		EmailVerified bool   `json:"emailVerified"`
 	}
 
 	err := json.Unmarshal(data, &dec)
@@ -326,6 +332,7 @@ func (u *User) UnmarshalJSON(data []byte) error {
 	u.Name = dec.Name
 	u.DisplayName = dec.DisplayName
 	u.Email = dec.Email
+	u.EmailVerified = dec.EmailVerified
 	return nil
 }
 

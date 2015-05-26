@@ -64,13 +64,37 @@ func TestAddToClaims(t *testing.T) {
 				"preferred_username": "testUserName",
 			},
 		},
+		{
+			user: User{
+				Name:        "testUserName",
+				DisplayName: "Test User Name",
+				Email:       "unverified@example.com",
+			},
+			wantedClaims: jose.Claims{
+				"name":               "Test User Name",
+				"preferred_username": "testUserName",
+			},
+		},
+		{
+			user: User{
+				Name:          "testUserName",
+				DisplayName:   "Test User Name",
+				Email:         "verified@example.com",
+				EmailVerified: true,
+			},
+			wantedClaims: jose.Claims{
+				"name":               "Test User Name",
+				"preferred_username": "testUserName",
+				"email":              "verified@example.com",
+			},
+		},
 	}
 
 	for i, tt := range tests {
 		claims := jose.Claims{}
 		tt.user.AddToClaims(claims)
 		if !reflect.DeepEqual(claims, tt.wantedClaims) {
-			t.Errorf("case %d: want=%#v, got=%#v", i, claims, tt.wantedClaims)
+			t.Errorf("case %d: want=%#v, got=%#v", i, tt.wantedClaims, claims)
 		}
 	}
 }

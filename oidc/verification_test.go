@@ -153,6 +153,11 @@ func TestJWTVerifier(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
+	jwtPK1BadClaims, err := jose.NewSignedJWT(NewClaims(iss, "XXX", "YYY", past12, future12), priv1.Signer())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
 	jwtExpired, err := jose.NewSignedJWT(NewClaims(iss, "XXX", "XXX", past36, past12), priv1.Signer())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -182,6 +187,20 @@ func TestJWTVerifier(t *testing.T) {
 			wantErr: false,
 		},
 
+		// JWT signed with available key, with bad claims
+		{
+			verifier: jwtVerifier{
+				issuer:   "example.com",
+				clientID: "XXX",
+				syncFunc: func() error { return nil },
+				keysFunc: func() []key.PublicKey {
+					return []key.PublicKey{pk1}
+				},
+			},
+			jwt:     *jwtPK1BadClaims,
+			wantErr: true,
+		},
+
 		// expired JWT signed with available key
 		{
 			verifier: jwtVerifier{
@@ -193,7 +212,7 @@ func TestJWTVerifier(t *testing.T) {
 				},
 			},
 			jwt:     *jwtExpired,
-			wantErr: false,
+			wantErr: true,
 		},
 
 		// JWT signed with unrecognized key, verifiable after sync

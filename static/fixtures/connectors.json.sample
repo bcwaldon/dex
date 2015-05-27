@@ -4,14 +4,14 @@
 		"id": "local",
 		"passwordInfos": [
 			{
-				"id":"elroy-id",
+				"userId":"elroy-id",
 				"passwordPlaintext": "bones"
 			},
 			{
-				"id":"penny",
+				"userId":"penny",
 				"name":"Penny",
 				"email":"penny@example.com",
-				"password": "kibble"
+				"passwordPlaintext": "kibble"
 			}
 		]
 	},

@@ -2,6 +2,8 @@ authd
 =====
 
 [![Build Status](https://semaphoreci.com/api/v1/projects/52d56c45-8487-42ac-b124-056df1630122/411983/badge.svg)](https://semaphoreci.com/coreos-inc/auth)
+[![Docker Repository on Quay.io](https://quay.io/repository/coreos/authd/status?token=64f952fa-9aa9-4f8e-ab8d-93bfbe770d25 "Docker Repository on Quay.io")](https://quay.io/repository/coreos/authd)
+
 
 authd is a federated identity management service.
 It provides OpenID Connect (OIDC) to users, while it proxies to multiple remote identity providers (IdP) to drive actual authentication.

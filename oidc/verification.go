@@ -133,7 +133,7 @@ type jwtVerifier struct {
 func (v *jwtVerifier) verify(jwt jose.JWT) error {
 	ok, err := VerifySignature(jwt, v.keysFunc())
 	if ok {
-		return nil
+		goto SignatureVerified
 	} else if err != nil {
 		return fmt.Errorf("oidc: JWT signature verification failed: %v", err)
 	}
@@ -149,6 +149,7 @@ func (v *jwtVerifier) verify(jwt jose.JWT) error {
 		return errors.New("oidc: unable to verify JWT signature: no matching keys")
 	}
 
+SignatureVerified:
 	if err := VerifyClaims(jwt, v.issuer, v.clientID); err != nil {
 		return fmt.Errorf("oidc: JWT claims invalid: %v", err)
 	}

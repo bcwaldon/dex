@@ -1,0 +1,32 @@
+apiVersion: v1beta3
+kind: ReplicationController
+metadata:
+  labels:
+    app: authd
+    role: worker
+  name: authd-worker
+spec:
+  replicas: 1
+  selector:
+    app: authd
+    role: worker
+  template:
+    metadata:
+      labels:
+        app: authd
+        role: worker
+    spec:
+      containers:
+          - image: quay.io/coreos/authd
+            name: authd-worker
+            command: ["/opt/authd/bin/authd-worker", "-key-secret", "836A2A2E64E54EFCA14AAFBFDFDF0A30", "-db-url", "postgres://postgres@10.2.101.203:5432/auth?sslmode=disable"]
+            ports:
+            - containerPort: 5556
+              name: worker-port
+            livenessProbe:
+              httpGet:
+                path: /health
+                port: 5556
+              initialDelaySeconds: 15
+              timeoutSeconds: 1
+

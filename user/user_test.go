@@ -98,3 +98,21 @@ func TestAddToClaims(t *testing.T) {
 		}
 	}
 }
+
+func TestValidEmail(t *testing.T) {
+	tests := []struct {
+		email string
+		want  bool
+	}{
+		{"example@example.com", true},
+		{"r@r.com", true},
+		{"Barry Gibbs <bg@example.com>", false},
+		{"", false},
+	}
+
+	for i, tt := range tests {
+		if ValidEmail(tt.email) != tt.want {
+			t.Errorf("case %d: want=%v, got=%v", i, tt.want, !tt.want)
+		}
+	}
+}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/mail"
 	"os"
 
 	"code.google.com/p/go-uuid/uuid"
@@ -13,7 +14,8 @@ import (
 )
 
 const (
-	MaxNameLength = 100
+	MaxNameLength  = 100
+	MaxEmailLength = 200
 )
 
 type UserIDGenerator func() (string, error)
@@ -82,6 +84,7 @@ var (
 	ErrorDuplicateID             = errors.New("ID not available")
 	ErrorDuplicateName           = errors.New("name not available")
 	ErrorDuplicateRemoteIdentity = errors.New("remote identity already in use for another user")
+	ErrorInvalidEmail            = errors.New("invalid Email")
 	ErrorInvalidID               = errors.New("invalid ID")
 	ErrorInvalidName             = errors.New("invalid Name")
 	ErrorNotFound                = errors.New("user not found in repository")
@@ -98,6 +101,18 @@ type RemoteIdentity struct {
 
 func ValidName(name string) bool {
 	return name != "" && len(name) <= MaxNameLength
+}
+
+func ValidEmail(email string) bool {
+	address, err := mail.ParseAddress(email)
+	if err != nil {
+		return false
+	}
+
+	if address.Name != "" || address.Address == "" {
+		return false
+	}
+	return true
 }
 
 // NewUserRepo returns an in-memory UserRepo useful for development.

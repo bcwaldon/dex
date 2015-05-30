@@ -80,6 +80,7 @@ func (cfg *SingleServerConfig) Server() (*Server, error) {
 	}
 
 	passwordInfoRepo := user.NewPasswordInfoRepo()
+	userManager := user.NewManager(userRepo, passwordInfoRepo, user.ManagerOptions{})
 
 	km := key.NewPrivateKeyManager()
 	srv := Server{
@@ -91,10 +92,13 @@ func (cfg *SingleServerConfig) Server() (*Server, error) {
 		ConnectorConfigRepo: cfgRepo,
 		Templates:           tpl,
 		LoginTemplate:       ltpl,
-		HealthChecks:        []health.Checkable{km},
-		Connectors:          []connector.Connector{},
-		UserRepo:            userRepo,
-		PasswordInfoRepo:    passwordInfoRepo,
+		RegisterTemplate:    rtpl,
+
+		HealthChecks:     []health.Checkable{km},
+		Connectors:       []connector.Connector{},
+		UserRepo:         userRepo,
+		PasswordInfoRepo: passwordInfoRepo,
+		UserManager:      userManager,
 	}
 
 	return &srv, nil
@@ -137,6 +141,7 @@ func (cfg *MultiServerConfig) Server() (*Server, error) {
 	cfgRepo := db.NewConnectorConfigRepo(dbc)
 	userRepo := db.NewUserRepo(dbc)
 	pwiRepo := db.NewPasswordInfoRepo(dbc)
+	userManager := user.NewManager(userRepo, pwiRepo, user.ManagerOptions{})
 
 	sm := session.NewSessionManager(sRepo, skRepo)
 
@@ -163,6 +168,7 @@ func (cfg *MultiServerConfig) Server() (*Server, error) {
 		HealthChecks:        []health.Checkable{km, dbh},
 		Connectors:          []connector.Connector{},
 		UserRepo:            userRepo,
+		UserManager:         userManager,
 		PasswordInfoRepo:    pwiRepo,
 	}
 

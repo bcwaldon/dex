@@ -49,6 +49,7 @@ type Server struct {
 	HealthChecks        []health.Checkable
 	Connectors          []connector.Connector
 	UserRepo            user.UserRepo
+	UserManager         *user.Manager
 	PasswordInfoRepo    user.PasswordInfoRepo
 }
 

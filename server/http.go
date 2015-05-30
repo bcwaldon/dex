@@ -33,6 +33,7 @@ var (
 	httpPathAuth      = "/auth"
 	httpPathHealth    = "/health"
 	httpPathAPI       = "/api"
+	httpPathRegister  = "/register"
 )
 
 func handleDiscoveryFunc(cfg oidc.ProviderConfig) http.HandlerFunc {
@@ -103,8 +104,8 @@ type templateData struct {
 	}
 }
 
-func execTemplate(w http.ResponseWriter, tpl *template.Template, td templateData) {
-	if err := tpl.Execute(w, td); err != nil {
+func execTemplate(w http.ResponseWriter, tpl *template.Template, data interface{}) {
+	if err := tpl.Execute(w, data); err != nil {
 		phttp.WriteError(w, http.StatusInternalServerError, "error loading login page")
 		return
 	}
@@ -272,7 +273,8 @@ func handleAuthFunc(srv OIDCServer, idpcs []connector.Connector, tpl *template.T
 			return
 		}
 
-		key, err := srv.NewSession(connectorID, acr.ClientID, acr.State, *redirectURL)
+		register := q.Get("register") == "1"
+		key, err := srv.NewSession(connectorID, acr.ClientID, acr.State, *redirectURL, register)
 		if err != nil {
 			redirectAuthError(w, err, acr.State, *redirectURL)
 			return

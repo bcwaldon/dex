@@ -69,7 +69,13 @@ func (cfg *SingleServerConfig) Server() (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	ltpl, err := findLoginTemplate(tpl)
+
+	ltpl, err := findTemplate(LoginPageTemplateName, tpl)
+	if err != nil {
+		return nil, err
+	}
+
+	rtpl, err := findTemplate(RegisterTemplateName, tpl)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +155,8 @@ func (cfg *MultiServerConfig) Server() (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	ltpl, err := findLoginTemplate(tpl)
+
+	ltpl, err := findTemplate(LoginPageTemplateName, tpl)
 	if err != nil {
 		return nil, err
 	}
@@ -178,13 +185,14 @@ func (cfg *MultiServerConfig) Server() (*Server, error) {
 func getTemplates(dir string) (*template.Template, error) {
 	files := []string{
 		path.Join(dir, LoginPageTemplateName),
+		path.Join(dir, RegisterTemplateName),
 		path.Join(dir, connector.LoginPageTemplateName),
 	}
 	return template.ParseFiles(files...)
 }
 
-func findLoginTemplate(tpls *template.Template) (*template.Template, error) {
-	tpl := tpls.Lookup(LoginPageTemplateName)
+func findTemplate(name string, tpls *template.Template) (*template.Template, error) {
+	tpl := tpls.Lookup(name)
 	if tpl == nil {
 		return nil, errors.New("unable to find login template")
 	}

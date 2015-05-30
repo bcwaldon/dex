@@ -38,6 +38,9 @@ type Session struct {
 	RedirectURL url.URL
 	Identity    oidc.Identity
 	UserID      string
+
+	// Indicates that this session is a registration flow.
+	Register bool
 }
 
 // Claims returns a new set of Claims for the current session.

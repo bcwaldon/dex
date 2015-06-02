@@ -115,8 +115,18 @@ Resulting unit files are output to: `./deploy`
 Like all OAuth2 servers clients must be registered with a callback url.
 New clients can be registered with the authctl CLI tool:
 ```
-authctl new-client http://example.com/auth/callback
+authctl --db-url=postgres://localhost/auth?sslmode=disable new-client http://example.com/auth/callback
 ```
+
+The tool will print the `client-id` and `client-secret` to stdout; you must save these for use in your client application.
+
+Note that for the initial invocation of `authctl` you need to provide a DSN URL to create a new-client. Once you have created this initial client, you can use its client-id and client-secret as credentials to authctl, and make requests via the HTTP API instead of the DB:
+
+```
+authctl --endpoint=http://your-issuer-url --client-id=your_client_id --client-secret=your_client_secret new-client
+```
+
+This will allow you to create new clients from machines that cannot hit the database.
 
 # Coming Soon
 

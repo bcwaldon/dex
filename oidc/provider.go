@@ -249,7 +249,7 @@ func waitForProviderConfig(hc phttp.Client, issuerURL string, clock clockwork.Cl
 		}
 
 		sleep = ptime.ExpBackoff(sleep, time.Minute)
-		fmt.Printf("Failed fetching provider config, trying again in %v: %v", sleep, err)
+		fmt.Printf("Failed fetching provider config, trying again in %v: %v\n", sleep, err)
 		time.Sleep(sleep)
 	}
 

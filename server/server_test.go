@@ -138,7 +138,7 @@ func TestServerNewSession(t *testing.T) {
 		},
 	}
 
-	key, err := srv.NewSession("bogus_idpc", ci.Credentials.ID, state, ci.Metadata.RedirectURLs[0])
+	key, err := srv.NewSession("bogus_idpc", ci.Credentials.ID, state, ci.Metadata.RedirectURLs[0], false)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -190,7 +190,7 @@ func TestServerLogin(t *testing.T) {
 
 	sm := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())
 	sm.GenerateCode = staticGenerateCodeFunc("fakecode")
-	sessionID, err := sm.NewSession("test_connector_id", ci.Credentials.ID, "bogus", ci.Metadata.RedirectURLs[0])
+	sessionID, err := sm.NewSession("test_connector_id", ci.Credentials.ID, "bogus", ci.Metadata.RedirectURLs[0], false)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -281,7 +281,7 @@ func TestServerCodeToken(t *testing.T) {
 		UserRepo:           userRepo,
 	}
 
-	sessionID, err := sm.NewSession("bogus_idpc", ci.Credentials.ID, "bogus", url.URL{})
+	sessionID, err := sm.NewSession("bogus_idpc", ci.Credentials.ID, "bogus", url.URL{}, false)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -329,7 +329,7 @@ func TestServerTokenUnrecognizedKey(t *testing.T) {
 		ClientIdentityRepo: ciRepo,
 	}
 
-	sessionID, err := sm.NewSession("connector_id", ci.Credentials.ID, "bogus", url.URL{})
+	sessionID, err := sm.NewSession("connector_id", ci.Credentials.ID, "bogus", url.URL{}, false)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -399,7 +399,7 @@ func TestServerTokenFail(t *testing.T) {
 		sm := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())
 		sm.GenerateCode = func() (string, error) { return keyFixture, nil }
 
-		sessionID, err := sm.NewSession("connector_id", ccFixture.ID, "bogus", url.URL{})
+		sessionID, err := sm.NewSession("connector_id", ccFixture.ID, "bogus", url.URL{}, false)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}

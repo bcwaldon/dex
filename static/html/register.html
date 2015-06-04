@@ -24,9 +24,11 @@
       <br>
 
       <!-- The client side should be responsible for making sure password is entered correctly twice -->
-      <label for="password">Password</label>
-      <input type="text" name="password" value="{{.Password}}" />
-      <br>
+      {{ if .Local }}
+        <label for="password">Password</label>
+        <input type="text" name="password" value="{{.Password}}" />
+        <br>
+      {{ end }}
 
       <input type="hidden" name="code" value="{{.Code}}"/>
       <input type="hidden" name="validate" value="1"/>

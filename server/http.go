@@ -105,8 +105,13 @@ type templateData struct {
 }
 
 func execTemplate(w http.ResponseWriter, tpl *template.Template, data interface{}) {
+	execTemplateWithStatus(w, tpl, data, http.StatusOK)
+}
+
+func execTemplateWithStatus(w http.ResponseWriter, tpl *template.Template, data interface{}, status int) {
+	w.WriteHeader(status)
 	if err := tpl.Execute(w, data); err != nil {
-		phttp.WriteError(w, http.StatusInternalServerError, "error loading login page")
+		phttp.WriteError(w, http.StatusInternalServerError, "error loading page")
 		return
 	}
 }

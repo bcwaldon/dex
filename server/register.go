@@ -3,6 +3,8 @@ package server
 import (
 	"net/http"
 
+	"github.com/coreos-inc/auth/connector"
+	"github.com/coreos-inc/auth/oidc"
 	"github.com/coreos-inc/auth/pkg/log"
 	"github.com/coreos-inc/auth/user"
 )
@@ -19,6 +21,7 @@ type registerTemplateData struct {
 	Name       string
 	Email      string
 	Code       string
+	Password   string
 }
 
 var (
@@ -50,6 +53,8 @@ func handleRegisterFunc(s *Server) http.HandlerFunc {
 		execTemplate(w, tpl, data)
 	}
 
+	idx := makeConnectorMap(s.Connectors)
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := r.ParseForm()
 		if err != nil {
@@ -78,16 +83,30 @@ func handleRegisterFunc(s *Server) http.HandlerFunc {
 			return
 		}
 
+		// determine whether or not this is a local or remote ID that is going
+		// to be registered.
+		idpc, ok := idx[ses.ConnectorID]
+		if !ok {
+			errPage(w, "There's been an error authenticating. Please try logging in again.", "")
+			return
+		}
+		_, local := idpc.(*connector.LocalConnector)
+
 		validate := r.Form.Get("validate") == "1"
 		formErrors := []formError{}
 		name := r.Form.Get("name")
 		email := r.Form.Get("email")
+		password := r.Form.Get("password")
 		if validate {
 			if name == "" {
 				formErrors = append(formErrors, formError{"name", "Please supply a valid name"})
 			}
 			if email == "" {
 				formErrors = append(formErrors, formError{"email", "Please supply a valid email"})
+			}
+			if local && password == "" {
+				formErrors = append(formErrors, formError{"password", "Please supply a valid password"})
+
 			}
 		}
 		if len(formErrors) > 0 || !validate {
@@ -96,53 +115,72 @@ func handleRegisterFunc(s *Server) http.HandlerFunc {
 				Email:      email,
 				Name:       name,
 				Error:      false,
+				Password:   password,
 				FormErrors: formErrors,
 			}
 			execTemplate(w, tpl, data)
 			return
 		}
 
-		if ses.Identity.ID == "" {
-			errPage(w, "There's been an error authenticating. Please try logging in again.", "")
-			return
-		}
+		var userID string
+		if local {
+			// DO local
+			userID, err = s.UserManager.RegisterWithPassword(name, email, password, ses.ConnectorID)
+			if err != nil {
+				log.Errorf("reg fail: %v", err)
+				errPage(w, "Reg Fail.", "")
+				return
+			}
 
-		if ses.ConnectorID == "" {
-			errPage(w, "There's been an error authenticating. Please try logging in again.", "")
-			return
-		}
+			ses, err = s.SessionManager.AttachRemoteIdentity(sessionID, oidc.Identity{
+				ID: userID,
+			})
+			if err != nil {
+				log.Errorf("reg fail: %v", err)
+				errPage(w, "Reg Fail.", "")
+				return
+			}
 
-		rid := user.RemoteIdentity{
-			ConnectorID: ses.ConnectorID,
-			ID:          ses.Identity.ID,
-		}
-		userID, err := s.UserManager.RegisterWithRemoteIdentity(name, email, false, rid)
-		if err != nil {
-			fe, ok := errorMap[err]
-			if ok {
-				data := registerTemplateData{
-					Code:       code,
-					Email:      email,
-					Name:       name,
-					Error:      false,
-					FormErrors: []formError{fe},
+		} else {
+			// DO remote
+			if ses.Identity.ID == "" {
+				errPage(w, "There's been an error authenticating. Please try logging in again.", "")
+				return
+			}
+			rid := user.RemoteIdentity{
+				ConnectorID: ses.ConnectorID,
+				ID:          ses.Identity.ID,
+			}
+			userID, err = s.UserManager.RegisterWithRemoteIdentity(name, email, false, rid)
+			if err != nil {
+				fe, ok := errorMap[err]
+				if ok {
+					data := registerTemplateData{
+						Code:       code,
+						Email:      email,
+						Name:       name,
+						Error:      false,
+						Password:   password,
+						FormErrors: []formError{fe},
+					}
+					execTemplate(w, tpl, data)
+					return
 				}
-				execTemplate(w, tpl, data)
+
+				if err == user.ErrorDuplicateRemoteIdentity {
+					errPage(w, "You already have an account registered with this identity", "")
+					return
+				}
+
+				errPage(w, "There was an error authenticating. Please try again.", "")
 				return
 			}
-
-			if err == user.ErrorDuplicateRemoteIdentity {
-				errPage(w, "You already have an account registered with this identity", "")
-				return
-			}
-
-			errPage(w, "There was an error authenticating. Please try again.", "")
-			return
 		}
 
 		// from server.Login
 		ses, err = s.SessionManager.AttachUser(sessionID, userID)
 		if err != nil {
+			log.Errorf("reg fail: %v", err)
 			errPage(w, "oops", "")
 			return
 		}

@@ -23,6 +23,11 @@
       <input type="text" name="email" value="{{.Email}}" />
       <br>
 
+      <!-- The client side should be responsible for making sure password is entered correctly twice -->
+      <label for="password">Password</label>
+      <input type="text" name="password" value="{{.Password}}" />
+      <br>
+
       <input type="hidden" name="code" value="{{.Code}}"/>
       <input type="hidden" name="validate" value="1"/>
       <button>Submit</submit>

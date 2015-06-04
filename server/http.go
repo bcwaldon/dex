@@ -188,12 +188,7 @@ func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idp
 }
 
 func handleAuthFunc(srv OIDCServer, idpcs []connector.Connector, tpl *template.Template) http.HandlerFunc {
-	idx := make(map[string]connector.Connector, len(idpcs))
-	for _, idpc := range idpcs {
-		idpc := idpc
-		idx[idpc.ID()] = idpc
-	}
-
+	idx := makeConnectorMap(idpcs)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			w.Header().Set("Allow", "GET")
@@ -278,6 +273,18 @@ func handleAuthFunc(srv OIDCServer, idpcs []connector.Connector, tpl *template.T
 		if err != nil {
 			redirectAuthError(w, err, acr.State, *redirectURL)
 			return
+		}
+
+		if register {
+			_, ok := idpc.(*connector.LocalConnector)
+			if ok {
+				q := url.Values{}
+				q.Set("code", key)
+				ru := httpPathRegister + "?" + q.Encode()
+				w.Header().Set("Location", ru)
+				w.WriteHeader(http.StatusTemporaryRedirect)
+				return
+			}
 		}
 
 		var p string
@@ -398,4 +405,12 @@ func shouldReprompt(r *http.Request) bool {
 		return true
 	}
 	return false
+}
+
+func makeConnectorMap(idpcs []connector.Connector) map[string]connector.Connector {
+	idx := make(map[string]connector.Connector, len(idpcs))
+	for _, idpc := range idpcs {
+		idx[idpc.ID()] = idpc
+	}
+	return idx
 }

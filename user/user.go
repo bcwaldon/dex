@@ -115,6 +115,10 @@ func ValidEmail(email string) bool {
 	return true
 }
 
+func ValidPassword(plaintext string) bool {
+	return len(plaintext) > 5
+}
+
 // NewUserRepo returns an in-memory UserRepo useful for development.
 func NewUserRepo() UserRepo {
 	return NewUserRepoWithIDGenerator(DefaultUserIDGenerator)

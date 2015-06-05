@@ -30,17 +30,17 @@ func init() {
 }
 
 type sessionModel struct {
-	ID          string    `db:"id"`
-	State       string    `db:"state"`
-	CreatedAt   time.Time `db:"createdAt"`
-	ExpiresAt   time.Time `db:"expiresAt"`
-	ClientID    string    `db:"clientID"`
-	ClientState string    `db:"clientState"`
-	RedirectURL string    `db:"RedirectURL"`
-	Identity    string    `db:"identity"`
-	ConnectorID string    `db:"connectorID"`
-	UserID      string    `db:"userID"`
-	Register    bool      `db:"register"`
+	ID          string `db:"id"`
+	State       string `db:"state"`
+	CreatedAt   int64  `db:"createdAt"`
+	ExpiresAt   int64  `db:"expiresAt"`
+	ClientID    string `db:"clientID"`
+	ClientState string `db:"clientState"`
+	RedirectURL string `db:"RedirectURL"`
+	Identity    string `db:"identity"`
+	ConnectorID string `db:"connectorID"`
+	UserID      string `db:"userID"`
+	Register    bool   `db:"register"`
 }
 
 func (s *sessionModel) session() (*session.Session, error) {
@@ -53,12 +53,15 @@ func (s *sessionModel) session() (*session.Session, error) {
 	if err = json.Unmarshal([]byte(s.Identity), &ident); err != nil {
 		return nil, err
 	}
+	// If this is not here, then ExpiresAt is unmarshaled with a "loc" field,
+	// which breaks tests.
+	if ident.ExpiresAt.IsZero() {
+		ident.ExpiresAt = time.Time{}
+	}
 
 	ses := session.Session{
 		ID:          s.ID,
 		State:       session.SessionState(s.State),
-		CreatedAt:   s.CreatedAt.UTC(),
-		ExpiresAt:   s.ExpiresAt.UTC(),
 		ClientID:    s.ClientID,
 		ClientState: s.ClientState,
 		RedirectURL: *ru,
@@ -66,6 +69,14 @@ func (s *sessionModel) session() (*session.Session, error) {
 		ConnectorID: s.ConnectorID,
 		UserID:      s.UserID,
 		Register:    s.Register,
+	}
+
+	if s.CreatedAt != 0 {
+		ses.CreatedAt = time.Unix(s.CreatedAt, 0).UTC()
+	}
+
+	if s.ExpiresAt != 0 {
+		ses.ExpiresAt = time.Unix(s.ExpiresAt, 0).UTC()
 	}
 
 	return &ses, nil
@@ -80,8 +91,6 @@ func newSessionModel(s *session.Session) (*sessionModel, error) {
 	sm := sessionModel{
 		ID:          s.ID,
 		State:       string(s.State),
-		CreatedAt:   s.CreatedAt,
-		ExpiresAt:   s.ExpiresAt,
 		ClientID:    s.ClientID,
 		ClientState: s.ClientState,
 		RedirectURL: s.RedirectURL.String(),
@@ -89,6 +98,14 @@ func newSessionModel(s *session.Session) (*sessionModel, error) {
 		ConnectorID: s.ConnectorID,
 		UserID:      s.UserID,
 		Register:    s.Register,
+	}
+
+	if !s.CreatedAt.IsZero() {
+		sm.CreatedAt = s.CreatedAt.Unix()
+	}
+
+	if !s.ExpiresAt.IsZero() {
+		sm.ExpiresAt = s.ExpiresAt.Unix()
 	}
 
 	return &sm, nil
@@ -118,11 +135,15 @@ func (r *SessionRepo) Get(sessionID string) (*session.Session, error) {
 		return nil, errors.New("unrecognized model")
 	}
 
-	if sm.ExpiresAt.Before(r.clock.Now().UTC()) {
+	ses, err := sm.session()
+	if err != nil {
+		return nil, err
+	}
+	if ses.ExpiresAt.Before(r.clock.Now().UTC()) {
 		return nil, errors.New("session does not exist")
 	}
 
-	return sm.session()
+	return ses, nil
 }
 
 func (r *SessionRepo) Create(s session.Session) error {

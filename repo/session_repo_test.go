@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jonboulle/clockwork"
+	"github.com/kylelemons/godebug/pretty"
 
 	"github.com/coreos-inc/auth/db"
 	"github.com/coreos-inc/auth/session"
@@ -107,45 +108,74 @@ func TestSessionRepoGetNoExist(t *testing.T) {
 }
 
 func TestSessionRepoCreateGet(t *testing.T) {
-	r, fc := makeTestSessionRepo()
-
-	r.Create(session.Session{
-		ID:          "123",
-		ClientState: "blargh",
-		ExpiresAt:   fc.Now().UTC().Add(time.Minute),
-	})
-
-	ses, _ := r.Get("123")
-	if ses == nil {
-		t.Fatalf("Expected non-nil Session")
+	tests := []session.Session{
+		session.Session{
+			ID:          "123",
+			ClientState: "blargh",
+			ExpiresAt:   time.Unix(123, 0).UTC(),
+		},
+		session.Session{
+			ID:          "456",
+			ClientState: "argh",
+			ExpiresAt:   time.Unix(456, 0).UTC(),
+			Register:    true,
+		},
 	}
 
-	if ses.ClientState != "blargh" {
-		t.Fatalf("Session unrecognized")
+	for i, tt := range tests {
+		r, _ := makeTestSessionRepo()
+
+		r.Create(tt)
+
+		ses, _ := r.Get(tt.ID)
+		if ses == nil {
+			t.Fatalf("case %d: Expected non-nil Session", i)
+		}
+
+		if diff := pretty.Compare(tt, ses); diff != "" {
+			t.Errorf("case %d: Compare(want, got) = %v", i, diff)
+		}
+
 	}
 }
 
 func TestSessionRepoCreateUpdate(t *testing.T) {
-	r, fc := makeTestSessionRepo()
-
-	r.Create(session.Session{
-		ID:          "123",
-		ClientState: "blargh",
-		ExpiresAt:   fc.Now().UTC().Add(time.Minute),
-	})
-	r.Update(session.Session{
-		ID:          "123",
-		ClientState: "boom",
-		ExpiresAt:   fc.Now().UTC().Add(time.Minute),
-	})
-
-	ses, _ := r.Get("123")
-	if ses == nil {
-		t.Fatalf("Expected non-nil Session")
+	tests := []struct {
+		initial session.Session
+		update  session.Session
+	}{
+		{
+			initial: session.Session{
+				ID:          "123",
+				ClientState: "blargh",
+				ExpiresAt:   time.Unix(123, 0).UTC(),
+			},
+			update: session.Session{
+				ID:          "123",
+				ClientState: "boom",
+				ExpiresAt:   time.Unix(123, 0).UTC(),
+				Register:    true,
+			},
+		},
 	}
 
-	if ses.ClientState != "boom" {
-		t.Fatalf("Session unrecognized")
+	for i, tt := range tests {
+		r, _ := makeTestSessionRepo()
+		r.Create(tt.initial)
+
+		ses, _ := r.Get(tt.initial.ID)
+		if diff := pretty.Compare(tt.initial, ses); diff != "" {
+			t.Errorf("case %d: Compare(want, got) = %v", i, diff)
+		}
+
+		r.Update(tt.update)
+		ses, _ = r.Get(tt.initial.ID)
+		if ses == nil {
+			t.Fatalf("Expected non-nil Session")
+		}
+		if diff := pretty.Compare(tt.update, ses); diff != "" {
+			t.Errorf("case %d: Compare(want, got) = %v", i, diff)
+		}
 	}
 }
 

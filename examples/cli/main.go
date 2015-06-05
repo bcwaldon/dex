@@ -62,7 +62,7 @@ func main() {
 		}
 
 		sleep := 1 * time.Second
-		fmt.Printf("Failed fetching provider config, trying again in %v: %v", sleep, err)
+		fmt.Printf("Failed fetching provider config, trying again in %v: %v\n", sleep, err)
 		time.Sleep(sleep)
 	}
 
@@ -80,7 +80,7 @@ func main() {
 
 	tok, err := client.ClientCredsToken([]string{"openid"})
 	if err != nil {
-		fmt.Printf("unable to verify auth code with issuer: %v", err)
+		fmt.Printf("unable to verify auth code with issuer: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -88,9 +88,9 @@ func main() {
 
 	claims, err := tok.Claims()
 	if err != nil {
-		fmt.Printf("unable to construct claims: %v", err)
+		fmt.Printf("unable to construct claims: %v\n", err)
 		os.Exit(1)
 	}
 
-	fmt.Printf("got claims %#v...", claims)
+	fmt.Printf("got claims %#v...\n", claims)
 }

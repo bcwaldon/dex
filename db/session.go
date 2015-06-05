@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/coopernurse/gorp"
+	"github.com/jonboulle/clockwork"
 	"github.com/lib/pq"
 
 	"github.com/coreos-inc/auth/oidc"
@@ -39,6 +40,7 @@ type sessionModel struct {
 	Identity    string    `db:"identity"`
 	ConnectorID string    `db:"connectorID"`
 	UserID      string    `db:"userID"`
+	Register    bool      `db:"register"`
 }
 
 func (s *sessionModel) session() (*session.Session, error) {
@@ -63,6 +65,7 @@ func (s *sessionModel) session() (*session.Session, error) {
 		Identity:    ident,
 		ConnectorID: s.ConnectorID,
 		UserID:      s.UserID,
+		Register:    s.Register,
 	}
 
 	return &ses, nil
@@ -85,17 +88,23 @@ func newSessionModel(s *session.Session) (*sessionModel, error) {
 		Identity:    string(b),
 		ConnectorID: s.ConnectorID,
 		UserID:      s.UserID,
+		Register:    s.Register,
 	}
 
 	return &sm, nil
 }
 
 func NewSessionRepo(dbm *gorp.DbMap) *SessionRepo {
-	return &SessionRepo{dbMap: dbm}
+	return NewSessionRepoWithClock(dbm, clockwork.NewRealClock())
+}
+
+func NewSessionRepoWithClock(dbm *gorp.DbMap, clock clockwork.Clock) *SessionRepo {
+	return &SessionRepo{dbMap: dbm, clock: clock}
 }
 
 type SessionRepo struct {
 	dbMap *gorp.DbMap
+	clock clockwork.Clock
 }
 
 func (r *SessionRepo) Get(sessionID string) (*session.Session, error) {
@@ -109,7 +118,7 @@ func (r *SessionRepo) Get(sessionID string) (*session.Session, error) {
 		return nil, errors.New("unrecognized model")
 	}
 
-	if sm.ExpiresAt.Before(time.Now().UTC()) {
+	if sm.ExpiresAt.Before(r.clock.Now().UTC()) {
 		return nil, errors.New("session does not exist")
 	}
 
@@ -142,7 +151,7 @@ func (r *SessionRepo) Update(s session.Session) error {
 func (r *SessionRepo) purge() error {
 	qt := pq.QuoteIdentifier(sessionTableName)
 	q := fmt.Sprintf("DELETE FROM %s WHERE expiresAt < $1 OR state = $2", qt)
-	res, err := r.dbMap.Exec(q, time.Now().UTC(), string(session.SessionStateDead))
+	res, err := r.dbMap.Exec(q, r.clock.Now().UTC(), string(session.SessionStateDead))
 	if err != nil {
 		return err
 	}

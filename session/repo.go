@@ -19,9 +19,13 @@ type SessionKeyRepo interface {
 }
 
 func NewSessionRepo() SessionRepo {
+	return NewSessionRepoWithClock(clockwork.NewRealClock())
+}
+
+func NewSessionRepoWithClock(clock clockwork.Clock) SessionRepo {
 	return &memSessionRepo{
 		store: make(map[string]Session),
-		clock: clockwork.NewRealClock(),
+		clock: clock,
 	}
 }
 
@@ -61,9 +65,13 @@ type expiringSessionKey struct {
 }
 
 func NewSessionKeyRepo() SessionKeyRepo {
+	return NewSessionKeyRepoWithClock(clockwork.NewRealClock())
+}
+
+func NewSessionKeyRepoWithClock(clock clockwork.Clock) SessionKeyRepo {
 	return &memSessionKeyRepo{
 		store: make(map[string]expiringSessionKey),
-		clock: clockwork.NewRealClock(),
+		clock: clock,
 	}
 }
 

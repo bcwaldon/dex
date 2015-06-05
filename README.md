@@ -56,12 +56,15 @@ OpenID Connect (OIDC) is broken up into several specifications. The following (a
 # Building
 
 ## With Host Go Environment
+
 `./build`
 
 ## With Docker
+
 `./go-docker ./build`
 
 ## Docker Build and Push
+
 Binaries must be compiled first.
 Builds a docker image and pushes it to the quay repo.
 The image is tagged with the git sha and 'latest'.
@@ -73,22 +76,26 @@ export QUAY_PASSWORD=yyy
 ```
 
 ## Rebuild API from JSON schema
+
 Go API bindings are generated from a JSON Discovery file.
 To regenerate run:
+
 ```
 ./schema/generator
 ```
+
 For updating generator dependencies see docs in: `schema/generator_import.go`.
 
 ## Runing Tests
 
-Run all tests: `./test`  
+Run all tests: `./test`
 
 Single package only: `PKG=<pkgname> ./test`
 
 Functional tests: `./test-functional`
 
 Run with docker:
+
 ```
 ./go-docker ./test
 ./go-docker ./test-functional
@@ -104,10 +111,12 @@ Additionally start `./bin/authd-overlord` for key rotation and database garbage 
 # Deploying
 
 Generate systemd unit files by injecting secrets into the unit file templates located in: `./static/...`.
+
 ```
 source <path-to-secure>/prod/authd.env.txt
 ./build-units
 ```
+
 Resulting unit files are output to: `./deploy`
 
 # Registering Clients

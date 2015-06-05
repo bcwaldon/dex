@@ -1,0 +1,13 @@
+apiVersion: v1beta3
+kind: Service
+metadata:
+  labels:
+    app: authd
+    role: overlord
+  name: authd-overlord
+spec:
+  ports:
+    - port: 5557
+  selector:
+    app: authd
+    role: overlord

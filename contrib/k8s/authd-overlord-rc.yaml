@@ -1,0 +1,25 @@
+apiVersion: v1beta3
+kind: ReplicationController
+metadata:
+  labels:
+    app: authd
+    role: overlord
+  name: authd-overlord
+spec:
+  replicas: 1
+  selector:
+    app: authd
+    role: overlord
+  template:
+    metadata:
+      labels:
+        app: authd
+        role: overlord
+    spec:
+      containers:
+          - image: quay.io/coreos/authd
+            name: authd-overlord
+            command: ["/opt/authd/bin/authd-overlord", "-key-secret", "836A2A2E64E54EFCA14AAFBFDFDF0A30", "-db-url", "postgres://postgres@10.2.101.203:5432/auth?sslmode=disable"]
+            ports:
+            - containerPort: 5557
+              name: overlord-port

@@ -1,0 +1,13 @@
+apiVersion: v1beta3
+kind: Service
+metadata:
+  labels:
+    app: authd
+    role: worker
+  name: authd-worker
+spec:
+  ports:
+    - port: 5556
+  selector:
+    app: authd
+    role: worker

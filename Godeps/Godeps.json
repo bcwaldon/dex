@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/coreos-inc/auth",
-	"GoVersion": "go1.3.3",
+	"GoVersion": "go1.4.2",
 	"Packages": [
 		"./..."
 	],
@@ -9,6 +9,15 @@
 			"ImportPath": "code.google.com/p/go-uuid/uuid",
 			"Comment": "null-15",
 			"Rev": "35bc42037350f0078e3c974c6ea690f1926603ab"
+		},
+		{
+			"ImportPath": "github.com/PuerkitoBio/goquery",
+			"Comment": "v0.3.2-79-gb444041",
+			"Rev": "b4440419d81240f8451a505b2f806c853bc2befc"
+		},
+		{
+			"ImportPath": "github.com/andybalholm/cascadia",
+			"Rev": "6122e68c2642b7b75c538a63b15168c6c80fb757"
 		},
 		{
 			"ImportPath": "github.com/coopernurse/gorp",
@@ -50,6 +59,10 @@
 		{
 			"ImportPath": "golang.org/x/crypto/blowfish",
 			"Rev": "1fbbd62cfec66bd39d91e97749579579d4d3037e"
+		},
+		{
+			"ImportPath": "golang.org/x/net/html",
+			"Rev": "dfe268fd2bb5c793f4c083803609fce9806c6f80"
 		},
 		{
 			"ImportPath": "google.golang.org/api/google-api-go-generator",

@@ -126,9 +126,15 @@ func handleRegisterFunc(s *Server) http.HandlerFunc {
 			Password: password,
 			Local:    local,
 		}
+
 		if len(formErrors) > 0 || !validate {
 			data.FormErrors = formErrors
-			execTemplate(w, tpl, data)
+			if !validate {
+				execTemplate(w, tpl, data)
+			} else {
+				execTemplateWithStatus(w, tpl, data, http.StatusBadRequest)
+			}
+
 			return
 		}
 
@@ -146,6 +152,7 @@ func handleRegisterFunc(s *Server) http.HandlerFunc {
 				name,
 				email)
 		}
+
 		if err != nil {
 			formErrors := errToFormErrors(err)
 			if len(formErrors) > 0 {
@@ -195,8 +202,7 @@ func registerFromLocalConnector(userManager *user.Manager, sessionManager *sessi
 
 func registerFromRemoteConnector(userManager *user.Manager, ses *session.Session, name, email string) (string, error) {
 	if ses.Identity.ID == "" {
-		//errPage(w, "There's been an error authenticating. Please try logging in again.", "")
-		return "", errors.New("")
+		return "", errors.New("No Identity found in session.")
 	}
 	rid := user.RemoteIdentity{
 		ConnectorID: ses.ConnectorID,
@@ -214,9 +220,7 @@ func errToFormErrors(err error) []formError {
 	fes := []formError{}
 	fe, ok := errToFormErrorMap[err]
 	if ok {
-		log.Errorf("OK IN HERE")
 		fes = append(fes, fe)
 	}
-	log.Errorf("NOT OK IN HERE")
 	return fes
 }

@@ -49,7 +49,5 @@ type Session struct {
 // Identity is used.
 func (s *Session) Claims(issuerURL string) jose.Claims {
 	claims := oidc.NewClaims(issuerURL, s.UserID, s.ClientID, s.CreatedAt, s.ExpiresAt)
-	claims.Add("email", s.Identity.Email)
-
 	return claims
 }

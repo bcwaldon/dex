@@ -2,7 +2,6 @@ package oidc
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -219,7 +218,7 @@ func (r *httpProviderConfigGetter) Get() (cfg ProviderConfig, err error) {
 	// The issuer value returned MUST be identical to the Issuer URL that was directly used to retrieve the configuration information.
 	// http://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfigurationValidation
 	if !pnet.URLEqual(cfg.Issuer, r.issuerURL) {
-		err = errors.New(`"issuer" in config does not match actual issuer URL`)
+		err = fmt.Errorf(`"issuer" in config (%v) does not match provided issuer URL (%v)`, cfg.Issuer, r.issuerURL)
 		return
 	}
 

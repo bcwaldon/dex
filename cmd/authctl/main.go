@@ -104,7 +104,11 @@ func getDriver() (drv driver) {
 		if len(global.creds.ID) == 0 || len(global.creds.Secret) == 0 {
 			err = errors.New("--client-id/--client-secret flags unset")
 		} else {
-			pcfg := oidc.WaitForProviderConfig(http.DefaultClient, global.endpoint)
+			pcfg, err := oidc.FetchProviderConfig(http.DefaultClient, global.endpoint)
+			if err != nil {
+				stderr("Unable to fetch provider config: %v", err)
+				os.Exit(1)
+			}
 			drv, err = newAPIDriver(pcfg, global.creds)
 		}
 	default:

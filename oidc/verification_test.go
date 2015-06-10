@@ -169,13 +169,13 @@ func TestJWTVerifier(t *testing.T) {
 	}
 
 	tests := []struct {
-		verifier jwtVerifier
+		verifier JWTVerifier
 		jwt      jose.JWT
 		wantErr  bool
 	}{
 		// JWT signed with available key
 		{
-			verifier: jwtVerifier{
+			verifier: JWTVerifier{
 				issuer:   "example.com",
 				clientID: "XXX",
 				syncFunc: func() error { return nil },
@@ -189,7 +189,7 @@ func TestJWTVerifier(t *testing.T) {
 
 		// JWT signed with available key, with bad claims
 		{
-			verifier: jwtVerifier{
+			verifier: JWTVerifier{
 				issuer:   "example.com",
 				clientID: "XXX",
 				syncFunc: func() error { return nil },
@@ -203,7 +203,7 @@ func TestJWTVerifier(t *testing.T) {
 
 		// expired JWT signed with available key
 		{
-			verifier: jwtVerifier{
+			verifier: JWTVerifier{
 				issuer:   "example.com",
 				clientID: "XXX",
 				syncFunc: func() error { return nil },
@@ -217,7 +217,7 @@ func TestJWTVerifier(t *testing.T) {
 
 		// JWT signed with unrecognized key, verifiable after sync
 		{
-			verifier: jwtVerifier{
+			verifier: JWTVerifier{
 				issuer:   "example.com",
 				clientID: "XXX",
 				syncFunc: func() error { return nil },
@@ -238,7 +238,7 @@ func TestJWTVerifier(t *testing.T) {
 
 		// JWT signed with unrecognized key, not verifiable after sync
 		{
-			verifier: jwtVerifier{
+			verifier: JWTVerifier{
 				issuer:   "example.com",
 				clientID: "XXX",
 				syncFunc: func() error { return nil },
@@ -252,7 +252,7 @@ func TestJWTVerifier(t *testing.T) {
 
 		// verifier gets no keys from keysFunc, still not verifiable after sync
 		{
-			verifier: jwtVerifier{
+			verifier: JWTVerifier{
 				issuer:   "example.com",
 				clientID: "XXX",
 				syncFunc: func() error { return nil },
@@ -266,7 +266,7 @@ func TestJWTVerifier(t *testing.T) {
 
 		// verifier gets no keys from keysFunc, verifiable after sync
 		{
-			verifier: jwtVerifier{
+			verifier: JWTVerifier{
 				issuer:   "example.com",
 				clientID: "XXX",
 				syncFunc: func() error { return nil },
@@ -287,7 +287,7 @@ func TestJWTVerifier(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		err := tt.verifier.verify(tt.jwt)
+		err := tt.verifier.Verify(tt.jwt)
 		if tt.wantErr && (err == nil) {
 			t.Errorf("case %d: wanted non-nil error", i)
 		} else if !tt.wantErr && (err != nil) {

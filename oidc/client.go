@@ -245,19 +245,19 @@ func (c *Client) ExchangeAuthCode(code string) (jose.JWT, error) {
 }
 
 func (c *Client) VerifyJWT(jwt jose.JWT) error {
-	v := &jwtVerifier{
-		issuer:   c.providerConfig.Issuer,
-		clientID: c.credentials.ID,
-		syncFunc: c.maybeSyncKeys,
-	}
-
+	var keysFunc func() []key.PublicKey
 	if kID, ok := jwt.KeyID(); ok {
-		v.keysFunc = c.keysFuncWithID(kID)
+		keysFunc = c.keysFuncWithID(kID)
 	} else {
-		v.keysFunc = c.keysFuncAll()
+		keysFunc = c.keysFuncAll()
 	}
 
-	return v.verify(jwt)
+	v := NewJWTVerifier(
+		c.providerConfig.Issuer,
+		c.credentials.ID,
+		c.maybeSyncKeys, keysFunc)
+
+	return v.Verify(jwt)
 }
 
 // keysFuncWithID returns a function that retrieves at most unexpired

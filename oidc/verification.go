@@ -122,7 +122,7 @@ func VerifyClientClaims(jwt jose.JWT, issuer string) (string, error) {
 	return sub, nil
 }
 
-type jwtVerifier struct {
+type JWTVerifier struct {
 	issuer   string
 	clientID string
 	syncFunc func() error
@@ -130,7 +130,17 @@ type jwtVerifier struct {
 	clock    clockwork.Clock
 }
 
-func (v *jwtVerifier) verify(jwt jose.JWT) error {
+func NewJWTVerifier(issuer, clientID string, syncFunc func() error, keysFunc func() []key.PublicKey) JWTVerifier {
+	return JWTVerifier{
+		issuer:   issuer,
+		clientID: clientID,
+		syncFunc: syncFunc,
+		keysFunc: keysFunc,
+		clock:    clockwork.NewRealClock(),
+	}
+}
+
+func (v *JWTVerifier) Verify(jwt jose.JWT) error {
 	ok, err := VerifySignature(jwt, v.keysFunc())
 	if ok {
 		goto SignatureVerified

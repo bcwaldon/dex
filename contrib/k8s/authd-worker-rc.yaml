@@ -19,7 +19,7 @@ spec:
       containers:
           - image: quay.io/coreos/authd
             name: authd-worker
-            command: ["/opt/authd/bin/authd-worker", "-key-secret", "836A2A2E64E54EFCA14AAFBFDFDF0A30", "-db-url", "postgres://postgres@10.2.101.203:5432/auth?sslmode=disable"]
+            command: ["/opt/authd/bin/authd-worker", "-issuer", "http://authd-worker.default.tectonic.local:5556", "-key-secret", "836A2A2E64E54EFCA14AAFBFDFDF0A30", "-db-url", "postgres://postgres@auth-postgres.default.tectonic.local:5432/auth?sslmode=disable"]
             ports:
             - containerPort: 5556
               name: worker-port

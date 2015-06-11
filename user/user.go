@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/mail"
 	"os"
 
 	"code.google.com/p/go-uuid/uuid"
@@ -13,7 +14,8 @@ import (
 )
 
 const (
-	MaxNameLength = 100
+	MaxNameLength  = 100
+	MaxEmailLength = 200
 )
 
 type UserIDGenerator func() (string, error)
@@ -37,6 +39,8 @@ type User struct {
 
 	Email string
 
+	EmailVerified bool
+
 	Admin bool
 }
 
@@ -45,6 +49,9 @@ type User struct {
 func (u *User) AddToClaims(claims jose.Claims) {
 	claims.Add("name", u.DisplayName)
 	claims.Add("preferred_username", u.Name)
+	if u.Email != "" && u.EmailVerified {
+		claims.Add("email", u.Email)
+	}
 }
 
 // UserRepo implementations maintain a persistent set of users.
@@ -77,6 +84,7 @@ var (
 	ErrorDuplicateID             = errors.New("ID not available")
 	ErrorDuplicateName           = errors.New("name not available")
 	ErrorDuplicateRemoteIdentity = errors.New("remote identity already in use for another user")
+	ErrorInvalidEmail            = errors.New("invalid Email")
 	ErrorInvalidID               = errors.New("invalid ID")
 	ErrorInvalidName             = errors.New("invalid Name")
 	ErrorNotFound                = errors.New("user not found in repository")
@@ -93,6 +101,22 @@ type RemoteIdentity struct {
 
 func ValidName(name string) bool {
 	return name != "" && len(name) <= MaxNameLength
+}
+
+func ValidEmail(email string) bool {
+	address, err := mail.ParseAddress(email)
+	if err != nil {
+		return false
+	}
+
+	if address.Name != "" || address.Address == "" {
+		return false
+	}
+	return true
+}
+
+func ValidPassword(plaintext string) bool {
+	return len(plaintext) > 5
 }
 
 // NewUserRepo returns an in-memory UserRepo useful for development.
@@ -311,10 +335,11 @@ func readUsersFromFile(loc string) ([]UserWithRemoteIdentities, error) {
 
 func (u *User) UnmarshalJSON(data []byte) error {
 	var dec struct {
-		ID          string `json:"id"`
-		Name        string `json:"name"`
-		DisplayName string `json:"displayName"`
-		Email       string `json:"email"`
+		ID            string `json:"id"`
+		Name          string `json:"name"`
+		DisplayName   string `json:"displayName"`
+		Email         string `json:"email"`
+		EmailVerified bool   `json:"emailVerified"`
 	}
 
 	err := json.Unmarshal(data, &dec)
@@ -326,6 +351,7 @@ func (u *User) UnmarshalJSON(data []byte) error {
 	u.Name = dec.Name
 	u.DisplayName = dec.DisplayName
 	u.Email = dec.Email
+	u.EmailVerified = dec.EmailVerified
 	return nil
 }
 

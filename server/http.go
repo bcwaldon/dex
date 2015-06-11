@@ -33,6 +33,7 @@ var (
 	httpPathAuth      = "/auth"
 	httpPathHealth    = "/health"
 	httpPathAPI       = "/api"
+	httpPathRegister  = "/register"
 )
 
 func handleDiscoveryFunc(cfg oidc.ProviderConfig) http.HandlerFunc {
@@ -103,9 +104,14 @@ type templateData struct {
 	}
 }
 
-func execTemplate(w http.ResponseWriter, tpl *template.Template, td templateData) {
-	if err := tpl.Execute(w, td); err != nil {
-		phttp.WriteError(w, http.StatusInternalServerError, "error loading login page")
+func execTemplate(w http.ResponseWriter, tpl *template.Template, data interface{}) {
+	execTemplateWithStatus(w, tpl, data, http.StatusOK)
+}
+
+func execTemplateWithStatus(w http.ResponseWriter, tpl *template.Template, data interface{}, status int) {
+	w.WriteHeader(status)
+	if err := tpl.Execute(w, data); err != nil {
+		phttp.WriteError(w, http.StatusInternalServerError, "error loading page")
 		return
 	}
 }
@@ -187,12 +193,7 @@ func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idp
 }
 
 func handleAuthFunc(srv OIDCServer, idpcs []connector.Connector, tpl *template.Template) http.HandlerFunc {
-	idx := make(map[string]connector.Connector, len(idpcs))
-	for _, idpc := range idpcs {
-		idpc := idpc
-		idx[idpc.ID()] = idpc
-	}
-
+	idx := makeConnectorMap(idpcs)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			w.Header().Set("Allow", "GET")
@@ -272,10 +273,23 @@ func handleAuthFunc(srv OIDCServer, idpcs []connector.Connector, tpl *template.T
 			return
 		}
 
-		key, err := srv.NewSession(connectorID, acr.ClientID, acr.State, *redirectURL)
+		register := q.Get("register") == "1"
+		key, err := srv.NewSession(connectorID, acr.ClientID, acr.State, *redirectURL, register)
 		if err != nil {
 			redirectAuthError(w, err, acr.State, *redirectURL)
 			return
+		}
+
+		if register {
+			_, ok := idpc.(*connector.LocalConnector)
+			if ok {
+				q := url.Values{}
+				q.Set("code", key)
+				ru := httpPathRegister + "?" + q.Encode()
+				w.Header().Set("Location", ru)
+				w.WriteHeader(http.StatusTemporaryRedirect)
+				return
+			}
 		}
 
 		var p string
@@ -396,4 +410,12 @@ func shouldReprompt(r *http.Request) bool {
 		return true
 	}
 	return false
+}
+
+func makeConnectorMap(idpcs []connector.Connector) map[string]connector.Connector {
+	idx := make(map[string]connector.Connector, len(idpcs))
+	for _, idpc := range idpcs {
+		idx[idpc.ID()] = idpc
+	}
+	return idx
 }

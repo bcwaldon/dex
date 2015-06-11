@@ -113,12 +113,15 @@ func NewClientHandler(c *oidc.Client) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handleIndex)
 	mux.HandleFunc("/login", handleLoginFunc(c))
+	mux.HandleFunc("/register", handleRegisterFunc(c))
 	mux.HandleFunc(pathCallback, handleCallbackFunc(c))
 	return mux
 }
 
 func handleIndex(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("<a href='/login'>login</a>"))
+	w.Write([]byte("<br>"))
+	w.Write([]byte("<a href='/register'>register</a>"))
 }
 
 func handleLoginFunc(c *oidc.Client) http.HandlerFunc {
@@ -132,6 +135,25 @@ func handleLoginFunc(c *oidc.Client) http.HandlerFunc {
 		if err != nil {
 			panic("unable to proceed")
 		}
+		http.Redirect(w, r, u.String(), http.StatusFound)
+	}
+}
+
+func handleRegisterFunc(c *oidc.Client) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		oac, err := c.OAuthClient()
+		if err != nil {
+			panic("unable to proceed")
+		}
+
+		u, err := url.Parse(oac.AuthCodeURL("", "", ""))
+		q := u.Query()
+		q.Set("register", "1")
+		if err != nil {
+			panic("unable to proceed")
+		}
+		u.RawQuery = q.Encode()
+		log.Infof("URL: %v", u.String())
 		http.Redirect(w, r, u.String(), http.StatusFound)
 	}
 }

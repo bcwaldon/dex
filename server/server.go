@@ -25,12 +25,14 @@ import (
 
 const (
 	LoginPageTemplateName = "login.html"
-	APIVersion            = "v1"
+	RegisterTemplateName  = "register.html"
+
+	APIVersion = "v1"
 )
 
 type OIDCServer interface {
 	ClientMetadata(string) (*oidc.ClientMetadata, error)
-	NewSession(connectorID, clientID, clientState string, redirectURL url.URL) (string, error)
+	NewSession(connectorID, clientID, clientState string, redirectURL url.URL, register bool) (string, error)
 	Login(oidc.Identity, string) (string, error)
 	CodeToken(creds oidc.ClientCredentials, sessionKey string) (*jose.JWT, error)
 	ClientCredsToken(creds oidc.ClientCredentials) (*jose.JWT, error)
@@ -46,9 +48,11 @@ type Server struct {
 	ConnectorConfigRepo connector.ConnectorConfigRepo
 	Templates           *template.Template
 	LoginTemplate       *template.Template
+	RegisterTemplate    *template.Template
 	HealthChecks        []health.Checkable
 	Connectors          []connector.Connector
 	UserRepo            user.UserRepo
+	UserManager         *user.Manager
 	PasswordInfoRepo    user.PasswordInfoRepo
 }
 
@@ -75,6 +79,7 @@ func (s *Server) Run() chan struct{} {
 
 func (s *Server) KillSession(sessionKey string) error {
 	sessionID, err := s.SessionManager.ExchangeKey(sessionKey)
+
 	if err != nil {
 		return err
 	}
@@ -100,6 +105,13 @@ func (s *Server) ProviderConfig() oidc.ProviderConfig {
 	}
 
 	return cfg
+}
+
+func (s *Server) absURL(paths ...string) url.URL {
+	url := s.IssuerURL
+	paths = append([]string{url.Path}, paths...)
+	url.Path = path.Join(paths...)
+	return url
 }
 
 func (s *Server) AddConnector(cfg connector.ConnectorConfig) error {
@@ -198,8 +210,8 @@ func (s *Server) ClientMetadata(clientID string) (*oidc.ClientMetadata, error) {
 	return s.ClientIdentityRepo.Metadata(clientID)
 }
 
-func (s *Server) NewSession(ipdcID, clientID, clientState string, redirectURL url.URL) (string, error) {
-	sessionID, err := s.SessionManager.NewSession(ipdcID, clientID, clientState, redirectURL)
+func (s *Server) NewSession(ipdcID, clientID, clientState string, redirectURL url.URL, register bool) (string, error) {
+	sessionID, err := s.SessionManager.NewSession(ipdcID, clientID, clientState, redirectURL, register)
 	if err != nil {
 		return "", err
 	}
@@ -219,6 +231,20 @@ func (s *Server) Login(ident oidc.Identity, key string) (string, error) {
 		return "", err
 	}
 	log.Infof("Session %s remote identity attached: clientID=%s identity=%#v", sessionID, ses.ClientID, ident)
+
+	if ses.Register {
+		code, err := s.SessionManager.NewSessionKey(sessionID)
+		if err != nil {
+			return "", err
+		}
+
+		ru := s.absURL(httpPathRegister)
+		q := ru.Query()
+		q.Set("code", code)
+		q.Set("state", ses.ClientState)
+		ru.RawQuery = q.Encode()
+		return ru.String(), nil
+	}
 
 	usr, err := s.UserRepo.GetByRemoteIdentity(user.RemoteIdentity{
 		ConnectorID: ses.ConnectorID,

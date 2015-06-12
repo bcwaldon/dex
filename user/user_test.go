@@ -16,12 +16,11 @@ func TestNewUsersFromReader(t *testing.T) {
 		want []UserWithRemoteIdentities
 	}{
 		{
-			json: `[{"user":{"id":"12345","name":"elroy", "displayName": "Elroy Canis", "email":"elroy23@example.com"}, "remoteIdentities":[{"connectorID":"google", "id":"elroy@example.com"}] }]`,
+			json: `[{"user":{"id":"12345", "displayName": "Elroy Canis", "email":"elroy23@example.com"}, "remoteIdentities":[{"connectorID":"google", "id":"elroy@example.com"}] }]`,
 			want: []UserWithRemoteIdentities{
 				{
 					User: User{
 						ID:          "12345",
-						Name:        "elroy",
 						DisplayName: "Elroy Canis",
 						Email:       "elroy23@example.com",
 					},
@@ -56,36 +55,30 @@ func TestAddToClaims(t *testing.T) {
 	}{
 		{
 			user: User{
-				Name:        "testUserName",
 				DisplayName: "Test User Name",
 			},
 			wantedClaims: jose.Claims{
-				"name":               "Test User Name",
-				"preferred_username": "testUserName",
+				"name": "Test User Name",
 			},
 		},
 		{
 			user: User{
-				Name:        "testUserName",
 				DisplayName: "Test User Name",
 				Email:       "unverified@example.com",
 			},
 			wantedClaims: jose.Claims{
-				"name":               "Test User Name",
-				"preferred_username": "testUserName",
+				"name": "Test User Name",
 			},
 		},
 		{
 			user: User{
-				Name:          "testUserName",
 				DisplayName:   "Test User Name",
 				Email:         "verified@example.com",
 				EmailVerified: true,
 			},
 			wantedClaims: jose.Claims{
-				"name":               "Test User Name",
-				"preferred_username": "testUserName",
-				"email":              "verified@example.com",
+				"name":  "Test User Name",
+				"email": "verified@example.com",
 			},
 		},
 	}

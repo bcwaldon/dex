@@ -18,8 +18,8 @@ func makeTestFixtures() *testFixtures {
 	f.ur = NewUserRepoFromUsers([]UserWithRemoteIdentities{
 		{
 			User: User{
-				ID:   "ID-1",
-				Name: "Name-1",
+				ID:    "ID-1",
+				Email: "Email-1@example.com",
 			},
 			RemoteIdentities: []RemoteIdentity{
 				{
@@ -36,14 +36,12 @@ func makeTestFixtures() *testFixtures {
 
 func TestRegisterWithRemoteIdentity(t *testing.T) {
 	tests := []struct {
-		name          string
 		email         string
 		emailVerified bool
 		rid           RemoteIdentity
 		err           error
 	}{
 		{
-			name:          "name",
 			email:         "email@example.com",
 			emailVerified: false,
 			rid: RemoteIdentity{
@@ -53,16 +51,6 @@ func TestRegisterWithRemoteIdentity(t *testing.T) {
 			err: nil,
 		},
 		{
-			email:         "email@example.com",
-			emailVerified: false,
-			rid: RemoteIdentity{
-				ConnectorID: "local",
-				ID:          "1234",
-			},
-			err: ErrorInvalidName,
-		},
-		{
-			name:          "name",
 			emailVerified: false,
 			rid: RemoteIdentity{
 				ConnectorID: "local",
@@ -71,7 +59,6 @@ func TestRegisterWithRemoteIdentity(t *testing.T) {
 			err: ErrorInvalidEmail,
 		},
 		{
-			name:          "name",
 			email:         "email@example.com",
 			emailVerified: false,
 			rid: RemoteIdentity{
@@ -85,7 +72,6 @@ func TestRegisterWithRemoteIdentity(t *testing.T) {
 	for i, tt := range tests {
 		f := makeTestFixtures()
 		userID, err := f.mgr.RegisterWithRemoteIdentity(
-			tt.name,
 			tt.email,
 			tt.emailVerified,
 			tt.rid)
@@ -102,9 +88,6 @@ func TestRegisterWithRemoteIdentity(t *testing.T) {
 			t.Errorf("case %d: err != nil: %q", i, err)
 		}
 
-		if usr.Name != tt.name {
-			t.Errorf("case %d: user.Name: want=%q, got=%q", i, tt.name, usr.Name)
-		}
 		if usr.Email != tt.email {
 			t.Errorf("case %d: user.Email: want=%q, got=%q", i, tt.email, usr.Email)
 		}
@@ -124,29 +107,20 @@ func TestRegisterWithRemoteIdentity(t *testing.T) {
 
 func TestRegisterWithPassword(t *testing.T) {
 	tests := []struct {
-		name      string
 		email     string
 		plaintext string
 		err       error
 	}{
 		{
-			name:      "name",
 			email:     "email@example.com",
 			plaintext: "secretpassword123",
 			err:       nil,
 		},
 		{
-			email:     "email@example.com",
-			plaintext: "secretpassword123",
-			err:       ErrorInvalidName,
-		},
-		{
-			name:      "name",
 			plaintext: "secretpassword123",
 			err:       ErrorInvalidEmail,
 		},
 		{
-			name:  "name",
 			email: "email@example.com",
 			err:   ErrorInvalidPassword,
 		},
@@ -156,7 +130,6 @@ func TestRegisterWithPassword(t *testing.T) {
 		f := makeTestFixtures()
 		connID := "connID"
 		userID, err := f.mgr.RegisterWithPassword(
-			tt.name,
 			tt.email,
 			tt.plaintext,
 			connID)
@@ -173,9 +146,6 @@ func TestRegisterWithPassword(t *testing.T) {
 			t.Errorf("case %d: err != nil: %q", i, err)
 		}
 
-		if usr.Name != tt.name {
-			t.Errorf("case %d: user.Name: want=%q, got=%q", i, tt.name, usr.Name)
-		}
 		if usr.Email != tt.email {
 			t.Errorf("case %d: user.Email: want=%q, got=%q", i, tt.email, usr.Email)
 		}

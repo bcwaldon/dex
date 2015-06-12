@@ -14,7 +14,6 @@ import (
 )
 
 const (
-	MaxNameLength  = 100
 	MaxEmailLength = 200
 )
 
@@ -27,11 +26,6 @@ func DefaultUserIDGenerator() (string, error) {
 type User struct {
 	// ID is the machine-generated, stable, unique identifier for this User.
 	ID string
-
-	// Name is a human readable identifier for a User.
-	// Name must be unique within a UserRepo.
-	// Prefer ID, as this might change over the lifetime of a User.
-	Name string
 
 	// DisplayName is human readable name meant for display purposes.
 	// DisplayName is not neccesarily unique with a UserRepo.
@@ -48,7 +42,6 @@ type User struct {
 // http://openid.net/specs/openid-connect-core-1_0.html#StandardClaims
 func (u *User) AddToClaims(claims jose.Claims) {
 	claims.Add("name", u.DisplayName)
-	claims.Add("preferred_username", u.Name)
 	if u.Email != "" && u.EmailVerified {
 		claims.Add("email", u.Email)
 	}
@@ -56,14 +49,13 @@ func (u *User) AddToClaims(claims jose.Claims) {
 
 // UserRepo implementations maintain a persistent set of users.
 // The following invariants must be maintained:
-//  * Users must have a unique Name and ID
-//  * ValidName(name)
+//  * Users must have a unique Email and ID
 //  * No other Users may have the same RemoteIdentity as one of the
 //    users. (This constraint may be relaxed in the future)
 type UserRepo interface {
 	Get(id string) (User, error)
 
-	GetByName(name string) (User, error)
+	GetByEmail(email string) (User, error)
 
 	Create(User) (userID string, err error)
 
@@ -81,12 +73,12 @@ type UserRepo interface {
 }
 
 var (
-	ErrorDuplicateID             = errors.New("ID not available")
-	ErrorDuplicateName           = errors.New("name not available")
+	ErrorDuplicateID    = errors.New("ID not available")
+	ErrorDuplicateEmail = errors.New("email not available")
+
 	ErrorDuplicateRemoteIdentity = errors.New("remote identity already in use for another user")
 	ErrorInvalidEmail            = errors.New("invalid Email")
 	ErrorInvalidID               = errors.New("invalid ID")
-	ErrorInvalidName             = errors.New("invalid Name")
 	ErrorNotFound                = errors.New("user not found in repository")
 )
 
@@ -97,10 +89,6 @@ type RemoteIdentity struct {
 
 	// ID is the identifier of this User at the IDP.
 	ID string
-}
-
-func ValidName(name string) bool {
-	return name != "" && len(name) <= MaxNameLength
 }
 
 func ValidEmail(email string) bool {
@@ -128,7 +116,7 @@ func NewUserRepo() UserRepo {
 func NewUserRepoWithIDGenerator(userIDGenerator UserIDGenerator) UserRepo {
 	return &memUserRepo{
 		usersByID:         make(map[string]User),
-		userIDsByName:     make(map[string]string),
+		userIDsByEmail:    make(map[string]string),
 		userIDsByRemoteID: make(map[RemoteIdentity]string),
 		remoteIDsByUserID: make(map[string]map[RemoteIdentity]struct{}),
 		userIDGenerator:   userIDGenerator,
@@ -137,7 +125,7 @@ func NewUserRepoWithIDGenerator(userIDGenerator UserIDGenerator) UserRepo {
 
 type memUserRepo struct {
 	usersByID         map[string]User
-	userIDsByName     map[string]string
+	userIDsByEmail    map[string]string
 	userIDsByRemoteID map[RemoteIdentity]string
 	userIDGenerator   UserIDGenerator
 	remoteIDsByUserID map[string]map[RemoteIdentity]struct{}
@@ -151,8 +139,8 @@ func (r *memUserRepo) Get(id string) (User, error) {
 	return user, nil
 }
 
-func (r *memUserRepo) GetByName(name string) (User, error) {
-	userID, ok := r.userIDsByName[name]
+func (r *memUserRepo) GetByEmail(email string) (User, error) {
+	userID, ok := r.userIDsByEmail[email]
 	if !ok {
 		return User{}, ErrorNotFound
 	}
@@ -164,8 +152,8 @@ func (r *memUserRepo) Create(user User) (string, error) {
 		return "", ErrorInvalidID
 	}
 
-	if !ValidName(user.Name) {
-		return "", ErrorInvalidName
+	if !ValidEmail(user.Email) {
+		return "", ErrorInvalidEmail
 	}
 
 	newID, err := r.userIDGenerator()
@@ -180,10 +168,10 @@ func (r *memUserRepo) Create(user User) (string, error) {
 		return "", ErrorDuplicateID
 	}
 
-	// make sure there's no other user with the same Name
-	_, ok = r.userIDsByName[user.Name]
+	// make sure there's no other user with the same Email
+	_, ok = r.userIDsByEmail[user.Email]
 	if ok {
-		return "", ErrorDuplicateName
+		return "", ErrorDuplicateEmail
 	}
 
 	user.ID = newID
@@ -196,8 +184,8 @@ func (r *memUserRepo) Update(user User) error {
 		return ErrorInvalidID
 	}
 
-	if !ValidName(user.Name) {
-		return ErrorInvalidName
+	if !ValidEmail(user.Email) {
+		return ErrorInvalidEmail
 	}
 
 	// make sure this user exists already
@@ -206,10 +194,10 @@ func (r *memUserRepo) Update(user User) error {
 		return ErrorNotFound
 	}
 
-	// make sure there's no other user with the same Name
-	otherID, ok := r.userIDsByName[user.Name]
+	// make sure there's no other user with the same Email
+	otherID, ok := r.userIDsByEmail[user.Email]
 	if ok && otherID != user.ID {
-		return ErrorDuplicateName
+		return ErrorDuplicateEmail
 	}
 
 	r.set(user)
@@ -283,7 +271,7 @@ func (r *memUserRepo) GetAdminCount() (int, error) {
 
 func (r *memUserRepo) set(user User) error {
 	r.usersByID[user.ID] = user
-	r.userIDsByName[user.Name] = user.ID
+	r.userIDsByEmail[user.Email] = user.ID
 	return nil
 }
 
@@ -336,7 +324,6 @@ func readUsersFromFile(loc string) ([]UserWithRemoteIdentities, error) {
 func (u *User) UnmarshalJSON(data []byte) error {
 	var dec struct {
 		ID            string `json:"id"`
-		Name          string `json:"name"`
 		DisplayName   string `json:"displayName"`
 		Email         string `json:"email"`
 		EmailVerified bool   `json:"emailVerified"`
@@ -348,7 +335,6 @@ func (u *User) UnmarshalJSON(data []byte) error {
 	}
 
 	u.ID = dec.ID
-	u.Name = dec.Name
 	u.DisplayName = dec.DisplayName
 	u.Email = dec.Email
 	u.EmailVerified = dec.EmailVerified

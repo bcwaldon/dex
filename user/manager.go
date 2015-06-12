@@ -21,12 +21,8 @@ func NewManager(userRepo UserRepo, pwRepo PasswordInfoRepo, options ManagerOptio
 }
 
 // RegisterWithRemoteIdentity creates new user and attaches the given remote identity.
-func (m *Manager) RegisterWithRemoteIdentity(name, email string, emailVerified bool, rid RemoteIdentity) (string, error) {
+func (m *Manager) RegisterWithRemoteIdentity(email string, emailVerified bool, rid RemoteIdentity) (string, error) {
 	// TODO(bobbyrullo): here's another racy situation where we could use transactions in the repo.
-
-	if !ValidName(name) {
-		return "", ErrorInvalidName
-	}
 
 	if !ValidEmail(email) {
 		return "", ErrorInvalidEmail
@@ -40,15 +36,14 @@ func (m *Manager) RegisterWithRemoteIdentity(name, email string, emailVerified b
 		return "", err
 	}
 
-	if _, err := m.userRepo.GetByName(name); err == nil {
-		return "", ErrorDuplicateName
+	if _, err := m.userRepo.GetByEmail(email); err == nil {
+		return "", ErrorDuplicateEmail
 	}
 	if err != ErrorNotFound {
 		return "", err
 	}
 
 	user := User{
-		Name:          name,
 		Email:         email,
 		EmailVerified: emailVerified,
 	}
@@ -69,12 +64,8 @@ func (m *Manager) RegisterWithRemoteIdentity(name, email string, emailVerified b
 
 // RegisterWithPassword creates a new user with the given name and password.
 // connID is the connector ID of the ConnectorLocal connector.
-func (m *Manager) RegisterWithPassword(name, email, plaintext, connID string) (string, error) {
+func (m *Manager) RegisterWithPassword(email, plaintext, connID string) (string, error) {
 	// TODO(bobbyrullo): more raciness.
-
-	if !ValidName(name) {
-		return "", ErrorInvalidName
-	}
 
 	if !ValidEmail(email) {
 		return "", ErrorInvalidEmail
@@ -85,7 +76,6 @@ func (m *Manager) RegisterWithPassword(name, email, plaintext, connID string) (s
 	}
 
 	user := User{
-		Name:  name,
 		Email: email,
 	}
 

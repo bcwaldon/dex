@@ -21,7 +21,6 @@ type registerTemplateData struct {
 	Error      bool
 	FormErrors []formError
 	Message    string
-	Name       string
 	Email      string
 	Code       string
 	Password   string
@@ -30,10 +29,6 @@ type registerTemplateData struct {
 
 var (
 	errToFormErrorMap = map[error]formError{
-		user.ErrorInvalidName: formError{
-			Field: "name",
-			Error: "Please enter a valid name",
-		},
 		user.ErrorInvalidEmail: formError{
 			Field: "email",
 			Error: "Please enter a valid email",
@@ -42,9 +37,9 @@ var (
 			Field: "password",
 			Error: "Please enter a valid password",
 		},
-		user.ErrorDuplicateName: formError{
-			Field: "name",
-			Error: "That name is already in use; please choose another.",
+		user.ErrorDuplicateEmail: formError{
+			Field: "email",
+			Error: "That email is already in use; please choose another.",
 		},
 	}
 )
@@ -105,13 +100,9 @@ func handleRegisterFunc(s *Server) http.HandlerFunc {
 
 		validate := r.Form.Get("validate") == "1"
 		formErrors := []formError{}
-		name := r.Form.Get("name")
 		email := r.Form.Get("email")
 		password := r.Form.Get("password")
 		if validate {
-			if name == "" {
-				formErrors = append(formErrors, formError{"name", "Please supply a valid name"})
-			}
 			if email == "" {
 				formErrors = append(formErrors, formError{"email", "Please supply a valid email"})
 			}
@@ -122,7 +113,6 @@ func handleRegisterFunc(s *Server) http.HandlerFunc {
 		data := registerTemplateData{
 			Code:     code,
 			Email:    email,
-			Name:     name,
 			Password: password,
 			Local:    local,
 		}
@@ -144,12 +134,11 @@ func handleRegisterFunc(s *Server) http.HandlerFunc {
 				s.UserManager,
 				s.SessionManager,
 				ses,
-				name, email, password)
+				email, password)
 		} else {
 			userID, err = registerFromRemoteConnector(
 				s.UserManager,
 				ses,
-				name,
 				email)
 		}
 
@@ -185,8 +174,8 @@ func handleRegisterFunc(s *Server) http.HandlerFunc {
 	}
 }
 
-func registerFromLocalConnector(userManager *user.Manager, sessionManager *session.SessionManager, ses *session.Session, name, email, password string) (string, error) {
-	userID, err := userManager.RegisterWithPassword(name, email, password, ses.ConnectorID)
+func registerFromLocalConnector(userManager *user.Manager, sessionManager *session.SessionManager, ses *session.Session, email, password string) (string, error) {
+	userID, err := userManager.RegisterWithPassword(email, password, ses.ConnectorID)
 	if err != nil {
 		return "", err
 	}
@@ -200,7 +189,7 @@ func registerFromLocalConnector(userManager *user.Manager, sessionManager *sessi
 	return userID, nil
 }
 
-func registerFromRemoteConnector(userManager *user.Manager, ses *session.Session, name, email string) (string, error) {
+func registerFromRemoteConnector(userManager *user.Manager, ses *session.Session, email string) (string, error) {
 	if ses.Identity.ID == "" {
 		return "", errors.New("No Identity found in session.")
 	}
@@ -208,7 +197,7 @@ func registerFromRemoteConnector(userManager *user.Manager, ses *session.Session
 		ConnectorID: ses.ConnectorID,
 		ID:          ses.Identity.ID,
 	}
-	userID, err := userManager.RegisterWithRemoteIdentity(name, email, false, rid)
+	userID, err := userManager.RegisterWithRemoteIdentity(email, false, rid)
 	if err != nil {
 		return "", err
 	}

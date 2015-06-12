@@ -41,11 +41,11 @@ func runNewClient(args []string) int {
 		return 1
 	}
 
-	stdout("Added new client:")
-	stdout("ID:          %s", cc.ID)
-	stdout("Secret:      %s", cc.Secret)
-	for _, u := range redirectURLs {
-		stdout("RedirectURL: %s", u.String())
+	stdout("# Added new client:")
+	stdout("AUTHD_APP_CLIENT_ID=%s", cc.ID)
+	stdout("AUTHD_APP_CLIENT_SECRET=%s", cc.Secret)
+	for i, u := range redirectURLs {
+		stdout(" AUTHD_APP_REDIRECTURL_%d=%s", i, u.String())
 	}
 
 	return 0

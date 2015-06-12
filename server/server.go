@@ -181,6 +181,7 @@ func (s *Server) HTTPHandler() http.Handler {
 	mux.HandleFunc(httpPathToken, handleTokenFunc(s))
 	mux.HandleFunc(httpPathKeys, handleKeysFunc(s.KeyManager, clock))
 	mux.HandleFunc(httpPathHealth, handleHealthFunc(checks))
+	mux.HandleFunc(httpPathRegister, handleRegisterFunc(s))
 
 	pcfg := s.ProviderConfig()
 	for _, idpc := range s.Connectors {

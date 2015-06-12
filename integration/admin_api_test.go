@@ -46,7 +46,7 @@ func makeTestFixtures() *testFixtures {
 		},
 	})
 
-	f.adAPI = admin.NewAdminAPI(f.ur, f.pwr)
+	f.adAPI = admin.NewAdminAPI(f.ur, f.pwr, "local")
 	f.adSrv = server.NewAdminServer(f.adAPI)
 	f.hSrv = httptest.NewServer(f.adSrv.HTTPHandler())
 	f.hc = &http.Client{}
@@ -172,6 +172,18 @@ func TestCreateAdmin(t *testing.T) {
 				}
 				if diff := pretty.Compare(admn, gotAdmn); diff != "" {
 					t.Errorf("case %d: Compare(want, got) = %v", i, diff)
+				}
+
+				usr, err := f.ur.GetByRemoteIdentity(user.RemoteIdentity{
+					ConnectorID: "local",
+					ID:          tt.admn.Id,
+				})
+				if err != nil {
+					t.Errorf("case %d: err != nil: %q", i, err)
+				}
+
+				if usr.ID != tt.admn.Id {
+					t.Errorf("case %d: want=%q, got=%q", i, tt.admn.Id, usr.ID)
 				}
 
 			}

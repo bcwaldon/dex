@@ -27,6 +27,7 @@ func main() {
 
 	logDebug := fs.Bool("log-debug", false, "log debug-level information")
 	logTimestamps := fs.Bool("log-timestamps", false, "prefix log lines with timestamps")
+	localConnectorID := fs.String("local-connector", "local", "ID of the local connector")
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
@@ -66,7 +67,7 @@ func main() {
 
 	userRepo := db.NewUserRepo(dbc)
 	pwiRepo := db.NewPasswordInfoRepo(dbc)
-	adminAPI := admin.NewAdminAPI(userRepo, pwiRepo)
+	adminAPI := admin.NewAdminAPI(userRepo, pwiRepo, *localConnectorID)
 	s := server.NewAdminServer(adminAPI)
 	h := s.HTTPHandler()
 	httpsrv := &http.Server{

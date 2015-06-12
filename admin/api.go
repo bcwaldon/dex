@@ -12,12 +12,18 @@ import (
 type AdminAPI struct {
 	userRepo         user.UserRepo
 	passwordInfoRepo user.PasswordInfoRepo
+	localConnectorID string
 }
 
-func NewAdminAPI(userRepo user.UserRepo, pwiRepo user.PasswordInfoRepo) *AdminAPI {
+func NewAdminAPI(userRepo user.UserRepo, pwiRepo user.PasswordInfoRepo, localConnectorID string) *AdminAPI {
+	if localConnectorID == "" {
+		panic("must specify non-blank localConnectorID")
+	}
+
 	return &AdminAPI{
 		userRepo:         userRepo,
 		passwordInfoRepo: pwiRepo,
+		localConnectorID: localConnectorID,
 	}
 }
 
@@ -82,6 +88,14 @@ func (a *AdminAPI) CreateAdmin(admn adminschema.Admin) (string, error) {
 	usr.Admin = true
 
 	id, err := a.userRepo.Create(usr)
+	if err != nil {
+		return "", mapError(err)
+	}
+
+	err = a.userRepo.AddRemoteIdentity(id, user.RemoteIdentity{
+		ConnectorID: a.localConnectorID,
+		ID:          id,
+	})
 	if err != nil {
 		return "", mapError(err)
 	}

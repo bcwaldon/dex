@@ -161,6 +161,11 @@ func (cfg *MultiServerConfig) Server() (*Server, error) {
 		return nil, err
 	}
 
+	rtpl, err := findTemplate(RegisterTemplateName, tpl)
+	if err != nil {
+		return nil, err
+	}
+
 	dbh := db.NewHealthChecker(dbc)
 	km := key.NewPrivateKeyManager()
 	srv := Server{
@@ -172,6 +177,7 @@ func (cfg *MultiServerConfig) Server() (*Server, error) {
 		ConnectorConfigRepo: cfgRepo,
 		Templates:           tpl,
 		LoginTemplate:       ltpl,
+		RegisterTemplate:    rtpl,
 		HealthChecks:        []health.Checkable{km, dbh},
 		Connectors:          []connector.Connector{},
 		UserRepo:            userRepo,

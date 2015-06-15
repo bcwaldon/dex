@@ -34,7 +34,7 @@ const DiscoveryJSON = `{
               "id": {
                   "type": "string"
               },
-              "name": {
+              "email": {
                   "type": "string"
               },
               "password": {

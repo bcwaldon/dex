@@ -18,8 +18,8 @@ var (
 	testUsers = []user.UserWithRemoteIdentities{
 		{
 			User: user.User{
-				ID:   "ID-1",
-				Name: "Name-1",
+				ID:    "ID-1",
+				Email: "Email-1@example.com",
 			},
 			RemoteIdentities: []user.RemoteIdentity{
 				{
@@ -30,8 +30,8 @@ var (
 		},
 		{
 			User: user.User{
-				ID:   "ID-2",
-				Name: "Name-2",
+				ID:    "ID-2",
+				Email: "Email-2@example.com",
 			},
 			RemoteIdentities: []user.RemoteIdentity{
 				{
@@ -76,14 +76,12 @@ func TestNewUser(t *testing.T) {
 	}{
 		{
 			user: user.User{
-				Name:  "AnotherName",
 				Email: "bob@example.com",
 			},
 			err: nil,
 		},
 		{
 			user: user.User{
-				Name:  "TheAdmin",
 				Email: "admin@example.com",
 				Admin: true,
 			},
@@ -91,7 +89,6 @@ func TestNewUser(t *testing.T) {
 		},
 		{
 			user: user.User{
-				Name:          "Very",
 				Email:         "verified@example.com",
 				EmailVerified: true,
 			},
@@ -99,24 +96,24 @@ func TestNewUser(t *testing.T) {
 		},
 		{
 			user: user.User{
-				Name:        "Name-1",
-				DisplayName: "Oops Same Name",
+				Email:       "Email-1@example.com",
+				DisplayName: "Oops Same Email",
 			},
-			err: user.ErrorDuplicateName,
+			err: user.ErrorDuplicateEmail,
 		},
 		{
 			user: user.User{
 				ID:          "MyOwnID",
-				Name:        "AnotherName",
+				Email:       "AnotherEmail@example.com",
 				DisplayName: "Can't set your own ID!",
 			},
 			err: user.ErrorInvalidID,
 		},
 		{
 			user: user.User{
-				DisplayName: "No Name",
+				DisplayName: "No Email",
 			},
-			err: user.ErrorInvalidName,
+			err: user.ErrorInvalidEmail,
 		},
 	}
 
@@ -152,44 +149,44 @@ func TestUpdateUser(t *testing.T) {
 		err  error
 	}{
 		{
-			// Update the name.
+			// Update the email.
 			user: user.User{
-				ID:   "ID-1",
-				Name: "Name-1.1",
+				ID:    "ID-1",
+				Email: "Email-1.1@example.com",
 			},
 			err: nil,
 		},
 		{
 			// No-op.
 			user: user.User{
-				ID:   "ID-1",
-				Name: "Name-1",
+				ID:    "ID-1",
+				Email: "Email-1@example.com",
 			},
 			err: nil,
 		},
 		{
-			// No name.
+			// No email.
 			user: user.User{
-				ID:   "ID-1",
-				Name: "",
+				ID:    "ID-1",
+				Email: "",
 			},
-			err: user.ErrorInvalidName,
+			err: user.ErrorInvalidEmail,
 		},
 		{
 			// Try Update on non-existent user.
 			user: user.User{
-				ID:   "NonExistent",
-				Name: "GoodName",
+				ID:    "NonExistent",
+				Email: "GoodEmail@email.com",
 			},
 			err: user.ErrorNotFound,
 		},
 		{
-			// Try update to someone else's name.
+			// Try update to someone else's email.
 			user: user.User{
-				ID:   "ID-2",
-				Name: "Name-1",
+				ID:    "ID-2",
+				Email: "Email-1@example.com",
 			},
-			err: user.ErrorDuplicateName,
+			err: user.ErrorDuplicateEmail,
 		},
 	}
 
@@ -371,15 +368,15 @@ func TestNewUserRepoFromUsers(t *testing.T) {
 			users: []user.UserWithRemoteIdentities{
 				{
 					User: user.User{
-						ID:   "123",
-						Name: "name123",
+						ID:    "123",
+						Email: "email123@example.com",
 					},
 					RemoteIdentities: []user.RemoteIdentity{},
 				},
 				{
 					User: user.User{
-						ID:   "456",
-						Name: "name456",
+						ID:    "456",
+						Email: "email456@example.com",
 					},
 					RemoteIdentities: []user.RemoteIdentity{
 						{
@@ -416,24 +413,24 @@ func TestNewUserRepoFromUsers(t *testing.T) {
 	}
 }
 
-func TestGetByName(t *testing.T) {
+func TestGetByEmail(t *testing.T) {
 	tests := []struct {
-		name    string
+		email   string
 		wantErr error
 	}{
 		{
-			name:    "Name-1",
+			email:   "Email-1@example.com",
 			wantErr: nil,
 		},
 		{
-			name:    "NoSuchName",
+			email:   "NoSuchEmail@example.com",
 			wantErr: user.ErrorNotFound,
 		},
 	}
 
 	for i, tt := range tests {
 		repo := makeTestUserRepo()
-		gotUser, gotErr := repo.GetByName(tt.name)
+		gotUser, gotErr := repo.GetByEmail(tt.email)
 		if tt.wantErr != nil {
 			if tt.wantErr != gotErr {
 				t.Errorf("case %d: wantErr=%q, gotErr=%q", i, tt.wantErr, gotErr)
@@ -445,8 +442,8 @@ func TestGetByName(t *testing.T) {
 			t.Errorf("case %d: want nil err:% q", i, gotErr)
 		}
 
-		if tt.name != gotUser.Name {
-			t.Errorf("case %d: want=%q, got=%q", i, tt.name, gotUser.Name)
+		if tt.email != gotUser.Email {
+			t.Errorf("case %d: want=%q, got=%q", i, tt.email, gotUser.Email)
 		}
 	}
 }
@@ -459,7 +456,7 @@ func TestGetAdminCount(t *testing.T) {
 		{
 			addUsers: []user.User{
 				user.User{
-					Name:  "Admin",
+					Email: "Admin@example.com",
 					Admin: true,
 				},
 			},
@@ -471,7 +468,7 @@ func TestGetAdminCount(t *testing.T) {
 		{
 			addUsers: []user.User{
 				user.User{
-					Name: "NotAdmin",
+					Email: "NotAdmin@example.com",
 				},
 			},
 			want: 0,
@@ -479,11 +476,11 @@ func TestGetAdminCount(t *testing.T) {
 		{
 			addUsers: []user.User{
 				user.User{
-					Name:  "Admin",
+					Email: "Admin@example.com",
 					Admin: true,
 				},
 				user.User{
-					Name:  "AnotherAdmin",
+					Email: "AnotherAdmin@example.com",
 					Admin: true,
 				},
 			},

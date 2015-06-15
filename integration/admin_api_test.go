@@ -34,8 +34,8 @@ func makeTestFixtures() *testFixtures {
 	f.ur = user.NewUserRepoFromUsers([]user.UserWithRemoteIdentities{
 		{
 			User: user.User{
-				ID:   "ID-1",
-				Name: "Name-1",
+				ID:    "ID-1",
+				Email: "Email-1@example.com",
 			},
 		},
 	})
@@ -114,21 +114,21 @@ func TestCreateAdmin(t *testing.T) {
 	}{
 		{
 			admn: &adminschema.Admin{
-				Name:     "foo",
+				Email:    "foo@example.com",
 				Password: "foopass",
 			},
 			errCode: -1,
 		},
 		{
-			// duplicate Name
+			// duplicate Email
 			admn: &adminschema.Admin{
-				Name:     "Name-1",
+				Email:    "Email-1@example.com",
 				Password: "foopass",
 			},
 			errCode: http.StatusBadRequest,
 		},
 		{
-			// missing Name
+			// missing Email
 			admn: &adminschema.Admin{
 				Password: "foopass",
 			},
@@ -199,7 +199,7 @@ func TestGetState(t *testing.T) {
 		{
 			addUsers: []user.User{
 				user.User{
-					Name:  "Admin",
+					Email: "Admin@example.com",
 					Admin: true,
 				},
 			},

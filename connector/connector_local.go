@@ -183,8 +183,8 @@ type LocalIdentityProvider struct {
 	UserRepo         user.UserRepo
 }
 
-func (m *LocalIdentityProvider) Identity(name, password string) (*oidc.Identity, error) {
-	user, err := m.UserRepo.GetByName(name)
+func (m *LocalIdentityProvider) Identity(email, password string) (*oidc.Identity, error) {
+	user, err := m.UserRepo.GetByEmail(email)
 	if err != nil {
 		return nil, err
 	}

@@ -65,17 +65,13 @@ func (r *userRepo) Get(userID string) (user.User, error) {
 	return r.get(nil, userID)
 }
 
-func (r *userRepo) GetByName(name string) (user.User, error) {
-	return r.getByName(nil, name)
+func (r *userRepo) GetByEmail(email string) (user.User, error) {
+	return r.getByEmail(nil, email)
 }
 
 func (r *userRepo) Create(usr user.User) (userID string, err error) {
 	if usr.ID != "" {
 		return "", user.ErrorInvalidID
-	}
-
-	if !user.ValidName(usr.Name) {
-		return "", user.ErrorInvalidName
 	}
 
 	newID, err := r.userIDGenerator()
@@ -99,8 +95,8 @@ func (r *userRepo) Create(usr user.User) (userID string, err error) {
 		return "", user.ErrorDuplicateID
 	}
 
-	// make sure there's no other user with the same Name
-	_, err = r.getByName(tx, usr.Name)
+	// make sure there's no other user with the same Email
+	_, err = r.getByEmail(tx, usr.Email)
 	if err != nil {
 		if err != user.ErrorNotFound {
 			rollback(tx)
@@ -108,7 +104,7 @@ func (r *userRepo) Create(usr user.User) (userID string, err error) {
 		}
 	} else {
 		rollback(tx)
-		return "", user.ErrorDuplicateName
+		return "", user.ErrorDuplicateEmail
 	}
 
 	usr.ID = newID
@@ -136,8 +132,8 @@ func (r *userRepo) Update(usr user.User) error {
 		return err
 	}
 
-	if !user.ValidName(usr.Name) {
-		return user.ErrorInvalidName
+	if !user.ValidEmail(usr.Email) {
+		return user.ErrorInvalidEmail
 	}
 
 	// make sure this user exists already
@@ -147,8 +143,8 @@ func (r *userRepo) Update(usr user.User) error {
 		return err
 	}
 
-	// make sure there's no other user with the same Name
-	otherUser, err := r.getByName(tx, usr.Name)
+	// make sure there's no other user with the same Email
+	otherUser, err := r.getByEmail(tx, usr.Email)
 	if err != user.ErrorNotFound {
 		if err != nil {
 			rollback(tx)
@@ -156,7 +152,7 @@ func (r *userRepo) Update(usr user.User) error {
 		}
 		if otherUser.ID != usr.ID {
 			rollback(tx)
-			return user.ErrorDuplicateName
+			return user.ErrorDuplicateEmail
 		}
 	}
 
@@ -389,10 +385,10 @@ func (r *userRepo) getUserIDForRemoteIdentity(tx *gorp.Transaction, ri user.Remo
 	return rim.UserID, nil
 }
 
-func (r *userRepo) getByName(tx *gorp.Transaction, name string) (user.User, error) {
+func (r *userRepo) getByEmail(tx *gorp.Transaction, email string) (user.User, error) {
 	ex := r.executor(tx)
 	var um userModel
-	err := ex.SelectOne(&um, "select * from authduser where name = $1", name)
+	err := ex.SelectOne(&um, "select * from authduser where email = $1", email)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -416,7 +412,6 @@ func (r *userRepo) insertRemoteIdentity(tx *gorp.Transaction, userID string, ri 
 
 type userModel struct {
 	ID            string `db:"id"`
-	Name          string `db:"name"`
 	Email         string `db:"email"`
 	EmailVerified bool   `db:"emailVerified"`
 	DisplayName   string `db:"displayName"`
@@ -426,7 +421,6 @@ type userModel struct {
 func (u *userModel) user() (user.User, error) {
 	usr := user.User{
 		ID:            u.ID,
-		Name:          u.Name,
 		DisplayName:   u.DisplayName,
 		Email:         u.Email,
 		EmailVerified: u.EmailVerified,
@@ -439,7 +433,6 @@ func (u *userModel) user() (user.User, error) {
 func newUserModel(u *user.User) (*userModel, error) {
 	um := userModel{
 		ID:            u.ID,
-		Name:          u.Name,
 		DisplayName:   u.DisplayName,
 		Email:         u.Email,
 		EmailVerified: u.EmailVerified,

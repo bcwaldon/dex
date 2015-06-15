@@ -57,9 +57,9 @@ func errorMaker(typ string, desc string, code int) func(internal error) Error {
 
 var (
 	errorMap = map[error]func(error) Error{
-		user.ErrorNotFound:      errorMaker("resource_not_found", "Resource could not be found.", http.StatusNotFound),
-		user.ErrorDuplicateName: errorMaker("bad_request", "Name already in use.", http.StatusBadRequest),
-		user.ErrorInvalidName:   errorMaker("bad_request", "invalid name.", http.StatusBadRequest),
+		user.ErrorNotFound:       errorMaker("resource_not_found", "Resource could not be found.", http.StatusNotFound),
+		user.ErrorDuplicateEmail: errorMaker("bad_request", "Email already in use.", http.StatusBadRequest),
+		user.ErrorInvalidEmail:   errorMaker("bad_request", "invalid email.", http.StatusBadRequest),
 	}
 )
 
@@ -77,14 +77,14 @@ func (a *AdminAPI) GetAdmin(id string) (adminschema.Admin, error) {
 
 	return adminschema.Admin{
 		Id:       id,
-		Name:     usr.Name,
+		Email:    usr.Email,
 		Password: string(pwi.Password),
 	}, nil
 }
 
 func (a *AdminAPI) CreateAdmin(admn adminschema.Admin) (string, error) {
 	usr := user.User{}
-	usr.Name = admn.Name
+	usr.Email = admn.Email
 	usr.Admin = true
 
 	id, err := a.userRepo.Create(usr)

@@ -105,7 +105,7 @@ func TestHTTPExchangeToken(t *testing.T) {
 	}
 
 	usr := user.User{
-		Name:        "testname",
+		Email:       "testemail@example.com",
 		DisplayName: "displayname",
 	}
 	userRepo := user.NewUserRepo()
@@ -190,9 +190,6 @@ func TestHTTPExchangeToken(t *testing.T) {
 
 	if claims["name"] != usr.DisplayName {
 		t.Errorf("want=%#v, got=%#v", usr.DisplayName, claims["name"])
-	}
-	if claims["preferred_username"] != usr.Name {
-		t.Errorf("want=%#v, got=%#v", usr.Name, claims["preferred_name"])
 	}
 
 	if resp.StatusCode != http.StatusOK {

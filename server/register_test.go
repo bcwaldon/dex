@@ -131,7 +131,6 @@ func TestHandleRegister(t *testing.T) {
 			wantStatus: http.StatusOK,
 			wantFormValues: url.Values{
 				"code":     str("code-3"),
-				"name":     str(""),
 				"email":    str(""),
 				"password": str(""),
 				"validate": str("1"),
@@ -143,7 +142,6 @@ func TestHandleRegister(t *testing.T) {
 			query: url.Values{
 				"code":     []string{"code-2"},
 				"validate": []string{"1"},
-				"name":     str("exampleuser"),
 				"email":    str(""),
 				"password": str("password"),
 			},
@@ -151,7 +149,6 @@ func TestHandleRegister(t *testing.T) {
 			wantStatus: http.StatusBadRequest,
 			wantFormValues: url.Values{
 				"code":     str("code-3"),
-				"name":     str("exampleuser"),
 				"email":    str(""),
 				"password": str("password"),
 				"validate": str("1"),
@@ -163,7 +160,6 @@ func TestHandleRegister(t *testing.T) {
 			query: url.Values{
 				"code":     []string{"code-2"},
 				"validate": []string{"1"},
-				"name":     str("exampleuser"),
 				"email":    str("test@example.com"),
 				"password": str("password"),
 			},
@@ -177,7 +173,6 @@ func TestHandleRegister(t *testing.T) {
 			query: url.Values{
 				"code":     []string{"code-2"},
 				"validate": []string{"1"},
-				"name":     str("exampleuser"),
 				"email":    str("test@example.com"),
 			},
 			connID:          "local",
@@ -185,7 +180,6 @@ func TestHandleRegister(t *testing.T) {
 			wantUserCreated: false,
 			wantFormValues: url.Values{
 				"code":     str("code-3"),
-				"name":     str("exampleuser"),
 				"email":    str("test@example.com"),
 				"password": str(""),
 				"validate": str("1"),
@@ -198,7 +192,6 @@ func TestHandleRegister(t *testing.T) {
 			query: url.Values{
 				"code":     []string{"code-3"},
 				"validate": []string{"1"},
-				"name":     str("exampleuser"),
 				"email":    str("test@example.com"),
 			},
 			connID:          "oidc",
@@ -210,7 +203,6 @@ func TestHandleRegister(t *testing.T) {
 			// Same as before, but missing a code.
 			query: url.Values{
 				"validate": []string{"1"},
-				"name":     str("exampleuser"),
 				"email":    str("test@example.com"),
 			},
 			connID:          "oidc",
@@ -267,9 +259,9 @@ func TestHandleRegister(t *testing.T) {
 			t.Errorf("case %d: wantStatus=%v, got=%v", i, tt.wantStatus, w.Code)
 		}
 
-		name := tt.query.Get("name")
-		if name != "" {
-			_, err := f.userRepo.GetByName(name)
+		email := tt.query.Get("email")
+		if email != "" {
+			_, err := f.userRepo.GetByEmail(email)
 			if tt.wantUserCreated {
 				if err != nil {
 					t.Errorf("case %d: user not created: %v", i, err)

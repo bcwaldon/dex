@@ -78,9 +78,9 @@ type StateService struct {
 }
 
 type Admin struct {
-	Id string `json:"id,omitempty"`
+	Email string `json:"email,omitempty"`
 
-	Name string `json:"name,omitempty"`
+	Id string `json:"id,omitempty"`
 
 	Password string `json:"password,omitempty"`
 }

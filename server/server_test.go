@@ -77,7 +77,7 @@ func makeNewUserRepo() (user.UserRepo, error) {
 	}
 
 	id, err := userRepo.Create(user.User{
-		Name: "testname",
+		Email: "testname@example.com",
 	})
 	if err != nil {
 		return nil, err

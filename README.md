@@ -127,13 +127,20 @@ New clients can be registered with the authctl CLI tool:
 authctl --db-url=postgres://localhost/auth?sslmode=disable new-client http://example.com/auth/callback
 ```
 
-The tool will print the `client-id` and `client-secret` to stdout; you must save these for use in your client application.
+The tool will print the `client-id` and `client-secret` to stdout; you must save these for use in your client application. The output of this command is "KEY=VALUE" format, so If you `eval` it in your shell, the relevant variables are available to use.
 
 Note that for the initial invocation of `authctl` you need to provide a DSN URL to create a new-client. Once you have created this initial client, you can use its client-id and client-secret as credentials to authctl, and make requests via the HTTP API instead of the DB:
 
 ```
 authctl --endpoint=http://your-issuer-url --client-id=your_client_id --client-secret=your_client_secret new-client
 ```
+
+or, if you want to go the eval route:
+```
+eval "$(authctl --endpoint=http://your-issuer-url --client-id=your_client_id --client-secret=your_client_secret new-client)"
+```
+
+The latter form makes the variables `AUTHD_APP_CLIENT_ID`, `AUTHD_APP_CLIENT_SECRET` and `AUTHD_APP_REDIRECTURL_0` available to your shell.
 
 This will allow you to create new clients from machines that cannot hit the database.
 

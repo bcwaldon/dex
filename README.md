@@ -144,6 +144,10 @@ The latter form makes the variables `AUTHD_APP_CLIENT_ID`, `AUTHD_APP_CLIENT_SEC
 
 This will allow you to create new clients from machines that cannot hit the database.
 
+# Standup Dev Script
+
+A script which will create a database, create a client, start an overlord and a worker and start the example app exists at `contrib/standup-db.sh`.
+
 # Coming Soon
 
 - Multiple backing Identity Providers

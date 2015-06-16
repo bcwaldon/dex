@@ -169,7 +169,7 @@ func handleRegisterFunc(s *Server) http.HandlerFunc {
 		q.Set("state", ses.ClientState)
 		ru.RawQuery = q.Encode()
 		w.Header().Set("Location", ru.String())
-		w.WriteHeader(http.StatusTemporaryRedirect)
+		w.WriteHeader(http.StatusSeeOther)
 		return
 	}
 }

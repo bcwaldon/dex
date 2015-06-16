@@ -95,6 +95,11 @@ func (r *userRepo) Create(usr user.User) (userID string, err error) {
 		return "", user.ErrorDuplicateID
 	}
 
+	if !user.ValidEmail(usr.Email) {
+		rollback(tx)
+		return "", user.ErrorInvalidEmail
+	}
+
 	// make sure there's no other user with the same Email
 	_, err = r.getByEmail(tx, usr.Email)
 	if err != nil {
@@ -133,6 +138,7 @@ func (r *userRepo) Update(usr user.User) error {
 	}
 
 	if !user.ValidEmail(usr.Email) {
+		rollback(tx)
 		return user.ErrorInvalidEmail
 	}
 

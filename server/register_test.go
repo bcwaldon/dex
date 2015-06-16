@@ -164,7 +164,7 @@ func TestHandleRegister(t *testing.T) {
 				"password": str("password"),
 			},
 			connID:          "local",
-			wantStatus:      http.StatusTemporaryRedirect,
+			wantStatus:      http.StatusSeeOther,
 			wantUserCreated: true,
 		},
 		{
@@ -196,7 +196,7 @@ func TestHandleRegister(t *testing.T) {
 			},
 			connID:          "oidc",
 			attachRemote:    true,
-			wantStatus:      http.StatusTemporaryRedirect,
+			wantStatus:      http.StatusSeeOther,
 			wantUserCreated: true,
 		},
 		{

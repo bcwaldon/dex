@@ -4,24 +4,23 @@
 
 **Warning**: Hacks Ahead.
 
-1. Install your dockercfg. There is no nice way to do this:
+You must be running cluster wide DNS for this to work. See https://github.com/coreos-inc/jelly/pull/186
+
+Install your dockercfg. There is no nice way to do this:
 
 ```
 ssh worker
 cat > /proc/$(pgrep kubelet)/cwd/.dockercfg
 ```
 
-2. Start postgres and get the service ip
+Start postgres
 
 ```
 kubectl create -f postgres-rc.yaml
 kubectl create -f postgres-service.yaml
-kubectl describe service authd-postgres | grep '^IP:' | awk '{print $2}'
 ```
 
-3. Edit authd-overlord-rc.yaml authd-worker-rc.yaml and put the IP into the DB URL
-
-4. Run authd and setup services
+Run authd and setup services
 
 ```
 for i in authd-overlord-rc.yaml authd-overlord-service.yaml authd-worker-rc.yaml authd-worker-service.yaml; do 

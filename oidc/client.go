@@ -221,7 +221,7 @@ func (c *Client) ClientCredsToken(scope []string) (jose.JWT, error) {
 		return jose.JWT{}, err
 	}
 
-	return jwt, c.verifyJWT(jwt)
+	return jwt, c.VerifyJWT(jwt)
 }
 
 // Exchange an OAuth2 auth code for an OIDC JWT
@@ -241,10 +241,10 @@ func (c *Client) ExchangeAuthCode(code string) (jose.JWT, error) {
 		return jose.JWT{}, err
 	}
 
-	return jwt, c.verifyJWT(jwt)
+	return jwt, c.VerifyJWT(jwt)
 }
 
-func (c *Client) verifyJWT(jwt jose.JWT) error {
+func (c *Client) VerifyJWT(jwt jose.JWT) error {
 	v := &jwtVerifier{
 		issuer:   c.providerConfig.Issuer,
 		clientID: c.credentials.ID,

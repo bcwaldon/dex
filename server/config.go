@@ -11,6 +11,7 @@ import (
 
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/db"
+	"github.com/coreos-inc/auth/email"
 	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/session"
 	"github.com/coreos-inc/auth/user"
@@ -22,11 +23,12 @@ type ServerConfig interface {
 }
 
 type SingleServerConfig struct {
-	IssuerURL      string
-	TemplateDir    string
-	ClientsFile    string
-	ConnectorsFile string
-	UsersFile      string
+	IssuerURL        string
+	TemplateDir      string
+	EmailTemplateDir string
+	ClientsFile      string
+	ConnectorsFile   string
+	UsersFile        string
 }
 
 func (cfg *SingleServerConfig) Server() (*Server, error) {
@@ -105,6 +107,18 @@ func (cfg *SingleServerConfig) Server() (*Server, error) {
 		UserRepo:         userRepo,
 		PasswordInfoRepo: passwordInfoRepo,
 		UserManager:      userManager,
+	}
+
+	emailer := email.FakeEmailer{}
+	tMailer, err := email.NewTemplatizedEmailerFromGlobs(cfg.EmailTemplateDir+"/*.txt", cfg.EmailTemplateDir+"/*.html", emailer)
+	if err != nil {
+		return nil, err
+	}
+	srv.Emailer = tMailer
+
+	err = setTemplates(&srv, tpl)
+	if err != nil {
+		return nil, err
 	}
 
 	return &srv, nil

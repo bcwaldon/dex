@@ -13,6 +13,7 @@ import (
 	"github.com/jonboulle/clockwork"
 
 	"github.com/coreos-inc/auth/connector"
+	"github.com/coreos-inc/auth/email"
 	"github.com/coreos-inc/auth/jose"
 	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oauth2"
@@ -54,6 +55,7 @@ type Server struct {
 	UserRepo            user.UserRepo
 	UserManager         *user.Manager
 	PasswordInfoRepo    user.PasswordInfoRepo
+	Emailer             *email.TemplatizedEmailer
 }
 
 func (s *Server) Run() chan struct{} {

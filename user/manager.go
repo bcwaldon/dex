@@ -1,5 +1,15 @@
 package user
 
+import (
+	"errors"
+	"net/url"
+)
+
+var (
+	ErrorEVEmailDoesntMatch   = errors.New("email in EV doesn't match user email")
+	ErrorEmailAlreadyVerified = errors.New("email already verified")
+)
+
 // Manager performs user-related "business-logic" functions on user and related objects.
 // This is in contrast to the Repos which perform little more than CRUD operations.
 type Manager struct {
@@ -107,4 +117,35 @@ func (m *Manager) RegisterWithPassword(email, plaintext, connID string) (string,
 	}
 
 	return userID, nil
+}
+
+// VerifyEmail sets EmailVerified to true for the user for the given EmailVerification.
+// The email in the EmailVerification must match the User's email in the
+// repository, and it must not already be verified.
+// This function expects that ParseAndVerifyEmailVerificationToken was used to
+// create it, ensuring that the token was signed and that the JWT was not
+// expired.
+// The callback url (i.e. where to send the user after the verification) is returned.
+func (m *Manager) VerifyEmail(ev EmailVerification) (*url.URL, error) {
+	user, err := m.userRepo.Get(ev.userID())
+	if err != nil {
+		return nil, err
+	}
+
+	if user.Email != ev.email() {
+		return nil, ErrorEVEmailDoesntMatch
+	}
+
+	if user.EmailVerified {
+		return nil, ErrorEmailAlreadyVerified
+	}
+
+	user.EmailVerified = true
+
+	err = m.userRepo.Update(user)
+	if err != nil {
+		return nil, err
+	}
+
+	return ev.callback(), nil
 }

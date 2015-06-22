@@ -72,16 +72,6 @@ func (cfg *SingleServerConfig) Server() (*Server, error) {
 		return nil, err
 	}
 
-	ltpl, err := findTemplate(LoginPageTemplateName, tpl)
-	if err != nil {
-		return nil, err
-	}
-
-	rtpl, err := findTemplate(RegisterTemplateName, tpl)
-	if err != nil {
-		return nil, err
-	}
-
 	userRepo, err := user.NewUserRepoFromFile(cfg.UsersFile)
 	if err != nil {
 		return nil, fmt.Errorf("unable to read users from file: %v", err)
@@ -99,8 +89,6 @@ func (cfg *SingleServerConfig) Server() (*Server, error) {
 		ClientIdentityRepo:  ciRepo,
 		ConnectorConfigRepo: cfgRepo,
 		Templates:           tpl,
-		LoginTemplate:       ltpl,
-		RegisterTemplate:    rtpl,
 
 		HealthChecks:     []health.Checkable{km},
 		Connectors:       []connector.Connector{},
@@ -170,16 +158,6 @@ func (cfg *MultiServerConfig) Server() (*Server, error) {
 		return nil, err
 	}
 
-	ltpl, err := findTemplate(LoginPageTemplateName, tpl)
-	if err != nil {
-		return nil, err
-	}
-
-	rtpl, err := findTemplate(RegisterTemplateName, tpl)
-	if err != nil {
-		return nil, err
-	}
-
 	dbh := db.NewHealthChecker(dbc)
 	km := key.NewPrivateKeyManager()
 	srv := Server{
@@ -190,13 +168,15 @@ func (cfg *MultiServerConfig) Server() (*Server, error) {
 		ClientIdentityRepo:  ciRepo,
 		ConnectorConfigRepo: cfgRepo,
 		Templates:           tpl,
-		LoginTemplate:       ltpl,
-		RegisterTemplate:    rtpl,
 		HealthChecks:        []health.Checkable{km, dbh},
 		Connectors:          []connector.Connector{},
 		UserRepo:            userRepo,
 		UserManager:         userManager,
 		PasswordInfoRepo:    pwiRepo,
+	}
+	err = setTemplates(&srv, tpl)
+	if err != nil {
+		return nil, err
 	}
 
 	return &srv, nil
@@ -206,9 +186,32 @@ func getTemplates(dir string) (*template.Template, error) {
 	files := []string{
 		path.Join(dir, LoginPageTemplateName),
 		path.Join(dir, RegisterTemplateName),
+		path.Join(dir, VerifyEmailTemplateName),
 		path.Join(dir, connector.LoginPageTemplateName),
 	}
 	return template.ParseFiles(files...)
+}
+
+func setTemplates(srv *Server, tpls *template.Template) error {
+	ltpl, err := findTemplate(LoginPageTemplateName, tpls)
+	if err != nil {
+		return err
+	}
+	srv.LoginTemplate = ltpl
+
+	rtpl, err := findTemplate(RegisterTemplateName, tpls)
+	if err != nil {
+		return err
+	}
+	srv.RegisterTemplate = rtpl
+
+	vtpl, err := findTemplate(VerifyEmailTemplateName, tpls)
+	if err != nil {
+		return err
+	}
+	srv.VerifyEmailTemplate = vtpl
+
+	return nil
 }
 
 func findTemplate(name string, tpls *template.Template) (*template.Template, error) {

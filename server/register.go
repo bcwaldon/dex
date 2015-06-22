@@ -3,6 +3,7 @@ package server
 import (
 	"errors"
 	"fmt"
+	"html/template"
 	"net/http"
 	"net/url"
 	"time"
@@ -223,7 +224,7 @@ func sendEmailVerification(usr user.User,
 	q.Set("token", token)
 	verifyURL.RawQuery = q.Encode()
 
-	err = emailer.SendMail("no-reply@coreos.com", "Please verify your email address.", "verify-email.txt",
+	err = emailer.SendMail("no-reply@coreos.com", "Please verify your email address.", "verify-email",
 		map[string]interface{}{
 			"email": usr.Email,
 			"link":  verifyURL.String(),
@@ -238,6 +239,57 @@ func sendEmailVerification(usr user.User,
 type emailVerifiedTemplateData struct {
 	Error   string
 	Message string
+}
+
+func handleEmailVerifyFunc(verifiedTpl *template.Template, issuer url.URL, keysFunc func() ([]key.PublicKey,
+	error), userManager *user.Manager) http.HandlerFunc {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		token := q.Get("token")
+
+		keys, err := keysFunc()
+		if err != nil {
+			execTemplateWithStatus(w, verifiedTpl, emailVerifiedTemplateData{
+				Error:   "There's been an error processing your request.",
+				Message: "Plesae try again later.",
+			}, http.StatusInternalServerError)
+			return
+		}
+
+		ev, err := user.ParseAndVerifyEmailVerificationToken(token, issuer, keys)
+		if err != nil {
+			execTemplateWithStatus(w, verifiedTpl, emailVerifiedTemplateData{
+				Error:   "Bad Email Verification Token",
+				Message: "That was not a verifiable token.",
+			}, http.StatusBadRequest)
+			return
+		}
+
+		cbURL, err := userManager.VerifyEmail(ev)
+		if err != nil {
+			switch err {
+			case user.ErrorEmailAlreadyVerified:
+				execTemplateWithStatus(w, verifiedTpl, emailVerifiedTemplateData{
+					Error:   "Email Address already verified.",
+					Message: "The email address that this link verifies has already been verified.",
+				}, http.StatusBadRequest)
+			case user.ErrorEVEmailDoesntMatch:
+				execTemplateWithStatus(w, verifiedTpl, emailVerifiedTemplateData{
+					Error:   "Email Address in token doesn't match current email.",
+					Message: "The email address that this link is not the same as the most recent email on file. Perhaps you have a more recent verification link?",
+				}, http.StatusBadRequest)
+			default:
+				execTemplateWithStatus(w, verifiedTpl, emailVerifiedTemplateData{
+					Error:   "There's been an error processing your request.",
+					Message: "Plesae try again later.",
+				}, http.StatusInternalServerError)
+			}
+			return
+		}
+
+		http.Redirect(w, r, cbURL.String(), http.StatusSeeOther)
+	}
 }
 
 func registerFromLocalConnector(userManager *user.Manager, sessionManager *session.SessionManager, ses *session.Session, email, password string) (string, error) {

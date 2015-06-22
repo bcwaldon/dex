@@ -25,8 +25,9 @@ import (
 )
 
 const (
-	LoginPageTemplateName = "login.html"
-	RegisterTemplateName  = "register.html"
+	LoginPageTemplateName   = "login.html"
+	RegisterTemplateName    = "register.html"
+	VerifyEmailTemplateName = "verify-email.html"
 
 	APIVersion = "v1"
 )
@@ -50,6 +51,7 @@ type Server struct {
 	Templates           *template.Template
 	LoginTemplate       *template.Template
 	RegisterTemplate    *template.Template
+	VerifyEmailTemplate *template.Template
 	HealthChecks        []health.Checkable
 	Connectors          []connector.Connector
 	UserRepo            user.UserRepo
@@ -184,7 +186,8 @@ func (s *Server) HTTPHandler() http.Handler {
 	mux.HandleFunc(httpPathKeys, handleKeysFunc(s.KeyManager, clock))
 	mux.HandleFunc(httpPathHealth, handleHealthFunc(checks))
 	mux.HandleFunc(httpPathRegister, handleRegisterFunc(s))
-
+	mux.HandleFunc(httpPathEmailVerify, handleEmailVerifyFunc(s.VerifyEmailTemplate,
+		s.IssuerURL, s.KeyManager.PublicKeys, s.UserManager))
 	pcfg := s.ProviderConfig()
 	for _, idpc := range s.Connectors {
 		errorURL, err := url.Parse(fmt.Sprintf("%s?connector_id=%s", pcfg.AuthEndpoint, idpc.ID()))

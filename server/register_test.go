@@ -11,6 +11,8 @@ import (
 	"github.com/kylelemons/godebug/pretty"
 
 	"github.com/coreos-inc/auth/connector"
+	"github.com/coreos-inc/auth/email"
+	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oidc"
 	"github.com/coreos-inc/auth/pkg/html"
 	"github.com/coreos-inc/auth/session"
@@ -18,7 +20,8 @@ import (
 )
 
 const (
-	templatesLocation = "../static/html"
+	templatesLocation      = "../static/html"
+	emailTemplatesLocation = "../static/email"
 )
 
 type testFixtures struct {
@@ -67,6 +70,15 @@ func makeTestFixtures() (*testFixtures, error) {
 
 	sessionManager := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())
 	sessionManager.GenerateCode = sequentialGenerateCodeFunc()
+
+	emailer, err := email.NewTemplatizedEmailerFromGlobs(
+		emailTemplatesLocation+"/*.txt",
+		emailTemplatesLocation+"/*.html",
+		email.FakeEmailer{})
+	if err != nil {
+		return nil, err
+	}
+
 	srv := &Server{
 		IssuerURL:      issuerURL,
 		SessionManager: sessionManager,
@@ -88,6 +100,8 @@ func makeTestFixtures() (*testFixtures, error) {
 		PasswordInfoRepo: pwRepo,
 		UserManager:      manager,
 		RegisterTemplate: rtpl,
+		Emailer:          emailer,
+		KeyManager:       key.NewPrivateKeyManager(),
 	}
 
 	for _, config := range connConfigs {

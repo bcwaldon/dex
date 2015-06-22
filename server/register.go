@@ -4,8 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
+	"time"
 
 	"github.com/coreos-inc/auth/connector"
+	"github.com/coreos-inc/auth/email"
+	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oidc"
 	"github.com/coreos-inc/auth/pkg/log"
 	"github.com/coreos-inc/auth/session"
@@ -163,6 +167,26 @@ func handleRegisterFunc(s *Server) http.HandlerFunc {
 			return
 		}
 
+		usr, err := s.UserRepo.Get(userID)
+		if err != nil {
+			internalError(w, err)
+			return
+		}
+
+		err = sendEmailVerification(usr,
+			ses.ClientID,
+			s.absURL(httpPathEmailVerify),
+			ses.RedirectURL,
+			s.SessionManager.ValidityWindow,
+			s.EmailFromAddress,
+			s.Emailer,
+			s.IssuerURL,
+			s.KeyManager)
+
+		if err != nil {
+			log.Errorf("Error sending email verification: %v", err)
+		}
+
 		ru := ses.RedirectURL
 		q := ru.Query()
 		q.Set("code", code)
@@ -172,6 +196,48 @@ func handleRegisterFunc(s *Server) http.HandlerFunc {
 		w.WriteHeader(http.StatusSeeOther)
 		return
 	}
+}
+
+func sendEmailVerification(usr user.User,
+	clientID string,
+	verifyURL url.URL,
+	redirectURL url.URL,
+	expires time.Duration,
+	from string,
+	emailer *email.TemplatizedEmailer,
+	issuerURL url.URL,
+	keyManager key.PrivateKeyManager) error {
+	ev := user.NewEmailVerification(usr, clientID, issuerURL, redirectURL, expires)
+
+	signer, err := keyManager.Signer()
+	if err != nil {
+		return err
+	}
+
+	token, err := ev.Token(signer)
+	if err != nil {
+		return err
+	}
+
+	q := verifyURL.Query()
+	q.Set("token", token)
+	verifyURL.RawQuery = q.Encode()
+
+	err = emailer.SendMail("no-reply@coreos.com", "Please verify your email address.", "verify-email.txt",
+		map[string]interface{}{
+			"email": usr.Email,
+			"link":  verifyURL.String(),
+		}, usr.Email)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type emailVerifiedTemplateData struct {
+	Error   string
+	Message string
 }
 
 func registerFromLocalConnector(userManager *user.Manager, sessionManager *session.SessionManager, ses *session.Session, email, password string) (string, error) {

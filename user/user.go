@@ -42,8 +42,11 @@ type User struct {
 // http://openid.net/specs/openid-connect-core-1_0.html#StandardClaims
 func (u *User) AddToClaims(claims jose.Claims) {
 	claims.Add("name", u.DisplayName)
-	if u.Email != "" && u.EmailVerified {
+	if u.Email != "" {
 		claims.Add("email", u.Email)
+		if u.EmailVerified {
+			claims.Add("email_verified", true)
+		}
 	}
 }
 

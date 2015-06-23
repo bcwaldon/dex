@@ -11,6 +11,7 @@ import (
 
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/db"
+	"github.com/coreos-inc/auth/email"
 	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/session"
 	"github.com/coreos-inc/auth/user"
@@ -22,11 +23,13 @@ type ServerConfig interface {
 }
 
 type SingleServerConfig struct {
-	IssuerURL      string
-	TemplateDir    string
-	ClientsFile    string
-	ConnectorsFile string
-	UsersFile      string
+	IssuerURL        string
+	TemplateDir      string
+	EmailTemplateDir string
+	ClientsFile      string
+	ConnectorsFile   string
+	UsersFile        string
+	EmailFromAddress string
 }
 
 func (cfg *SingleServerConfig) Server() (*Server, error) {
@@ -70,16 +73,6 @@ func (cfg *SingleServerConfig) Server() (*Server, error) {
 		return nil, err
 	}
 
-	ltpl, err := findTemplate(LoginPageTemplateName, tpl)
-	if err != nil {
-		return nil, err
-	}
-
-	rtpl, err := findTemplate(RegisterTemplateName, tpl)
-	if err != nil {
-		return nil, err
-	}
-
 	userRepo, err := user.NewUserRepoFromFile(cfg.UsersFile)
 	if err != nil {
 		return nil, fmt.Errorf("unable to read users from file: %v", err)
@@ -97,24 +90,37 @@ func (cfg *SingleServerConfig) Server() (*Server, error) {
 		ClientIdentityRepo:  ciRepo,
 		ConnectorConfigRepo: cfgRepo,
 		Templates:           tpl,
-		LoginTemplate:       ltpl,
-		RegisterTemplate:    rtpl,
 
 		HealthChecks:     []health.Checkable{km},
 		Connectors:       []connector.Connector{},
 		UserRepo:         userRepo,
 		PasswordInfoRepo: passwordInfoRepo,
 		UserManager:      userManager,
+		EmailFromAddress: cfg.EmailFromAddress,
+	}
+
+	emailer := email.FakeEmailer{}
+	tMailer, err := email.NewTemplatizedEmailerFromGlobs(cfg.EmailTemplateDir+"/*.txt", cfg.EmailTemplateDir+"/*.html", emailer)
+	if err != nil {
+		return nil, err
+	}
+	srv.Emailer = tMailer
+
+	err = setTemplates(&srv, tpl)
+	if err != nil {
+		return nil, err
 	}
 
 	return &srv, nil
 }
 
 type MultiServerConfig struct {
-	IssuerURL      string
-	TemplateDir    string
-	KeySecret      string
-	DatabaseConfig db.Config
+	IssuerURL        string
+	TemplateDir      string
+	KeySecret        string
+	DatabaseConfig   db.Config
+	EmailTemplateDir string
+	EmailFromAddress string
 }
 
 func (cfg *MultiServerConfig) Server() (*Server, error) {
@@ -156,16 +162,6 @@ func (cfg *MultiServerConfig) Server() (*Server, error) {
 		return nil, err
 	}
 
-	ltpl, err := findTemplate(LoginPageTemplateName, tpl)
-	if err != nil {
-		return nil, err
-	}
-
-	rtpl, err := findTemplate(RegisterTemplateName, tpl)
-	if err != nil {
-		return nil, err
-	}
-
 	dbh := db.NewHealthChecker(dbc)
 	km := key.NewPrivateKeyManager()
 	srv := Server{
@@ -176,14 +172,24 @@ func (cfg *MultiServerConfig) Server() (*Server, error) {
 		ClientIdentityRepo:  ciRepo,
 		ConnectorConfigRepo: cfgRepo,
 		Templates:           tpl,
-		LoginTemplate:       ltpl,
-		RegisterTemplate:    rtpl,
 		HealthChecks:        []health.Checkable{km, dbh},
 		Connectors:          []connector.Connector{},
 		UserRepo:            userRepo,
 		UserManager:         userManager,
 		PasswordInfoRepo:    pwiRepo,
+		EmailFromAddress:    cfg.EmailFromAddress,
 	}
+	err = setTemplates(&srv, tpl)
+	if err != nil {
+		return nil, err
+	}
+
+	emailer := email.FakeEmailer{}
+	tMailer, err := email.NewTemplatizedEmailerFromGlobs(cfg.EmailTemplateDir+"/*.txt", cfg.EmailTemplateDir+"/*.html", emailer)
+	if err != nil {
+		return nil, err
+	}
+	srv.Emailer = tMailer
 
 	return &srv, nil
 }
@@ -192,9 +198,32 @@ func getTemplates(dir string) (*template.Template, error) {
 	files := []string{
 		path.Join(dir, LoginPageTemplateName),
 		path.Join(dir, RegisterTemplateName),
+		path.Join(dir, VerifyEmailTemplateName),
 		path.Join(dir, connector.LoginPageTemplateName),
 	}
 	return template.ParseFiles(files...)
+}
+
+func setTemplates(srv *Server, tpls *template.Template) error {
+	ltpl, err := findTemplate(LoginPageTemplateName, tpls)
+	if err != nil {
+		return err
+	}
+	srv.LoginTemplate = ltpl
+
+	rtpl, err := findTemplate(RegisterTemplateName, tpls)
+	if err != nil {
+		return err
+	}
+	srv.RegisterTemplate = rtpl
+
+	vtpl, err := findTemplate(VerifyEmailTemplateName, tpls)
+	if err != nil {
+		return err
+	}
+	srv.VerifyEmailTemplate = vtpl
+
+	return nil
 }
 
 func findTemplate(name string, tpls *template.Template) (*template.Template, error) {

@@ -1,12 +1,13 @@
 package session
 
 import (
-	"reflect"
 	"testing"
 	"time"
 
 	"github.com/coreos-inc/auth/jose"
 	"github.com/coreos-inc/auth/oidc"
+
+	"github.com/kylelemons/godebug/pretty"
 )
 
 func TestSessionClaims(t *testing.T) {
@@ -30,12 +31,11 @@ func TestSessionClaims(t *testing.T) {
 				UserID: "elroy-id",
 			},
 			want: jose.Claims{
-				"iss":   issuerURL,
-				"sub":   "elroy-id",
-				"aud":   "XXX",
-				"iat":   float64(now.Unix()),
-				"exp":   float64(now.Add(time.Hour).Unix()),
-				"email": "elroy@example.com",
+				"iss": issuerURL,
+				"sub": "elroy-id",
+				"aud": "XXX",
+				"iat": float64(now.Unix()),
+				"exp": float64(now.Add(time.Hour).Unix()),
 			},
 		},
 
@@ -54,20 +54,19 @@ func TestSessionClaims(t *testing.T) {
 				UserID: "elroy-id",
 			},
 			want: jose.Claims{
-				"iss":   issuerURL,
-				"sub":   "elroy-id",
-				"aud":   "XXX",
-				"iat":   float64(now.Unix()),
-				"exp":   float64(now.Add(time.Hour).Unix()),
-				"email": "elroy@example.com",
+				"iss": issuerURL,
+				"sub": "elroy-id",
+				"aud": "XXX",
+				"iat": float64(now.Unix()),
+				"exp": float64(now.Add(time.Hour).Unix()),
 			},
 		},
 	}
 
 	for i, tt := range tests {
 		got := tt.ses.Claims(issuerURL)
-		if !reflect.DeepEqual(tt.want, got) {
-			t.Fatalf("case %d: want=%#v got=%#v", i, tt.want, got)
+		if diff := pretty.Compare(tt.want, got); diff != "" {
+			t.Errorf("case %d: Compare(want, got) = %v", i, diff)
 		}
 	}
 

@@ -1,8 +1,11 @@
 package user
 
 import (
+	"net/url"
 	"testing"
+	"time"
 
+	"github.com/coreos-inc/auth/jose"
 	"github.com/kylelemons/godebug/pretty"
 )
 
@@ -25,6 +28,18 @@ func makeTestFixtures() *testFixtures {
 				{
 					ConnectorID: "local",
 					ID:          "1",
+				},
+			},
+		}, {
+			User: User{
+				ID:            "ID-2",
+				Email:         "Email-2@example.com",
+				EmailVerified: true,
+			},
+			RemoteIdentities: []RemoteIdentity{
+				{
+					ConnectorID: "local",
+					ID:          "2",
 				},
 			},
 		},
@@ -180,6 +195,70 @@ func TestRegisterWithPassword(t *testing.T) {
 		if err == nil {
 			t.Errorf("case %d: want non-nil err", i)
 		}
+	}
+}
 
+func TestVerifyEmail(t *testing.T) {
+	now := time.Now()
+	issuer, _ := url.Parse("http://example.com")
+	clientID := "myclient"
+	callback := "http://client.example.com/callback"
+	expires := time.Hour * 3
+
+	makeClaims := func(usr User) jose.Claims {
+		return map[string]interface{}{
+			"iss": issuer.String(),
+			"aud": clientID,
+			ClaimEmailVerificationCallback: callback,
+			ClaimEmailVerificationEmail:    usr.Email,
+			"exp": float64(now.Add(expires).Unix()),
+			"sub": usr.ID,
+			"iat": float64(now.Unix()),
+		}
+	}
+
+	tests := []struct {
+		evClaims jose.Claims
+		wantErr  bool
+	}{
+		{
+			// happy path
+			evClaims: makeClaims(User{ID: "ID-1", Email: "Email-1@example.com"}),
+		},
+		{
+			// non-matching email
+			evClaims: makeClaims(User{ID: "ID-1", Email: "Email-2@example.com"}),
+			wantErr:  true,
+		},
+		{
+			// already verified email
+			evClaims: makeClaims(User{ID: "ID-2", Email: "Email-2@example.com"}),
+			wantErr:  true,
+		},
+		{
+			// non-existent user.
+			evClaims: makeClaims(User{ID: "ID-UNKNOWN", Email: "noone@example.com"}),
+			wantErr:  true,
+		},
+	}
+
+	for i, tt := range tests {
+		f := makeTestFixtures()
+		cb, err := f.mgr.VerifyEmail(EmailVerification{tt.evClaims})
+		if tt.wantErr {
+			if err == nil {
+				t.Errorf("case %d: want non-nil err", i)
+			}
+			continue
+		}
+
+		if err != nil {
+			t.Errorf("case %d: want err=nil got=%q", i, err)
+		}
+
+		if cb.String() != tt.evClaims[ClaimEmailVerificationCallback] {
+			t.Errorf("case %d: want=%q, got=%q", i, cb.String(),
+				tt.evClaims[ClaimEmailVerificationCallback])
+		}
 	}
 }

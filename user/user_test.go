@@ -67,7 +67,8 @@ func TestAddToClaims(t *testing.T) {
 				Email:       "unverified@example.com",
 			},
 			wantedClaims: jose.Claims{
-				"name": "Test User Name",
+				"name":  "Test User Name",
+				"email": "unverified@example.com",
 			},
 		},
 		{
@@ -77,8 +78,9 @@ func TestAddToClaims(t *testing.T) {
 				EmailVerified: true,
 			},
 			wantedClaims: jose.Claims{
-				"name":  "Test User Name",
-				"email": "verified@example.com",
+				"name":           "Test User Name",
+				"email":          "verified@example.com",
+				"email_verified": true,
 			},
 		},
 	}

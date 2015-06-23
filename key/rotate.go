@@ -10,10 +10,6 @@ import (
 	"github.com/coreos-inc/auth/pkg/log"
 )
 
-const (
-	DefaultKeyTTL = 12 * time.Hour
-)
-
 func NewPrivateKeyRotator(repo PrivateKeySetRepo, ttl time.Duration) *PrivateKeyRotator {
 	return &PrivateKeyRotator{
 		repo: repo,

@@ -47,7 +47,6 @@ func TestNewPasswordInfosFromReader(t *testing.T) {
 		}
 		if diff := pretty.Compare(tt.want, us); diff != "" {
 			t.Errorf("case %d: Compare(want, got): %v", i, diff)
-			t.Errorf("oops: %v", string(us[1].Password))
 		}
 	}
 }

@@ -113,10 +113,11 @@ func (cfg *SingleServerConfig) Server() (*Server, error) {
 }
 
 type MultiServerConfig struct {
-	IssuerURL      string
-	TemplateDir    string
-	KeySecret      string
-	DatabaseConfig db.Config
+	IssuerURL        string
+	TemplateDir      string
+	KeySecret        string
+	DatabaseConfig   db.Config
+	EmailTemplateDir string
 }
 
 func (cfg *MultiServerConfig) Server() (*Server, error) {
@@ -178,6 +179,13 @@ func (cfg *MultiServerConfig) Server() (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	emailer := email.FakeEmailer{}
+	tMailer, err := email.NewTemplatizedEmailerFromGlobs(cfg.EmailTemplateDir+"/*.txt", cfg.EmailTemplateDir+"/*.html", emailer)
+	if err != nil {
+		return nil, err
+	}
+	srv.Emailer = tMailer
 
 	return &srv, nil
 }

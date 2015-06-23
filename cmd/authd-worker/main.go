@@ -86,10 +86,11 @@ func main() {
 			MaxOpenConnections: *dbMaxOpenConns,
 		}
 		scfg = &server.MultiServerConfig{
-			IssuerURL:      *issuer,
-			TemplateDir:    *templates,
-			KeySecret:      *keySecret,
-			DatabaseConfig: dbCfg,
+			IssuerURL:        *issuer,
+			TemplateDir:      *templates,
+			KeySecret:        *keySecret,
+			DatabaseConfig:   dbCfg,
+			EmailTemplateDir: *emailTemplates,
 		}
 	}
 

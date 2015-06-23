@@ -29,6 +29,7 @@ type SingleServerConfig struct {
 	ClientsFile      string
 	ConnectorsFile   string
 	UsersFile        string
+	EmailFromAddress string
 }
 
 func (cfg *SingleServerConfig) Server() (*Server, error) {
@@ -95,6 +96,7 @@ func (cfg *SingleServerConfig) Server() (*Server, error) {
 		UserRepo:         userRepo,
 		PasswordInfoRepo: passwordInfoRepo,
 		UserManager:      userManager,
+		EmailFromAddress: cfg.EmailFromAddress,
 	}
 
 	emailer := email.FakeEmailer{}
@@ -118,6 +120,7 @@ type MultiServerConfig struct {
 	KeySecret        string
 	DatabaseConfig   db.Config
 	EmailTemplateDir string
+	EmailFromAddress string
 }
 
 func (cfg *MultiServerConfig) Server() (*Server, error) {
@@ -174,6 +177,7 @@ func (cfg *MultiServerConfig) Server() (*Server, error) {
 		UserRepo:            userRepo,
 		UserManager:         userManager,
 		PasswordInfoRepo:    pwiRepo,
+		EmailFromAddress:    cfg.EmailFromAddress,
 	}
 	err = setTemplates(&srv, tpl)
 	if err != nil {

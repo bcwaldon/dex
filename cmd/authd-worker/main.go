@@ -20,6 +20,8 @@ func main() {
 	issuer := fs.String("issuer", "http://127.0.0.1:5556", "")
 	templates := fs.String("html-assets", "./static/html", "directory of html template files")
 	emailTemplates := fs.String("email-templates", "./static/email", "directory of email template files")
+	emailFrom := fs.String("email-from", "no-reply@coreos.com", "emails sent from authd will come from this address")
+
 	noDB := fs.Bool("no-db", false, "manage entities in-process w/o any encryption, used only for single-node testing")
 
 	// ignored if --no-db is set
@@ -72,6 +74,7 @@ func main() {
 			ClientsFile:      *clients,
 			ConnectorsFile:   *connectors,
 			UsersFile:        *users,
+			EmailFromAddress: *emailFrom,
 		}
 	} else {
 		if *dbMaxIdleConns == 0 {
@@ -91,6 +94,7 @@ func main() {
 			KeySecret:        *keySecret,
 			DatabaseConfig:   dbCfg,
 			EmailTemplateDir: *emailTemplates,
+			EmailFromAddress: *emailFrom,
 		}
 	}
 

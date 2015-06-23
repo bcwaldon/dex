@@ -58,6 +58,7 @@ type Server struct {
 	UserManager         *user.Manager
 	PasswordInfoRepo    user.PasswordInfoRepo
 	Emailer             *email.TemplatizedEmailer
+	EmailFromAddress    string
 }
 
 func (s *Server) Run() chan struct{} {

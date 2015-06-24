@@ -23,13 +23,14 @@ type ServerConfig interface {
 }
 
 type SingleServerConfig struct {
-	IssuerURL        string
-	TemplateDir      string
-	EmailTemplateDir string
-	ClientsFile      string
-	ConnectorsFile   string
-	UsersFile        string
-	EmailFromAddress string
+	IssuerURL         string
+	TemplateDir       string
+	EmailTemplateDir  string
+	ClientsFile       string
+	ConnectorsFile    string
+	EmailerConfigFile string
+	UsersFile         string
+	EmailFromAddress  string
 }
 
 func (cfg *SingleServerConfig) Server() (*Server, error) {
@@ -99,14 +100,12 @@ func (cfg *SingleServerConfig) Server() (*Server, error) {
 		EmailFromAddress: cfg.EmailFromAddress,
 	}
 
-	emailer := email.FakeEmailer{}
-	tMailer, err := email.NewTemplatizedEmailerFromGlobs(cfg.EmailTemplateDir+"/*.txt", cfg.EmailTemplateDir+"/*.html", emailer)
+	err = setTemplates(&srv, tpl)
 	if err != nil {
 		return nil, err
 	}
-	srv.Emailer = tMailer
 
-	err = setTemplates(&srv, tpl)
+	err = setEmailer(&srv, cfg.EmailerConfigFile, cfg.EmailTemplateDir)
 	if err != nil {
 		return nil, err
 	}
@@ -115,12 +114,13 @@ func (cfg *SingleServerConfig) Server() (*Server, error) {
 }
 
 type MultiServerConfig struct {
-	IssuerURL        string
-	TemplateDir      string
-	KeySecret        string
-	DatabaseConfig   db.Config
-	EmailTemplateDir string
-	EmailFromAddress string
+	IssuerURL         string
+	TemplateDir       string
+	KeySecret         string
+	DatabaseConfig    db.Config
+	EmailTemplateDir  string
+	EmailerConfigFile string
+	EmailFromAddress  string
 }
 
 func (cfg *MultiServerConfig) Server() (*Server, error) {
@@ -184,12 +184,10 @@ func (cfg *MultiServerConfig) Server() (*Server, error) {
 		return nil, err
 	}
 
-	emailer := email.FakeEmailer{}
-	tMailer, err := email.NewTemplatizedEmailerFromGlobs(cfg.EmailTemplateDir+"/*.txt", cfg.EmailTemplateDir+"/*.html", emailer)
+	err = setEmailer(&srv, cfg.EmailerConfigFile, cfg.EmailTemplateDir)
 	if err != nil {
 		return nil, err
 	}
-	srv.Emailer = tMailer
 
 	return &srv, nil
 }
@@ -222,6 +220,27 @@ func setTemplates(srv *Server, tpls *template.Template) error {
 		return err
 	}
 	srv.VerifyEmailTemplate = vtpl
+
+	return nil
+}
+
+func setEmailer(srv *Server, emailerConfigFile, emailTemplateDir string) error {
+	cfg, err := email.NewEmailerConfigFromFile(emailerConfigFile)
+	if err != nil {
+		return err
+	}
+
+	emailer, err := cfg.Emailer()
+	if err != nil {
+		return err
+	}
+
+	tMailer, err := email.NewTemplatizedEmailerFromGlobs(emailTemplateDir+"/*.txt", emailTemplateDir+"/*.html", emailer)
+	if err != nil {
+		return err
+	}
+
+	srv.Emailer = tMailer
 
 	return nil
 }

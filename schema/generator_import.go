@@ -9,4 +9,4 @@ package schema
 // 3. Run `godep save` as usual across the entire project (e.g. `godep save ./...`)
 // 4. Revert this file (i.e. comment the line again, and revert to the original import) as it may not build properly
 
-//import _ "google.golang.org/api/google-api-go-generator"
+// import _ "google.golang.org/api/google-api-go-generator"

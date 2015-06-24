@@ -53,6 +53,14 @@
 			"Rev": "7175accbed18058468c07811f76440d6e8d7cf19"
 		},
 		{
+			"ImportPath": "github.com/mailgun/mailgun-go",
+			"Rev": "9578dc67692294bb7e2a6f4b15dd18c97af19440"
+		},
+		{
+			"ImportPath": "github.com/mbanzon/simplehttp",
+			"Rev": "04c542e7ac706a25820090f274ea6a4f39a63326"
+		},
+		{
 			"ImportPath": "golang.org/x/crypto/bcrypt",
 			"Rev": "1fbbd62cfec66bd39d91e97749579579d4d3037e"
 		},
@@ -63,10 +71,6 @@
 		{
 			"ImportPath": "golang.org/x/net/html",
 			"Rev": "dfe268fd2bb5c793f4c083803609fce9806c6f80"
-		},
-		{
-			"ImportPath": "google.golang.org/api/google-api-go-generator",
-			"Rev": "d3edb0282bde692467788c50070a9211afe75cf3"
 		},
 		{
 			"ImportPath": "google.golang.org/api/googleapi",

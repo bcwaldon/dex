@@ -26,14 +26,15 @@ const (
 )
 
 var (
-	httpPathDiscovery   = "/.well-known/openid-configuration"
-	httpPathToken       = "/token"
-	httpPathKeys        = "/keys"
-	httpPathAuth        = "/auth"
-	httpPathHealth      = "/health"
-	httpPathAPI         = "/api"
-	httpPathRegister    = "/register"
-	httpPathEmailVerify = "/verify-email"
+	httpPathDiscovery         = "/.well-known/openid-configuration"
+	httpPathToken             = "/token"
+	httpPathKeys              = "/keys"
+	httpPathAuth              = "/auth"
+	httpPathHealth            = "/health"
+	httpPathAPI               = "/api"
+	httpPathRegister          = "/register"
+	httpPathEmailVerify       = "/verify-email"
+	httpPathVerifyEmailResend = "/resend-verify-email"
 )
 
 func handleDiscoveryFunc(cfg oidc.ProviderConfig) http.HandlerFunc {

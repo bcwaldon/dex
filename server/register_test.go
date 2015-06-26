@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -10,113 +9,10 @@ import (
 
 	"github.com/kylelemons/godebug/pretty"
 
-	"github.com/coreos-inc/auth/connector"
-	"github.com/coreos-inc/auth/email"
-	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/oidc"
 	"github.com/coreos-inc/auth/pkg/html"
-	"github.com/coreos-inc/auth/session"
 	"github.com/coreos-inc/auth/user"
 )
-
-const (
-	templatesLocation      = "../static/html"
-	emailTemplatesLocation = "../static/email"
-)
-
-type testFixtures struct {
-	srv            *Server
-	userRepo       user.UserRepo
-	sessionManager *session.SessionManager
-	redirectURL    url.URL
-}
-
-func sequentialGenerateCodeFunc() session.GenerateCodeFunc {
-	x := 0
-	return func() (string, error) {
-		x += 1
-		return fmt.Sprintf("code-%d", x), nil
-	}
-}
-
-func makeTestFixtures() (*testFixtures, error) {
-	issuerURL := url.URL{Scheme: "http", Host: "server.example.com"}
-	userRepo := user.NewUserRepo()
-	pwRepo := user.NewPasswordInfoRepo()
-	manager := user.NewManager(userRepo, pwRepo, user.ManagerOptions{})
-
-	tpl, err := getTemplates(templatesLocation)
-	if err != nil {
-		return nil, err
-	}
-	rtpl, err := findTemplate(RegisterTemplateName, tpl)
-	if err != nil {
-		return nil, err
-	}
-
-	redirectURL := url.URL{Scheme: "http", Host: "client.example.com", Path: "/callback"}
-
-	connConfigs := []connector.ConnectorConfig{
-		&connector.OIDCConnectorConfig{
-			ID:           "oidc",
-			IssuerURL:    issuerURL.String(),
-			ClientID:     "12345",
-			ClientSecret: "567789",
-		},
-		&connector.LocalConnectorConfig{
-			ID: "local",
-		},
-	}
-
-	sessionManager := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())
-	sessionManager.GenerateCode = sequentialGenerateCodeFunc()
-
-	emailer, err := email.NewTemplatizedEmailerFromGlobs(
-		emailTemplatesLocation+"/*.txt",
-		emailTemplatesLocation+"/*.html",
-		email.FakeEmailer{})
-	if err != nil {
-		return nil, err
-	}
-
-	srv := &Server{
-		IssuerURL:      issuerURL,
-		SessionManager: sessionManager,
-		ClientIdentityRepo: NewClientIdentityRepo([]oidc.ClientIdentity{
-			oidc.ClientIdentity{
-				Credentials: oidc.ClientCredentials{
-					ID:     "XXX",
-					Secret: "secrete",
-				},
-				Metadata: oidc.ClientMetadata{
-					RedirectURLs: []url.URL{
-						redirectURL,
-					},
-				},
-			},
-		}),
-		Templates:        tpl,
-		UserRepo:         userRepo,
-		PasswordInfoRepo: pwRepo,
-		UserManager:      manager,
-		RegisterTemplate: rtpl,
-		Emailer:          emailer,
-		KeyManager:       key.NewPrivateKeyManager(),
-	}
-
-	for _, config := range connConfigs {
-		if err := srv.AddConnector(config); err != nil {
-			return nil, err
-		}
-	}
-
-	return &testFixtures{
-		srv:            srv,
-		redirectURL:    redirectURL,
-		userRepo:       userRepo,
-		sessionManager: sessionManager,
-	}, nil
-}
 
 func TestHandleRegister(t *testing.T) {
 

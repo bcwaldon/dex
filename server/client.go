@@ -7,10 +7,17 @@ import (
 	"io"
 	"io/ioutil"
 	"net/url"
+	"reflect"
 	"sort"
 
 	"github.com/coreos-inc/auth/oidc"
 	pcrypto "github.com/coreos-inc/auth/pkg/crypto"
+)
+
+var (
+	ErrorInvalidRedirectURL    = errors.New("not a valid redirect url for the given client")
+	ErrorCantChooseRedirectURL = errors.New("must provide a redirect url; client has many")
+	ErrorNoValidRedirectURLs   = errors.New("no valid redirect URLs for this client.")
 )
 
 type ClientIdentityRepo interface {
@@ -161,4 +168,29 @@ func (ci *clientIdentity) UnmarshalJSON(data []byte) error {
 	}
 
 	return nil
+}
+
+// ValidRedirectURL returns the passed in URL if it is present in the redirectURLs list, and returns an error otherwise.
+// If nil is passed in as the rURL and there is only one URL in redirectURLs,
+// that URL will be returned. If nil is passed but theres >1 URL in the slice,
+// then an error is returned.
+func ValidRedirectURL(rURL *url.URL, redirectURLs []url.URL) (url.URL, error) {
+	if len(redirectURLs) == 0 {
+		return url.URL{}, ErrorNoValidRedirectURLs
+	}
+
+	if rURL == nil {
+		if len(redirectURLs) > 1 {
+			return url.URL{}, ErrorCantChooseRedirectURL
+		}
+
+		return redirectURLs[0], nil
+	}
+
+	for _, ru := range redirectURLs {
+		if reflect.DeepEqual(ru, *rURL) {
+			return ru, nil
+		}
+	}
+	return url.URL{}, ErrorInvalidRedirectURL
 }

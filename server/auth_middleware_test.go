@@ -136,3 +136,64 @@ func TestClientToken(t *testing.T) {
 		}
 	}
 }
+
+func TestGetClientIDFromAuthorizedRequest(t *testing.T) {
+	now := time.Now()
+	tomorrow := now.Add(24 * time.Hour)
+
+	privKey, err := key.GeneratePrivateKey()
+	if err != nil {
+		t.Fatalf("Failed to generate private key, error=%v", err)
+	}
+
+	signer := privKey.Signer()
+
+	makeToken := func(iss, sub, aud string, iat, exp time.Time) string {
+		claims := oidc.NewClaims(iss, sub, aud, iat, exp)
+		jwt, err := jose.NewSignedJWT(claims, signer)
+		if err != nil {
+			t.Fatalf("Failed to generate JWT, error=%v", err)
+		}
+		return jwt.Encode()
+	}
+
+	tests := []struct {
+		header     string
+		wantClient string
+		wantErr    bool
+	}{
+		{
+			header:     fmt.Sprintf("BEARER %s", makeToken("iss", "CLIENT_ID", "", now, tomorrow)),
+			wantClient: "CLIENT_ID",
+			wantErr:    false,
+		},
+		{
+			header:  fmt.Sprintf("BEARER %s", makeToken("iss", "", "", now, tomorrow)),
+			wantErr: true,
+		},
+	}
+
+	for i, tt := range tests {
+		req := &http.Request{
+			Header: http.Header{
+				"Authorization": []string{tt.header},
+			},
+		}
+		gotClient, err := getClientIDFromAuthorizedRequest(req)
+		if tt.wantErr {
+			if err == nil {
+				t.Errorf("case %d: want non-nil err", i)
+			}
+			continue
+		}
+
+		if err != nil {
+			t.Errorf("case %d: got err: %q", i, err)
+			continue
+		}
+
+		if gotClient != tt.wantClient {
+			t.Errorf("case %d: want=%v, got=%v", i, tt.wantClient, gotClient)
+		}
+	}
+}

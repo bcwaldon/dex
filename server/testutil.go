@@ -41,10 +41,12 @@ var (
 )
 
 type testFixtures struct {
-	srv            *Server
-	userRepo       user.UserRepo
-	sessionManager *session.SessionManager
-	redirectURL    url.URL
+	srv                *Server
+	userRepo           user.UserRepo
+	sessionManager     *session.SessionManager
+	emailer            *email.TemplatizedEmailer
+	redirectURL        url.URL
+	clientIdentityRepo ClientIdentityRepo
 }
 
 func sequentialGenerateCodeFunc() session.GenerateCodeFunc {
@@ -92,29 +94,31 @@ func makeTestFixtures() (*testFixtures, error) {
 		return nil, err
 	}
 
-	srv := &Server{
-		IssuerURL:      testIssuerURL,
-		SessionManager: sessionManager,
-		ClientIdentityRepo: NewClientIdentityRepo([]oidc.ClientIdentity{
-			oidc.ClientIdentity{
-				Credentials: oidc.ClientCredentials{
-					ID:     "XXX",
-					Secret: testClientSecret,
-				},
-				Metadata: oidc.ClientMetadata{
-					RedirectURLs: []url.URL{
-						testRedirectURL,
-					},
+	clientIdentityRepo := NewClientIdentityRepo([]oidc.ClientIdentity{
+		oidc.ClientIdentity{
+			Credentials: oidc.ClientCredentials{
+				ID:     "XXX",
+				Secret: testClientSecret,
+			},
+			Metadata: oidc.ClientMetadata{
+				RedirectURLs: []url.URL{
+					testRedirectURL,
 				},
 			},
-		}),
-		Templates:        tpl,
-		UserRepo:         userRepo,
-		PasswordInfoRepo: pwRepo,
-		UserManager:      manager,
-		RegisterTemplate: rtpl,
-		Emailer:          emailer,
-		KeyManager:       key.NewPrivateKeyManager(),
+		},
+	})
+
+	srv := &Server{
+		IssuerURL:          testIssuerURL,
+		SessionManager:     sessionManager,
+		ClientIdentityRepo: clientIdentityRepo,
+		Templates:          tpl,
+		UserRepo:           userRepo,
+		PasswordInfoRepo:   pwRepo,
+		UserManager:        manager,
+		RegisterTemplate:   rtpl,
+		Emailer:            emailer,
+		KeyManager:         key.NewPrivateKeyManager(),
 	}
 
 	for _, config := range connConfigs {
@@ -124,9 +128,11 @@ func makeTestFixtures() (*testFixtures, error) {
 	}
 
 	return &testFixtures{
-		srv:            srv,
-		redirectURL:    testRedirectURL,
-		userRepo:       userRepo,
-		sessionManager: sessionManager,
+		srv:                srv,
+		redirectURL:        testRedirectURL,
+		userRepo:           userRepo,
+		sessionManager:     sessionManager,
+		emailer:            emailer,
+		clientIdentityRepo: clientIdentityRepo,
 	}, nil
 }

@@ -10,8 +10,8 @@ import (
 	"github.com/coreos-inc/auth/server"
 	"github.com/coreos-inc/auth/user"
 
-	"github.com/coreos-inc/auth/Godeps/_workspace/src/google.golang.org/api/googleapi"
 	"github.com/kylelemons/godebug/pretty"
+	"google.golang.org/api/googleapi"
 )
 
 type testFixtures struct {

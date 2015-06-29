@@ -30,4 +30,5 @@ Godeps/_workspace/src/github.com/coreos-inc/auth
 static/fixtures/env.txt
 static/fixtures/connectors.json
 static/fixtures/users.json
+static/fixtures/emailer.json
 gopath/

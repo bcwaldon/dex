@@ -22,6 +22,7 @@ type Connector interface {
 	health.Checkable
 }
 
+//go:generate genconfig -o config.go connector Connector
 type ConnectorConfig interface {
 	ConnectorID() string
 	ConnectorType() string

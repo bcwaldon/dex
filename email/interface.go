@@ -1,14 +1,25 @@
 package email
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"strings"
+)
+
+const (
+	FakeEmailerType = "fake"
 )
 
 var (
 	ErrorNoTemplate = errors.New("No HTML or Text template found for template name.")
 )
+
+func init() {
+	RegisterEmailerConfigType(FakeEmailerType, func() EmailerConfig { return &FakeEmailerConfig{} })
+}
 
 // Emailer is an object that sends emails.
 type Emailer interface {
@@ -16,6 +27,55 @@ type Emailer interface {
 	// At least one of "text" or "html" must not be blank. If text is blank, but
 	// html is not, then an html-only email should be sent and vice-versal.
 	SendMail(from, subject, text, html string, to ...string) error
+}
+
+//go:generate genconfig -o config.go email Emailer
+type EmailerConfig interface {
+	EmailerID() string
+	EmailerType() string
+	Emailer() (Emailer, error)
+}
+
+func newEmailerConfigFromReader(r io.Reader) (EmailerConfig, error) {
+	var m map[string]interface{}
+	if err := json.NewDecoder(r).Decode(&m); err != nil {
+		return nil, err
+	}
+	cfg, err := newEmailerConfigFromMap(m)
+	if err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
+func NewEmailerConfigFromFile(loc string) (EmailerConfig, error) {
+	cf, err := os.Open(loc)
+	if err != nil {
+		return nil, err
+	}
+	defer cf.Close()
+
+	cfg, err := newEmailerConfigFromReader(cf)
+	if err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
+type FakeEmailerConfig struct {
+	ID string `json:"id"`
+}
+
+func (cfg FakeEmailerConfig) EmailerType() string {
+	return FakeEmailerType
+}
+
+func (cfg FakeEmailerConfig) EmailerID() string {
+	return cfg.ID
+}
+
+func (cfg FakeEmailerConfig) Emailer() (Emailer, error) {
+	return FakeEmailer{}, nil
 }
 
 // FakeEmailer is an Emailer that writes emails to stdout. Should only be used in development.

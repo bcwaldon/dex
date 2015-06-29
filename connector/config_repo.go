@@ -2,7 +2,6 @@ package connector
 
 import (
 	"encoding/json"
-	"errors"
 	"io"
 	"os"
 )
@@ -21,29 +20,6 @@ func newConnectorConfigsFromReader(r io.Reader) ([]ConnectorConfig, error) {
 		cfgs[i] = cfg
 	}
 	return cfgs, nil
-}
-
-func newConnectorConfigFromMap(m map[string]interface{}) (ConnectorConfig, error) {
-	ityp, ok := m["type"]
-	if !ok {
-		return nil, errors.New("connector config type not set")
-	}
-	typ, ok := ityp.(string)
-	if !ok {
-		return nil, errors.New("connector config type not string")
-	}
-	cfg, err := NewConnectorConfigFromType(typ)
-	if err != nil {
-		return nil, err
-	}
-	b, err := json.Marshal(m)
-	if err != nil {
-		return nil, err
-	}
-	if err = json.Unmarshal(b, cfg); err != nil {
-		return nil, err
-	}
-	return cfg, nil
 }
 
 func NewConnectorConfigRepoFromFile(loc string) (ConnectorConfigRepo, error) {

@@ -21,6 +21,7 @@ func main() {
 	templates := fs.String("html-assets", "./static/html", "directory of html template files")
 	emailTemplates := fs.String("email-templates", "./static/email", "directory of email template files")
 	emailFrom := fs.String("email-from", "no-reply@coreos.com", "emails sent from authd will come from this address")
+	emailConfig := fs.String("email-cfg", "./static/fixtures/emailer.json", "configures emailer.")
 
 	noDB := fs.Bool("no-db", false, "manage entities in-process w/o any encryption, used only for single-node testing")
 
@@ -68,13 +69,14 @@ func main() {
 	if *noDB {
 		log.Warning("Running in-process without external database or key rotation")
 		scfg = &server.SingleServerConfig{
-			IssuerURL:        *issuer,
-			TemplateDir:      *templates,
-			EmailTemplateDir: *emailTemplates,
-			ClientsFile:      *clients,
-			ConnectorsFile:   *connectors,
-			UsersFile:        *users,
-			EmailFromAddress: *emailFrom,
+			IssuerURL:         *issuer,
+			TemplateDir:       *templates,
+			EmailTemplateDir:  *emailTemplates,
+			ClientsFile:       *clients,
+			ConnectorsFile:    *connectors,
+			UsersFile:         *users,
+			EmailFromAddress:  *emailFrom,
+			EmailerConfigFile: *emailConfig,
 		}
 	} else {
 		if *dbMaxIdleConns == 0 {
@@ -89,12 +91,13 @@ func main() {
 			MaxOpenConnections: *dbMaxOpenConns,
 		}
 		scfg = &server.MultiServerConfig{
-			IssuerURL:        *issuer,
-			TemplateDir:      *templates,
-			KeySecret:        *keySecret,
-			DatabaseConfig:   dbCfg,
-			EmailTemplateDir: *emailTemplates,
-			EmailFromAddress: *emailFrom,
+			IssuerURL:         *issuer,
+			TemplateDir:       *templates,
+			KeySecret:         *keySecret,
+			DatabaseConfig:    dbCfg,
+			EmailTemplateDir:  *emailTemplates,
+			EmailFromAddress:  *emailFrom,
+			EmailerConfigFile: *emailConfig,
 		}
 	}
 

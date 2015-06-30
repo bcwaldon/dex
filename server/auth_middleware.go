@@ -1,6 +1,8 @@
 package server
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/coreos-inc/auth/key"
@@ -79,4 +81,26 @@ func (c *clientTokenMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request
 
 	log.Infof("Authenticated token for client ID %s", clientID)
 	c.next.ServeHTTP(w, r)
+}
+
+// getClientIDFromAuthorizedRequest will extract the clientID from the bearer token.
+func getClientIDFromAuthorizedRequest(r *http.Request) (string, error) {
+	jwt, err := oidc.ParseTokenFromRequest(r)
+	if err != nil {
+		return "", err
+	}
+
+	claims, err := jwt.Claims()
+	if err != nil {
+		return "", err
+	}
+
+	sub, ok, err := claims.StringClaim("sub")
+	if err != nil {
+		return "", fmt.Errorf("failed to parse 'sub' claim: %v", err)
+	} else if !ok || sub == "" {
+		return "", errors.New("missing required 'sub' claim")
+	}
+
+	return sub, nil
 }

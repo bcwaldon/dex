@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path"
 	"time"
 
 	"github.com/coreos-inc/auth/oidc"
@@ -23,6 +22,7 @@ var (
 func main() {
 	fs := flag.NewFlagSet("oidc-app", flag.ExitOnError)
 	listen := fs.String("listen", "http://127.0.0.1:5555", "")
+	redirectURL := fs.String("redirect-url", "http://127.0.0.1:5555/callback", "")
 	clientID := fs.String("client-id", "", "")
 	clientSecret := fs.String("client-secret", "", "")
 	discovery := fs.String("discovery", "https://accounts.google.com", "")
@@ -64,9 +64,6 @@ func main() {
 		log.Fatalf("Unable to parse host from --listen flag: %v", err)
 	}
 
-	redirectURL := l
-	redirectURL.Path = path.Join(redirectURL.Path, pathCallback)
-
 	cc := oidc.ClientCredentials{
 		ID:     *clientID,
 		Secret: *clientSecret,
@@ -89,7 +86,7 @@ func main() {
 	ccfg := oidc.ClientConfig{
 		ProviderConfig: cfg,
 		Credentials:    cc,
-		RedirectURL:    redirectURL.String(),
+		RedirectURL:    *redirectURL,
 	}
 
 	client, err := oidc.NewClient(ccfg)

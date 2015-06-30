@@ -128,7 +128,7 @@ func TestHandleVerifyEmailResend(t *testing.T) {
 		u := "http://example.com"
 		q := struct {
 			Token       string `json:"token"`
-			RedirectURI string `json:"redirect_uri"`
+			RedirectURI string `json:"redirectURI"`
 		}{
 			Token:       tt.userJWT,
 			RedirectURI: tt.redirectURL.String(),

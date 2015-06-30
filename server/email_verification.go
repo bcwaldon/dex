@@ -34,7 +34,7 @@ func handleVerifyEmailResendFunc(
 		decoder := json.NewDecoder(r.Body)
 		var params struct {
 			Token       string `json:"token"`
-			RedirectURI string `json:"redirect_uri"`
+			RedirectURI string `json:"redirectURI"`
 		}
 		err := decoder.Decode(&params)
 		if err != nil {

@@ -95,11 +95,13 @@ func handleKeysFunc(km key.PrivateKeyManager, clock clockwork.Clock) http.Handle
 }
 
 type templateData struct {
-	Error       bool
-	Message     string
-	Instruction string
-	Detail      string
-	Links       []struct {
+	Error              bool
+	Message            string
+	Instruction        string
+	Detail             string
+	Register           bool
+	RegisterOrLoginURL string
+	Links              []struct {
 		URL string
 		ID  string
 	}
@@ -117,7 +119,7 @@ func execTemplateWithStatus(w http.ResponseWriter, tpl *template.Template, data 
 	}
 }
 
-func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idpcs []connector.Connector, tpl *template.Template) {
+func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idpcs []connector.Connector, register bool, tpl *template.Template) {
 	if tpl == nil {
 		phttp.WriteError(w, http.StatusInternalServerError, "error loading login page")
 		return
@@ -126,6 +128,7 @@ func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idp
 	td := templateData{
 		Message:     "Error",
 		Instruction: "Please try again or contact the system administrator",
+		Register:    register,
 	}
 
 	// Render error if remote IdP connector errored and redirected here.
@@ -179,6 +182,18 @@ func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idp
 		ID  string
 	}, len(idpcs))
 
+	link := *r.URL
+	if !register {
+		q := link.Query()
+		q.Set("register", "1")
+		link.RawQuery = q.Encode()
+	} else {
+		q := link.Query()
+		q.Del("register")
+		link.RawQuery = q.Encode()
+	}
+	td.RegisterOrLoginURL = link.String()
+
 	n := 0
 	for _, idpc := range idpcs {
 		td.Links[n].ID = idpc.ID()
@@ -203,20 +218,21 @@ func handleAuthFunc(srv OIDCServer, idpcs []connector.Connector, tpl *template.T
 		}
 
 		q := r.URL.Query()
+		register := q.Get("register") == "1"
 		e := q.Get("error")
 		if e != "" {
 			sessionKey := q.Get("state")
 			if err := srv.KillSession(sessionKey); err != nil {
 				log.Errorf("Failed killing sessionKey %q: %v", sessionKey, err)
 			}
-			renderLoginPage(w, r, srv, idpcs, tpl)
+			renderLoginPage(w, r, srv, idpcs, register, tpl)
 			return
 		}
 
 		connectorID := q.Get("connector_id")
 		idpc, ok := idx[connectorID]
 		if !ok {
-			renderLoginPage(w, r, srv, idpcs, tpl)
+			renderLoginPage(w, r, srv, idpcs, register, tpl)
 			return
 		}
 
@@ -268,7 +284,6 @@ func handleAuthFunc(srv OIDCServer, idpcs []connector.Connector, tpl *template.T
 			return
 		}
 
-		register := q.Get("register") == "1"
 		key, err := srv.NewSession(connectorID, acr.ClientID, acr.State, redirectURL, register)
 		if err != nil {
 			redirectAuthError(w, err, acr.State, redirectURL)

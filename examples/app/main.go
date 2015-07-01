@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net"
@@ -96,7 +98,7 @@ func main() {
 
 	client.SyncProviderConfig(*discovery)
 
-	hdlr := NewClientHandler(client)
+	hdlr := NewClientHandler(client, *discovery, *redirectURL)
 	httpsrv := &http.Server{
 		Addr:    fmt.Sprintf(":%s", p),
 		Handler: hdlr,
@@ -106,12 +108,23 @@ func main() {
 	log.Fatal(httpsrv.ListenAndServe())
 }
 
-func NewClientHandler(c *oidc.Client) http.Handler {
+func NewClientHandler(c *oidc.Client, issuer string, cbURL url.URL) http.Handler {
 	mux := http.NewServeMux()
+
+	issuerURL, err := url.Parse(issuer)
+	if err != nil {
+		log.Fatalf("Could not parse issuer url: %v", err)
+	}
+
 	mux.HandleFunc("/", handleIndex)
 	mux.HandleFunc("/login", handleLoginFunc(c))
 	mux.HandleFunc("/register", handleRegisterFunc(c))
 	mux.HandleFunc(pathCallback, handleCallbackFunc(c))
+
+	resendURL := *issuerURL
+	resendURL.Path = "/resend-verify-email"
+
+	mux.HandleFunc("/resend", handleResendFunc(c, *issuerURL, resendURL, cbURL))
 	return mux
 }
 
@@ -155,6 +168,40 @@ func handleRegisterFunc(c *oidc.Client) http.HandlerFunc {
 	}
 }
 
+func handleResendFunc(c *oidc.Client, issuerURL, resendURL, cbURL url.URL) http.HandlerFunc {
+	trans := &oidc.AuthenticatedTransport{
+		TokenRefresher: &oidc.ClientCredsTokenRefresher{
+			Issuer:     issuerURL.String(),
+			OIDCClient: c,
+		},
+		RoundTripper: http.DefaultTransport,
+	}
+	hc := &http.Client{Transport: trans}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		err := r.ParseForm()
+		if err != nil {
+			panic("unable to proceed")
+		}
+
+		tok := r.Form.Get("jwt")
+		q := struct {
+			Token       string `json:"token"`
+			RedirectURI string `json:"redirectURI"`
+		}{
+			Token:       tok,
+			RedirectURI: cbURL.String(),
+		}
+		qBytes, err := json.Marshal(&q)
+		res, err := hc.Post(resendURL.String(), "application/json", bytes.NewReader(qBytes))
+		if err != nil {
+			log.Fatalf("error requesting email resend:", err)
+		}
+
+		w.Write([]byte(fmt.Sprintf("Status from AuthD: %v", res.Status)))
+	}
+}
+
 func handleCallbackFunc(c *oidc.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		code := r.URL.Query().Get("code")
@@ -175,6 +222,9 @@ func handleCallbackFunc(c *oidc.Client) http.HandlerFunc {
 			return
 		}
 
-		w.Write([]byte(fmt.Sprintf("OK: %v", claims)))
+		s := fmt.Sprintf(`<html><body>Claims: %v <br>
+        <a href="/resend?jwt=%s">Resend Verification Email</a>
+</body></html>`, claims, tok.Encode())
+		w.Write([]byte(s))
 	}
 }

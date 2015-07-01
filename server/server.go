@@ -189,6 +189,16 @@ func (s *Server) HTTPHandler() http.Handler {
 	mux.HandleFunc(httpPathRegister, handleRegisterFunc(s))
 	mux.HandleFunc(httpPathEmailVerify, handleEmailVerifyFunc(s.VerifyEmailTemplate,
 		s.IssuerURL, s.KeyManager.PublicKeys, s.UserManager))
+	mux.Handle(httpPathVerifyEmailResend, s.NewClientTokenAuthHandler(handleVerifyEmailResendFunc(s.IssuerURL,
+		s.absURL(httpPathEmailVerify),
+		s.SessionManager.ValidityWindow,
+		s.KeyManager.PublicKeys,
+		s.KeyManager.Signer,
+		s.Emailer,
+		s.EmailFromAddress,
+		s.UserRepo,
+		s.ClientIdentityRepo)))
+
 	pcfg := s.ProviderConfig()
 	for _, idpc := range s.Connectors {
 		errorURL, err := url.Parse(fmt.Sprintf("%s?connector_id=%s", pcfg.AuthEndpoint, idpc.ID()))
@@ -202,15 +212,19 @@ func (s *Server) HTTPHandler() http.Handler {
 	registerDiscoveryResource(apiBasePath, mux)
 
 	clientPath, clientHandler := registerClientResource(apiBasePath, s.ClientIdentityRepo)
-	ca := &clientTokenMiddleware{
+	mux.Handle(path.Join(apiBasePath, clientPath), s.NewClientTokenAuthHandler(clientHandler))
+
+	return http.Handler(mux)
+}
+
+// NewClientTokenAuthHandler returns the given handler wrapped in middleware which requires a Client Bearer token.
+func (s *Server) NewClientTokenAuthHandler(handler http.Handler) http.Handler {
+	return &clientTokenMiddleware{
 		issuerURL: s.IssuerURL.String(),
 		ciRepo:    s.ClientIdentityRepo,
 		keysFunc:  s.KeyManager.PublicKeys,
-		next:      clientHandler,
+		next:      handler,
 	}
-	mux.Handle(path.Join(apiBasePath, clientPath), ca)
-
-	return http.Handler(mux)
 }
 
 func (s *Server) ClientMetadata(clientID string) (*oidc.ClientMetadata, error) {

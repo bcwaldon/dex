@@ -98,7 +98,11 @@ func main() {
 
 	client.SyncProviderConfig(*discovery)
 
-	hdlr := NewClientHandler(client, *discovery, *redirectURL)
+	redirectURLParsed, err := url.Parse(*redirectURL)
+	if err != nil {
+		log.Fatalf("Unable to parse url from --redirect-url flag: %v", err)
+	}
+	hdlr := NewClientHandler(client, *discovery, *redirectURLParsed)
 	httpsrv := &http.Server{
 		Addr:    fmt.Sprintf(":%s", p),
 		Handler: hdlr,

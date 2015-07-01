@@ -148,7 +148,11 @@
         {{ if .Error }}
           <h2 id="heading">{{ .Message }}</h2>
         {{ else }}
-          <h2 id="heading">Verify Your Identity</h2>
+          {{ if .Register }}
+            <h2 id="heading">Create Your Account</h2>
+          {{ else }}
+            <h2 id="heading">Verify Your Identity</h2>
+          {{ end}}
         {{ end }}
         <div id="button-container">
 
@@ -171,6 +175,11 @@
         </div>
       </div>
 
+      {{ if .Register }}
+        Already have an account? <a href="{{ .RegisterOrLoginURL }}">Log in</a>
+      {{ else }}
+        Don't have an account yet? <a href="{{ .RegisterOrLoginURL }}">Register</a>
+      {{ end }}
       <a id="contact-link" href="mailto:support@coreos.com">Contact CoreOS</a>
     </div>
 

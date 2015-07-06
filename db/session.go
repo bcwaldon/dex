@@ -172,7 +172,7 @@ func (r *SessionRepo) Update(s session.Session) error {
 func (r *SessionRepo) purge() error {
 	qt := pq.QuoteIdentifier(sessionTableName)
 	q := fmt.Sprintf("DELETE FROM %s WHERE expiresAt < $1 OR state = $2", qt)
-	res, err := r.dbMap.Exec(q, r.clock.Now().UTC(), string(session.SessionStateDead))
+	res, err := r.dbMap.Exec(q, r.clock.Now().Unix(), string(session.SessionStateDead))
 	if err != nil {
 		return err
 	}

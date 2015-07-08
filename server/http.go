@@ -35,6 +35,8 @@ var (
 	httpPathRegister          = "/register"
 	httpPathEmailVerify       = "/verify-email"
 	httpPathVerifyEmailResend = "/resend-verify-email"
+	httpPathSendResetPassword = "/send-reset-password"
+	httpPathResetPassword     = "/reset-password"
 )
 
 func handleDiscoveryFunc(cfg oidc.ProviderConfig) http.HandlerFunc {

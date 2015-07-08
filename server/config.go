@@ -214,6 +214,12 @@ func setTemplates(srv *Server, tpls *template.Template) error {
 	}
 	srv.VerifyEmailTemplate = vtpl
 
+	srtpl, err := findTemplate(SendResetPasswordEmailTemplateName, tpls)
+	if err != nil {
+		return err
+	}
+	srv.SendResetPasswordEmailTemplate = srtpl
+
 	return nil
 }
 

@@ -25,9 +25,10 @@ import (
 )
 
 const (
-	LoginPageTemplateName   = "login.html"
-	RegisterTemplateName    = "register.html"
-	VerifyEmailTemplateName = "verify-email.html"
+	LoginPageTemplateName              = "login.html"
+	RegisterTemplateName               = "register.html"
+	VerifyEmailTemplateName            = "verify-email.html"
+	SendResetPasswordEmailTemplateName = "send-reset-password.html"
 
 	APIVersion = "v1"
 )
@@ -42,23 +43,24 @@ type OIDCServer interface {
 }
 
 type Server struct {
-	IssuerURL           url.URL
-	KeyManager          key.PrivateKeyManager
-	KeySetRepo          key.PrivateKeySetRepo
-	SessionManager      *session.SessionManager
-	ClientIdentityRepo  ClientIdentityRepo
-	ConnectorConfigRepo connector.ConnectorConfigRepo
-	Templates           *template.Template
-	LoginTemplate       *template.Template
-	RegisterTemplate    *template.Template
-	VerifyEmailTemplate *template.Template
-	HealthChecks        []health.Checkable
-	Connectors          []connector.Connector
-	UserRepo            user.UserRepo
-	UserManager         *user.Manager
-	PasswordInfoRepo    user.PasswordInfoRepo
-	Emailer             *email.TemplatizedEmailer
-	EmailFromAddress    string
+	IssuerURL                      url.URL
+	KeyManager                     key.PrivateKeyManager
+	KeySetRepo                     key.PrivateKeySetRepo
+	SessionManager                 *session.SessionManager
+	ClientIdentityRepo             ClientIdentityRepo
+	ConnectorConfigRepo            connector.ConnectorConfigRepo
+	Templates                      *template.Template
+	LoginTemplate                  *template.Template
+	RegisterTemplate               *template.Template
+	VerifyEmailTemplate            *template.Template
+	SendResetPasswordEmailTemplate *template.Template
+	HealthChecks                   []health.Checkable
+	Connectors                     []connector.Connector
+	UserRepo                       user.UserRepo
+	UserManager                    *user.Manager
+	PasswordInfoRepo               user.PasswordInfoRepo
+	Emailer                        *email.TemplatizedEmailer
+	EmailFromAddress               string
 }
 
 func (s *Server) Run() chan struct{} {
@@ -198,6 +200,18 @@ func (s *Server) HTTPHandler() http.Handler {
 		s.EmailFromAddress,
 		s.UserRepo,
 		s.ClientIdentityRepo)))
+
+	mux.Handle(httpPathSendResetPassword, &SendResetPasswordEmailHandler{
+		tpl:         s.SendResetPasswordEmailTemplate,
+		emailer:     s.Emailer,
+		sm:          s.SessionManager,
+		cr:          s.ClientIdentityRepo,
+		ur:          s.UserRepo,
+		pwi:         s.PasswordInfoRepo,
+		issuerURL:   s.IssuerURL,
+		fromAddress: s.EmailFromAddress,
+		signerFunc:  s.KeyManager.Signer,
+	})
 
 	pcfg := s.ProviderConfig()
 	for _, idpc := range s.Connectors {

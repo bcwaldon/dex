@@ -9,6 +9,7 @@ import (
 
 	"github.com/coreos-inc/auth/email"
 	"github.com/coreos-inc/auth/jose"
+	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/session"
 	"github.com/coreos-inc/auth/user"
 )
@@ -210,4 +211,122 @@ func (h *SendResetPasswordEmailHandler) sendResetPasswordEmail(email, redirectUR
 		log.Errorf("error sending email: %q", err)
 	}
 	return nil
+}
+
+type resetPasswordTemplateData struct {
+	Error        string
+	Message      string
+	Token        string
+	DontShowForm bool
+	Success      bool
+}
+
+type ResetPasswordHandler struct {
+	tpl       *template.Template
+	issuerURL url.URL
+	um        *user.Manager
+	keysFunc  func() ([]key.PublicKey, error)
+}
+
+type resetPasswordRequest struct {
+	// A resetPasswordRequest starts with these objects.
+	h    *ResetPasswordHandler
+	r    *http.Request
+	w    http.ResponseWriter
+	data *resetPasswordTemplateData
+
+	// These get filled in by sub-handlers.
+	pwReset user.PasswordReset
+}
+
+func (h *ResetPasswordHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	req := &resetPasswordRequest{
+		h:    h,
+		r:    r,
+		w:    w,
+		data: &resetPasswordTemplateData{},
+	}
+	req.HandleRequest()
+}
+
+func (r *resetPasswordRequest) HandleRequest() {
+	switch r.r.Method {
+	case "GET":
+		r.handleGET()
+		return
+	case "POST":
+		r.handlePOST()
+		return
+	default:
+		writeAPIError(r.w, http.StatusMethodNotAllowed, newAPIError(errorInvalidRequest,
+			"method not allowed"))
+		return
+	}
+}
+
+func (r *resetPasswordRequest) handleGET() {
+	if !r.parseAndVerifyToken() {
+		return
+	}
+	execTemplate(r.w, r.h.tpl, r.data)
+}
+
+func (r *resetPasswordRequest) handlePOST() {
+	if !r.parseAndVerifyToken() {
+		return
+	}
+
+	plaintext := r.r.FormValue("password")
+	cbURL, err := r.h.um.ChangePassword(r.pwReset, plaintext)
+	if err != nil {
+		switch err {
+		case user.ErrorPasswordAlreadyChanged:
+			r.data.Error = "Link Expired.."
+			r.data.Message = "The link in your email is no longer valid. If you need to change your password, generate a new email."
+			r.data.DontShowForm = true
+			execTemplateWithStatus(r.w, r.h.tpl, r.data, http.StatusBadRequest)
+			return
+		case user.ErrorInvalidPassword:
+			r.data.Error = "Invalid Password."
+			r.data.Message = "Please choose a password which is at least six characters."
+			execTemplateWithStatus(r.w, r.h.tpl, r.data, http.StatusBadRequest)
+			return
+		default:
+			r.data.Error = "There's been an error processing your request."
+			r.data.Message = "Plesae try again later."
+			execTemplateWithStatus(r.w, r.h.tpl, r.data, http.StatusInternalServerError)
+			return
+		}
+
+	}
+	if cbURL == nil {
+		r.data.Success = true
+		execTemplate(r.w, r.h.tpl, r.data)
+		return
+	}
+
+	http.Redirect(r.w, r.r, cbURL.String(), http.StatusSeeOther)
+}
+
+func (r *resetPasswordRequest) parseAndVerifyToken() bool {
+	keys, err := r.h.keysFunc()
+	if err != nil {
+		r.data.Error = "There's been an error processing your request."
+		r.data.Message = "Plesae try again later."
+		execTemplateWithStatus(r.w, r.h.tpl, r.data, http.StatusInternalServerError)
+		return false
+	}
+
+	token := r.r.FormValue("token")
+	pwReset, err := user.ParseAndVerifyPasswordResetToken(token, r.h.issuerURL, keys)
+	if err != nil {
+		r.data.Error = "Bad Password Reset Token"
+		r.data.Message = "That was not a verifiable token."
+		r.data.DontShowForm = true
+		execTemplateWithStatus(r.w, r.h.tpl, r.data, http.StatusBadRequest)
+		return false
+	}
+	r.pwReset = pwReset
+	r.data.Token = token
+	return true
 }

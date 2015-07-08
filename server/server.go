@@ -29,6 +29,7 @@ const (
 	RegisterTemplateName               = "register.html"
 	VerifyEmailTemplateName            = "verify-email.html"
 	SendResetPasswordEmailTemplateName = "send-reset-password.html"
+	ResetPasswordTemplateName          = "reset-password.html"
 
 	APIVersion = "v1"
 )
@@ -54,6 +55,7 @@ type Server struct {
 	RegisterTemplate               *template.Template
 	VerifyEmailTemplate            *template.Template
 	SendResetPasswordEmailTemplate *template.Template
+	ResetPasswordTemplate          *template.Template
 	HealthChecks                   []health.Checkable
 	Connectors                     []connector.Connector
 	UserRepo                       user.UserRepo
@@ -191,6 +193,7 @@ func (s *Server) HTTPHandler() http.Handler {
 	mux.HandleFunc(httpPathRegister, handleRegisterFunc(s))
 	mux.HandleFunc(httpPathEmailVerify, handleEmailVerifyFunc(s.VerifyEmailTemplate,
 		s.IssuerURL, s.KeyManager.PublicKeys, s.UserManager))
+
 	mux.Handle(httpPathVerifyEmailResend, s.NewClientTokenAuthHandler(handleVerifyEmailResendFunc(s.IssuerURL,
 		s.absURL(httpPathEmailVerify),
 		s.SessionManager.ValidityWindow,
@@ -211,6 +214,13 @@ func (s *Server) HTTPHandler() http.Handler {
 		issuerURL:   s.IssuerURL,
 		fromAddress: s.EmailFromAddress,
 		signerFunc:  s.KeyManager.Signer,
+	})
+
+	mux.Handle(httpPathResetPassword, &ResetPasswordHandler{
+		tpl:       s.ResetPasswordTemplate,
+		issuerURL: s.IssuerURL,
+		um:        s.UserManager,
+		keysFunc:  s.KeyManager.PublicKeys,
 	})
 
 	pcfg := s.ProviderConfig()

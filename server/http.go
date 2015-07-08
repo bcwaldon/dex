@@ -116,6 +116,7 @@ func execTemplate(w http.ResponseWriter, tpl *template.Template, data interface{
 func execTemplateWithStatus(w http.ResponseWriter, tpl *template.Template, data interface{}, status int) {
 	w.WriteHeader(status)
 	if err := tpl.Execute(w, data); err != nil {
+		log.Errorf("Error loading page: %q", err)
 		phttp.WriteError(w, http.StatusInternalServerError, "error loading page")
 		return
 	}

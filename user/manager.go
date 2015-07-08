@@ -8,6 +8,8 @@ import (
 var (
 	ErrorEVEmailDoesntMatch   = errors.New("email in EV doesn't match user email")
 	ErrorEmailAlreadyVerified = errors.New("email already verified")
+
+	ErrorPasswordAlreadyChanged = errors.New("password has already been changed")
 )
 
 // Manager performs user-related "business-logic" functions on user and related objects.
@@ -146,4 +148,32 @@ func (m *Manager) VerifyEmail(ev EmailVerification) (*url.URL, error) {
 	}
 
 	return ev.callback(), nil
+}
+
+func (m *Manager) ChangePassword(pwr PasswordReset, plaintext string) (*url.URL, error) {
+	if !ValidPassword(plaintext) {
+		return nil, ErrorInvalidPassword
+	}
+
+	pwi, err := m.pwRepo.Get(pwr.userID())
+	if err != nil {
+		return nil, err
+	}
+
+	if string(pwi.Password) != string(pwr.password()) {
+		return nil, ErrorPasswordAlreadyChanged
+	}
+
+	newPass, err := NewPasswordFromPlaintext(plaintext)
+	if err != nil {
+		return nil, err
+	}
+
+	pwi.Password = newPass
+	err = m.pwRepo.Update(pwi)
+	if err != nil {
+		return nil, err
+	}
+
+	return pwr.callback(), nil
 }

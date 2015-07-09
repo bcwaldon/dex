@@ -308,7 +308,7 @@ func ParseAndVerifyPasswordResetToken(token string, issuer url.URL, keys []key.P
 
 }
 
-func (e PasswordReset) userID() string {
+func (e PasswordReset) UserID() string {
 	uid, ok, err := e.claims.StringClaim("sub")
 	if !ok || err != nil {
 		panic("PasswordReset: no sub claim. This should be impossible.")
@@ -316,7 +316,7 @@ func (e PasswordReset) userID() string {
 	return uid
 }
 
-func (e PasswordReset) password() Password {
+func (e PasswordReset) Password() Password {
 	pw, ok, err := e.claims.StringClaim(ClaimPasswordResetPassword)
 	if !ok || err != nil {
 		panic("PasswordReset: no password claim. This should be impossible.")
@@ -324,7 +324,7 @@ func (e PasswordReset) password() Password {
 	return Password(pw)
 }
 
-func (e PasswordReset) callback() *url.URL {
+func (e PasswordReset) Callback() *url.URL {
 	cb, ok, err := e.claims.StringClaim(ClaimPasswordResetCallback)
 	if err != nil {
 		panic("PasswordReset: error getting string claim. This should be impossible.")

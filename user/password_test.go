@@ -128,7 +128,7 @@ func TestNewPasswordReset(t *testing.T) {
 			t.Errorf("case %d: Compare(want, got): %v", i, diff)
 		}
 
-		if diff := pretty.Compare(ev.password(), password); diff != "" {
+		if diff := pretty.Compare(ev.Password(), password); diff != "" {
 			t.Errorf("case %d: Compare(want, got): %v", i, diff)
 		}
 	}

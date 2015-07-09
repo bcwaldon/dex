@@ -155,12 +155,12 @@ func (m *Manager) ChangePassword(pwr PasswordReset, plaintext string) (*url.URL,
 		return nil, ErrorInvalidPassword
 	}
 
-	pwi, err := m.pwRepo.Get(pwr.userID())
+	pwi, err := m.pwRepo.Get(pwr.UserID())
 	if err != nil {
 		return nil, err
 	}
 
-	if string(pwi.Password) != string(pwr.password()) {
+	if string(pwi.Password) != string(pwr.Password()) {
 		return nil, ErrorPasswordAlreadyChanged
 	}
 
@@ -175,5 +175,5 @@ func (m *Manager) ChangePassword(pwr PasswordReset, plaintext string) (*url.URL,
 		return nil, err
 	}
 
-	return pwr.callback(), nil
+	return pwr.Callback(), nil
 }

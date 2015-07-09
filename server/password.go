@@ -311,6 +311,7 @@ func (r *resetPasswordRequest) handlePOST() {
 func (r *resetPasswordRequest) parseAndVerifyToken() bool {
 	keys, err := r.h.keysFunc()
 	if err != nil {
+		log.Errorf("problem getting keys: %v", err)
 		r.data.Error = "There's been an error processing your request."
 		r.data.Message = "Plesae try again later."
 		execTemplateWithStatus(r.w, r.h.tpl, r.data, http.StatusInternalServerError)
@@ -320,6 +321,7 @@ func (r *resetPasswordRequest) parseAndVerifyToken() bool {
 	token := r.r.FormValue("token")
 	pwReset, err := user.ParseAndVerifyPasswordResetToken(token, r.h.issuerURL, keys)
 	if err != nil {
+		log.Errorf("Reset Password unverifiable token: %v", err)
 		r.data.Error = "Bad Password Reset Token"
 		r.data.Message = "That was not a verifiable token."
 		r.data.DontShowForm = true

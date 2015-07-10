@@ -101,6 +101,9 @@ func handleRegisterFunc(s *Server) http.HandlerFunc {
 		validate := r.Form.Get("validate") == "1"
 		formErrors := []formError{}
 		email := r.Form.Get("email")
+		if email == "" {
+			email = ses.Identity.Email
+		}
 		password := r.Form.Get("password")
 		if validate {
 			if email == "" {

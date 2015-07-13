@@ -97,6 +97,10 @@ func (c *LocalConnector) Sync() chan struct{} {
 	return make(chan struct{})
 }
 
+func (c *LocalConnector) TrustedEmailProvider() bool {
+	return false
+}
+
 func redirectPostError(w http.ResponseWriter, errorURL url.URL, q url.Values) {
 	redirectURL := phttp.MergeQuery(errorURL, q)
 	w.Header().Set("Location", redirectURL.String())

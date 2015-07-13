@@ -19,6 +19,9 @@ type Connector interface {
 	// repeatedly caching any remote resources for local use.
 	Sync() chan struct{}
 
+	// TrustedEmailProvider indicates whether or not we can trust that email claims coming from this provider.
+	TrustedEmailProvider() bool
+
 	health.Checkable
 }
 

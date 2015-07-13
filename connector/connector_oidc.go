@@ -22,10 +22,11 @@ func init() {
 }
 
 type OIDCConnectorConfig struct {
-	ID           string `json:"id"`
-	IssuerURL    string `json:"issuerURL"`
-	ClientID     string `json:"clientID"`
-	ClientSecret string `json:"clientSecret"`
+	ID                   string `json:"id"`
+	IssuerURL            string `json:"issuerURL"`
+	ClientID             string `json:"clientID"`
+	ClientSecret         string `json:"clientSecret"`
+	TrustedEmailProvider bool   `json:"trustedEmailProvider"`
 }
 
 func (cfg *OIDCConnectorConfig) ConnectorID() string {
@@ -37,11 +38,12 @@ func (cfg *OIDCConnectorConfig) ConnectorType() string {
 }
 
 type OIDCConnector struct {
-	id        string
-	issuerURL string
-	cbURL     url.URL
-	loginFunc oidc.LoginFunc
-	client    *oidc.Client
+	id                   string
+	issuerURL            string
+	cbURL                url.URL
+	loginFunc            oidc.LoginFunc
+	client               *oidc.Client
+	trustedEmailProvider bool
 }
 
 func (cfg *OIDCConnectorConfig) Connector(ns url.URL, lf oidc.LoginFunc, tpls *template.Template) (Connector, error) {
@@ -61,11 +63,12 @@ func (cfg *OIDCConnectorConfig) Connector(ns url.URL, lf oidc.LoginFunc, tpls *t
 	}
 
 	idpc := &OIDCConnector{
-		id:        cfg.ID,
-		issuerURL: cfg.IssuerURL,
-		cbURL:     ns,
-		loginFunc: lf,
-		client:    cl,
+		id:                   cfg.ID,
+		issuerURL:            cfg.IssuerURL,
+		cbURL:                ns,
+		loginFunc:            lf,
+		client:               cl,
+		trustedEmailProvider: cfg.TrustedEmailProvider,
 	}
 	return idpc, nil
 }
@@ -93,6 +96,10 @@ func (c *OIDCConnector) Register(mux *http.ServeMux, errorURL url.URL) {
 
 func (c *OIDCConnector) Sync() chan struct{} {
 	return c.client.SyncProviderConfig(c.issuerURL)
+}
+
+func (c *OIDCConnector) TrustedEmailProvider() bool {
+	return c.trustedEmailProvider
 }
 
 func redirectError(w http.ResponseWriter, errorURL url.URL, q url.Values) {

@@ -98,12 +98,16 @@ func handleRegisterFunc(s *Server) http.HandlerFunc {
 		}
 		_, local := idpc.(*connector.LocalConnector)
 
+		// Does the email comes from a trusted provider?
+		trustedEmail := ses.Identity.Email != "" && idpc.TrustedEmailProvider()
 		validate := r.Form.Get("validate") == "1"
 		formErrors := []formError{}
 		email := r.Form.Get("email")
-		if email == "" {
+
+		if email == "" && r.Method == "GET" {
 			email = ses.Identity.Email
 		}
+
 		password := r.Form.Get("password")
 		if validate {
 			if email == "" {
@@ -113,6 +117,7 @@ func handleRegisterFunc(s *Server) http.HandlerFunc {
 				formErrors = append(formErrors, formError{"password", "Please supply a valid password"})
 			}
 		}
+
 		data := registerTemplateData{
 			Code:     code,
 			Email:    email,
@@ -120,14 +125,16 @@ func handleRegisterFunc(s *Server) http.HandlerFunc {
 			Local:    local,
 		}
 
-		if len(formErrors) > 0 || !validate {
+		if (len(formErrors) > 0 || !validate) && !trustedEmail {
+			// If there are form errors or this is the initial request
+			// (i.e. validate==false), and we are not going to auto-submit a
+			// trusted email, then show the form.
 			data.FormErrors = formErrors
 			if !validate {
 				execTemplate(w, tpl, data)
 			} else {
 				execTemplateWithStatus(w, tpl, data, http.StatusBadRequest)
 			}
-
 			return
 		}
 
@@ -139,10 +146,17 @@ func handleRegisterFunc(s *Server) http.HandlerFunc {
 				ses,
 				email, password)
 		} else {
+			if trustedEmail {
+				// in the case of a trusted email provider, make sure we are
+				// getting the email address from the session, not from the
+				// query string, to prevent forgeries.
+				email = ses.Identity.Email
+			}
 			userID, err = registerFromRemoteConnector(
 				s.UserManager,
 				ses,
-				email)
+				email,
+				trustedEmail)
 		}
 
 		if err != nil {
@@ -178,18 +192,20 @@ func handleRegisterFunc(s *Server) http.HandlerFunc {
 			goto Redirect
 		}
 
-		err = sendEmailVerification(usr,
-			ses.ClientID,
-			s.absURL(httpPathEmailVerify),
-			ses.RedirectURL,
-			s.SessionManager.ValidityWindow,
-			s.EmailFromAddress,
-			s.Emailer,
-			s.IssuerURL,
-			signer)
+		if !trustedEmail {
+			err = sendEmailVerification(usr,
+				ses.ClientID,
+				s.absURL(httpPathEmailVerify),
+				ses.RedirectURL,
+				s.SessionManager.ValidityWindow,
+				s.EmailFromAddress,
+				s.Emailer,
+				s.IssuerURL,
+				signer)
 
-		if err != nil {
-			log.Errorf("Error sending email verification: %v", err)
+			if err != nil {
+				log.Errorf("Error sending email verification: %v", err)
+			}
 		}
 
 	Redirect:
@@ -220,7 +236,7 @@ func registerFromLocalConnector(userManager *user.Manager, sessionManager *sessi
 	return userID, nil
 }
 
-func registerFromRemoteConnector(userManager *user.Manager, ses *session.Session, email string) (string, error) {
+func registerFromRemoteConnector(userManager *user.Manager, ses *session.Session, email string, emailVerified bool) (string, error) {
 	if ses.Identity.ID == "" {
 		return "", errors.New("No Identity found in session.")
 	}
@@ -228,7 +244,7 @@ func registerFromRemoteConnector(userManager *user.Manager, ses *session.Session
 		ConnectorID: ses.ConnectorID,
 		ID:          ses.Identity.ID,
 	}
-	userID, err := userManager.RegisterWithRemoteIdentity(email, false, rid)
+	userID, err := userManager.RegisterWithRemoteIdentity(email, emailVerified, rid)
 	if err != nil {
 		return "", err
 	}

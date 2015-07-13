@@ -78,6 +78,13 @@ func makeTestFixtures() (*testFixtures, error) {
 			ClientID:     "12345",
 			ClientSecret: "567789",
 		},
+		&connector.OIDCConnectorConfig{
+			ID:                   "oidc-trusted",
+			IssuerURL:            testIssuerURL.String(),
+			ClientID:             "12345-trusted",
+			ClientSecret:         "567789-trusted",
+			TrustedEmailProvider: true,
+		},
 		&connector.LocalConnectorConfig{
 			ID: "local",
 		},

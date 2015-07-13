@@ -303,8 +303,11 @@ func handleAuthFunc(srv OIDCServer, idpcs []connector.Connector, tpl *template.T
 		}
 
 		var p string
-		if shouldReprompt(r) {
-			p = "force"
+		if register {
+			p = "select_account consent"
+		}
+		if shouldReprompt(r) || register {
+			p = "select_account"
 		}
 		lu, err := idpc.LoginURL(key, p)
 		if err != nil {
@@ -413,7 +416,7 @@ func createLastSeenCookie() *http.Cookie {
 	}
 }
 
-// shouldReprompt determines if user should be re-prompted for login based on existance of a cookie.
+// shouldReprompt determines if user should be re-prompted for login based on existence of a cookie.
 func shouldReprompt(r *http.Request) bool {
 	_, err := r.Cookie("LastSeen")
 	if err == nil {

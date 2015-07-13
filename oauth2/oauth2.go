@@ -109,9 +109,10 @@ func (c *Client) AuthCodeURL(state, accessType, prompt string) string {
 	if strings.ToLower(accessType) == "offline" {
 		v.Set("access_type", "offline")
 	}
-	if strings.ToLower(prompt) == "force" {
-		v.Set("approval_prompt", "force")
+	if prompt != "" {
+		v.Set("prompt", prompt)
 	}
+
 	v.Set("response_type", "code")
 
 	q := v.Encode()

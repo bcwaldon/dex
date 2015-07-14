@@ -6,7 +6,6 @@ import (
 	"html/template"
 	"net/url"
 	"os"
-	"path"
 	"time"
 
 	"github.com/coreos-inc/auth/connector"
@@ -193,13 +192,7 @@ func (cfg *MultiServerConfig) Server() (*Server, error) {
 }
 
 func getTemplates(dir string) (*template.Template, error) {
-	files := []string{
-		path.Join(dir, LoginPageTemplateName),
-		path.Join(dir, RegisterTemplateName),
-		path.Join(dir, VerifyEmailTemplateName),
-		path.Join(dir, connector.LoginPageTemplateName),
-	}
-	return template.ParseFiles(files...)
+	return template.ParseGlob(dir + "/*.html")
 }
 
 func setTemplates(srv *Server, tpls *template.Template) error {

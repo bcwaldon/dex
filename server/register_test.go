@@ -78,6 +78,25 @@ func TestHandleRegister(t *testing.T) {
 			wantUserCreated: true,
 		},
 		{
+			// User comes in with a valid code, redirected from the connector,
+			// it's a trusted provider, but no email so no user created, and the
+			// form comes back with the code.
+			query: url.Values{
+				"code": []string{"code-3"},
+			},
+			connID:              "oidc-trusted",
+			remoteIdentityEmail: "",
+			attachRemote:        true,
+
+			wantStatus:      http.StatusOK,
+			wantUserCreated: false,
+			wantFormValues: url.Values{
+				"code":     str("code-4"),
+				"email":    str(""),
+				"validate": str("1"),
+			},
+		},
+		{
 			// User comes in with a valid code, having submitted the form, but
 			// has a invalid email.
 			query: url.Values{

@@ -61,10 +61,11 @@ type LocalConnector struct {
 }
 
 type Page struct {
-	PostURL string
-	Name    string
-	Error   bool
-	Message string
+	PostURL    string
+	Name       string
+	Error      bool
+	Message    string
+	SessionKey string
 }
 
 func (c *LocalConnector) ID() string {
@@ -109,7 +110,10 @@ func redirectPostError(w http.ResponseWriter, errorURL url.URL, q url.Values) {
 
 func handleLoginFunc(lf oidc.LoginFunc, tpl *template.Template, idp *LocalIdentityProvider, localErrorPath string, errorURL url.URL) http.HandlerFunc {
 	handleGET := func(w http.ResponseWriter, r *http.Request, errMsg string) {
-		p := &Page{PostURL: r.URL.String(), Name: "Local"}
+		q := r.URL.Query()
+		sessionKey := q.Get("session_key")
+
+		p := &Page{PostURL: r.URL.String(), Name: "Local", SessionKey: sessionKey}
 		if errMsg != "" {
 			p.Error = true
 			p.Message = errMsg

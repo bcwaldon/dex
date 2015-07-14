@@ -157,6 +157,7 @@
           <div>
             <form method="post" action="{{.PostURL}}">
               <div><input name="userid" type="text" class="input-box" placeholder="user id" autofocus/></div>
+              Forgot? <a href="/send-reset-password?session_key={{ .SessionKey }}">Reset Password</a>
               <div><input name="password" type="password" class="input-box" placeholder="password"/></div>
               <button type="submit" class="btn">
                 <span class="btn-icon">

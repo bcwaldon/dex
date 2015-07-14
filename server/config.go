@@ -214,6 +214,18 @@ func setTemplates(srv *Server, tpls *template.Template) error {
 	}
 	srv.VerifyEmailTemplate = vtpl
 
+	srtpl, err := findTemplate(SendResetPasswordEmailTemplateName, tpls)
+	if err != nil {
+		return err
+	}
+	srv.SendResetPasswordEmailTemplate = srtpl
+
+	rpwtpl, err := findTemplate(ResetPasswordTemplateName, tpls)
+	if err != nil {
+		return err
+	}
+	srv.ResetPasswordTemplate = rpwtpl
+
 	return nil
 }
 
@@ -241,7 +253,7 @@ func setEmailer(srv *Server, emailerConfigFile, emailTemplateDir string) error {
 func findTemplate(name string, tpls *template.Template) (*template.Template, error) {
 	tpl := tpls.Lookup(name)
 	if tpl == nil {
-		return nil, errors.New("unable to find login template")
+		return nil, fmt.Errorf("unable to find template: %q", name)
 	}
 	return tpl, nil
 }

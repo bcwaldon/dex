@@ -44,7 +44,16 @@ func makeTestFixtures() *testFixtures {
 			},
 		},
 	})
-	f.pwr = NewPasswordInfoRepo()
+	f.pwr = NewPasswordInfoRepoFromPasswordInfos([]PasswordInfo{
+		{
+			UserID:   "ID-1",
+			Password: []byte("password-1"),
+		},
+		{
+			UserID:   "ID-2",
+			Password: []byte("password-2"),
+		},
+	})
 	f.mgr = NewManager(f.ur, f.pwr, ManagerOptions{})
 	return f
 }
@@ -259,6 +268,81 @@ func TestVerifyEmail(t *testing.T) {
 		if cb.String() != tt.evClaims[ClaimEmailVerificationCallback] {
 			t.Errorf("case %d: want=%q, got=%q", i, cb.String(),
 				tt.evClaims[ClaimEmailVerificationCallback])
+		}
+	}
+}
+
+func TestChangePassword(t *testing.T) {
+	now := time.Now()
+	issuer, _ := url.Parse("http://example.com")
+	clientID := "myclient"
+	callback := "http://client.example.com/callback"
+	expires := time.Hour * 3
+	password := "password-1"
+
+	makeClaims := func(usrID, callback string) jose.Claims {
+		return map[string]interface{}{
+			"iss": issuer.String(),
+			"aud": clientID,
+			ClaimPasswordResetCallback: callback,
+			ClaimPasswordResetPassword: password,
+			"exp": float64(now.Add(expires).Unix()),
+			"sub": usrID,
+			"iat": float64(now.Unix()),
+		}
+	}
+
+	tests := []struct {
+		pwrClaims   jose.Claims
+		newPassword string
+		wantErr     bool
+	}{
+		{
+			// happy path
+			pwrClaims:   makeClaims("ID-1", callback),
+			newPassword: "password-1.1",
+		},
+		{
+			// happy path with no callback
+			pwrClaims:   makeClaims("ID-1", ""),
+			newPassword: "password-1.1",
+		},
+		{
+			// passwords don't match changed
+			pwrClaims:   makeClaims("ID-2", callback),
+			newPassword: "password-1.1",
+			wantErr:     true,
+		},
+		{
+			// user doesn't exist
+			pwrClaims:   makeClaims("ID-123", callback),
+			newPassword: "password-1.1",
+			wantErr:     true,
+		},
+	}
+
+	for i, tt := range tests {
+		f := makeTestFixtures()
+		cb, err := f.mgr.ChangePassword(PasswordReset{tt.pwrClaims}, tt.newPassword)
+		if tt.wantErr {
+			if err == nil {
+				t.Errorf("case %d: want non-nil err", i)
+			}
+			continue
+		}
+
+		if err != nil {
+			t.Errorf("case %d: want err=nil got=%q", i, err)
+			continue
+		}
+
+		var cbString string
+		if cb != nil {
+			cbString = cb.String()
+		}
+		if cbString != tt.pwrClaims[ClaimPasswordResetCallback] {
+			t.Errorf("case %d: want=%q, got=%q", i, cb.String(),
+				tt.pwrClaims[ClaimPasswordResetCallback])
 		}
 	}
 }

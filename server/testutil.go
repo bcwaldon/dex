@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"net/url"
+	"time"
 
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/email"
@@ -38,6 +39,15 @@ var (
 			},
 		},
 	}
+
+	testPasswordInfos = []user.PasswordInfo{
+		{
+			UserID:   "ID-1",
+			Password: []byte("password"),
+		},
+	}
+
+	testPrivKey, _ = key.GeneratePrivateKey()
 )
 
 type testFixtures struct {
@@ -59,17 +69,8 @@ func sequentialGenerateCodeFunc() session.GenerateCodeFunc {
 
 func makeTestFixtures() (*testFixtures, error) {
 	userRepo := user.NewUserRepoFromUsers(testUsers)
-	pwRepo := user.NewPasswordInfoRepo()
+	pwRepo := user.NewPasswordInfoRepoFromPasswordInfos(testPasswordInfos)
 	manager := user.NewManager(userRepo, pwRepo, user.ManagerOptions{})
-
-	tpl, err := getTemplates(templatesLocation)
-	if err != nil {
-		return nil, err
-	}
-	rtpl, err := findTemplate(RegisterTemplateName, tpl)
-	if err != nil {
-		return nil, err
-	}
 
 	connConfigs := []connector.ConnectorConfig{
 		&connector.OIDCConnectorConfig{
@@ -96,7 +97,7 @@ func makeTestFixtures() (*testFixtures, error) {
 	emailer, err := email.NewTemplatizedEmailerFromGlobs(
 		emailTemplatesLocation+"/*.txt",
 		emailTemplatesLocation+"/*.html",
-		email.FakeEmailer{})
+		&email.FakeEmailer{})
 	if err != nil {
 		return nil, err
 	}
@@ -115,6 +116,17 @@ func makeTestFixtures() (*testFixtures, error) {
 		},
 	})
 
+	km := key.NewPrivateKeyManager()
+	err = km.Set(key.NewPrivateKeySet([]*key.PrivateKey{testPrivKey}, time.Now().Add(time.Minute)))
+	if err != nil {
+		return nil, err
+	}
+
+	tpl, err := getTemplates(templatesLocation)
+	if err != nil {
+		return nil, err
+	}
+
 	srv := &Server{
 		IssuerURL:          testIssuerURL,
 		SessionManager:     sessionManager,
@@ -123,9 +135,13 @@ func makeTestFixtures() (*testFixtures, error) {
 		UserRepo:           userRepo,
 		PasswordInfoRepo:   pwRepo,
 		UserManager:        manager,
-		RegisterTemplate:   rtpl,
 		Emailer:            emailer,
-		KeyManager:         key.NewPrivateKeyManager(),
+		KeyManager:         km,
+	}
+
+	err = setTemplates(srv, tpl)
+	if err != nil {
+		return nil, err
 	}
 
 	for _, config := range connConfigs {

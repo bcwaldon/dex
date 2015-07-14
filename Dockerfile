@@ -13,3 +13,4 @@ ADD static/html/verify-email.html $AUTHD_WORKER_HTML_ASSETS
 ENV AUTHD_WORKER_EMAIL_ASSETS /opt/authd/email/
 ADD static/email/verify-email.html $AUTHD_WORKER_EMAIL_ASSETS
 ADD static/email/verify-email.txt $AUTHD_WORKER_EMAIL_ASSETS
+ADD static/fixtures/emailer.json.sample $AUTHD_WORKER_EMAIL_ASSETS/emailer.json

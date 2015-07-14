@@ -10,6 +10,6 @@ ADD static/html/login.html $AUTHD_WORKER_HTML_ASSETS
 ADD static/html/register.html $AUTHD_WORKER_HTML_ASSETS
 ADD static/html/verify-email.html $AUTHD_WORKER_HTML_ASSETS
 
-ENV AUTHD_WORKER_HTML_ASSETS /opt/authd/email/
+ENV AUTHD_WORKER_EMAIL_ASSETS /opt/authd/email/
 ADD static/email/verify-email.html $AUTHD_WORKER_EMAIL_ASSETS
 ADD static/email/verify-email.txt $AUTHD_WORKER_EMAIL_ASSETS

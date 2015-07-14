@@ -125,10 +125,10 @@ func handleRegisterFunc(s *Server) http.HandlerFunc {
 			Local:    local,
 		}
 
+		// If there are form errors or this is the initial request
+		// (i.e. validate==false), and we are not going to auto-submit a
+		// trusted email, then show the form.
 		if (len(formErrors) > 0 || !validate) && !trustedEmail {
-			// If there are form errors or this is the initial request
-			// (i.e. validate==false), and we are not going to auto-submit a
-			// trusted email, then show the form.
 			data.FormErrors = formErrors
 			if !validate {
 				execTemplate(w, tpl, data)

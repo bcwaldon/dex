@@ -44,6 +44,10 @@ func (f *fakeConnector) Sync() chan struct{} {
 	return nil
 }
 
+func (c *fakeConnector) TrustedEmailProvider() bool {
+	return false
+}
+
 func TestHandleAuthFuncMethodNotAllowed(t *testing.T) {
 	for _, m := range []string{"POST", "PUT", "DELETE"} {
 		hdlr := handleAuthFunc(nil, nil, nil)

@@ -21,9 +21,10 @@ func TestHandleRegister(t *testing.T) {
 	}
 	tests := []struct {
 		// inputs
-		query        url.Values
-		connID       string
-		attachRemote bool
+		query               url.Values
+		connID              string
+		attachRemote        bool
+		remoteIdentityEmail string
 
 		// want
 		wantStatus      int
@@ -43,6 +44,74 @@ func TestHandleRegister(t *testing.T) {
 				"code":     str("code-3"),
 				"email":    str(""),
 				"password": str(""),
+				"validate": str("1"),
+			},
+		},
+		{
+			// User comes in with a valid code, redirected from the connector,
+			// user is created with a verified email, because it's a trusted
+			// email provider.
+			query: url.Values{
+				"code": []string{"code-3"},
+			},
+			connID:              "oidc-trusted",
+			remoteIdentityEmail: "test@example.com",
+			attachRemote:        true,
+
+			wantStatus:      http.StatusSeeOther,
+			wantUserCreated: true,
+		},
+		{
+			// User comes in with a valid code, redirected from the connector,
+			// user is created with a verified email, because it's a trusted
+			// email provider. In addition, the email provided on the URL is
+			// ignored, and instead comes from the remote identity.
+			query: url.Values{
+				"code":  []string{"code-3"},
+				"email": []string{"sneaky@example.com"},
+			},
+			connID:              "oidc-trusted",
+			remoteIdentityEmail: "test@example.com",
+			attachRemote:        true,
+
+			wantStatus:      http.StatusSeeOther,
+			wantUserCreated: true,
+		},
+		{
+			// User comes in with a valid code, redirected from the connector,
+			// it's a trusted provider, but no email so no user created, and the
+			// form comes back with the code.
+			query: url.Values{
+				"code": []string{"code-3"},
+			},
+			connID:              "oidc-trusted",
+			remoteIdentityEmail: "",
+			attachRemote:        true,
+
+			wantStatus:      http.StatusOK,
+			wantUserCreated: false,
+			wantFormValues: url.Values{
+				"code":     str("code-4"),
+				"email":    str(""),
+				"validate": str("1"),
+			},
+		},
+		{
+			// User comes in with a valid code, redirected from the connector,
+			// it's a trusted provider, but the email is invalid, so no user
+			// created, and the form comes back with the code.
+			query: url.Values{
+				"code": []string{"code-3"},
+			},
+			connID:              "oidc-trusted",
+			remoteIdentityEmail: "notanemail",
+			attachRemote:        true,
+
+			wantStatus:      http.StatusOK,
+			wantUserCreated: false,
+			wantFormValues: url.Values{
+				"code":     str("code-4"),
+				"email":    str(""),
 				"validate": str("1"),
 			},
 		},
@@ -142,7 +211,8 @@ func TestHandleRegister(t *testing.T) {
 			}
 
 			_, err = f.sessionManager.AttachRemoteIdentity(ses.ID, oidc.Identity{
-				ID: "remoteID",
+				ID:    "remoteID",
+				Email: tt.remoteIdentityEmail,
 			})
 
 			key, err := f.sessionManager.NewSessionKey(sesID)
@@ -169,17 +239,13 @@ func TestHandleRegister(t *testing.T) {
 			t.Errorf("case %d: wantStatus=%v, got=%v", i, tt.wantStatus, w.Code)
 		}
 
-		email := tt.query.Get("email")
-		if email != "" {
-			_, err := f.userRepo.GetByEmail(email)
-			if tt.wantUserCreated {
-				if err != nil {
-					t.Errorf("case %d: user not created: %v", i, err)
-				}
-			} else if err != user.ErrorNotFound {
-				t.Errorf("case %d: unexpected error looking up user: want=%v, got=%v ", i, user.ErrorNotFound, err)
+		_, err = f.userRepo.GetByEmail("test@example.com")
+		if tt.wantUserCreated {
+			if err != nil {
+				t.Errorf("case %d: user not created: %v", i, err)
 			}
-
+		} else if err != user.ErrorNotFound {
+			t.Errorf("case %d: unexpected error looking up user: want=%v, got=%v ", i, user.ErrorNotFound, err)
 		}
 
 		values, err := html.FormValues("#registerForm", w.Body)

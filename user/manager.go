@@ -67,8 +67,6 @@ func (m *Manager) RegisterWithRemoteIdentity(email string, emailVerified bool, r
 		return "", err
 	}
 
-	// TODO: send verification email
-
 	return userID, nil
 }
 

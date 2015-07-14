@@ -104,6 +104,8 @@ func handleRegisterFunc(s *Server) http.HandlerFunc {
 		formErrors := []formError{}
 		email := r.Form.Get("email")
 
+		// only auto-populate the first time the page is GETted, not on
+		// subsequent POSTs
 		if email == "" && r.Method == "GET" {
 			email = ses.Identity.Email
 		}

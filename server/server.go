@@ -189,7 +189,7 @@ func (s *Server) HTTPHandler() http.Handler {
 	mux.HandleFunc(httpPathAuth, handleAuthFunc(s, s.Connectors, s.LoginTemplate))
 	mux.HandleFunc(httpPathToken, handleTokenFunc(s))
 	mux.HandleFunc(httpPathKeys, handleKeysFunc(s.KeyManager, clock))
-	mux.HandleFunc(httpPathHealth, handleHealthFunc(checks))
+	mux.Handle(httpPathHealth, makeHealthHandler(checks))
 	mux.HandleFunc(httpPathRegister, handleRegisterFunc(s))
 	mux.HandleFunc(httpPathEmailVerify, handleEmailVerifyFunc(s.VerifyEmailTemplate,
 		s.IssuerURL, s.KeyManager.PublicKeys, s.UserManager))
@@ -222,6 +222,8 @@ func (s *Server) HTTPHandler() http.Handler {
 		um:        s.UserManager,
 		keysFunc:  s.KeyManager.PublicKeys,
 	})
+
+	mux.HandleFunc(httpPathDebugVars, health.ExpvarHandler)
 
 	pcfg := s.ProviderConfig()
 	for _, idpc := range s.Connectors {

@@ -26,11 +26,11 @@
 		},
 		{
 			"ImportPath": "github.com/coreos/pkg/health",
-			"Rev": "035f12d3a4dd0c8ebb0a494eea2301e4113b7d52"
+			"Rev": "fa94270d4bac0d8ae5dc6b71894e251aada93f74"
 		},
 		{
 			"ImportPath": "github.com/coreos/pkg/httputil",
-			"Rev": "035f12d3a4dd0c8ebb0a494eea2301e4113b7d52"
+			"Rev": "fa94270d4bac0d8ae5dc6b71894e251aada93f74"
 		},
 		{
 			"ImportPath": "github.com/jonboulle/clockwork",

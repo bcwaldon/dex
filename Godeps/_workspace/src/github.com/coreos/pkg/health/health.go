@@ -1,6 +1,7 @@
 package health
 
 import (
+	"expvar"
 	"fmt"
 	"log"
 	"net/http"
@@ -27,8 +28,7 @@ type Checker struct {
 	HealthyHandler http.HandlerFunc
 }
 
-// MakeHealthHandlerFunc returns an http.HandlerFunc which can be probed for system health.
-func (c Checker) MakeHealthHandlerFunc() http.HandlerFunc {
+func (c Checker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	unhealthyHandler := c.UnhealthyHandler
 	if unhealthyHandler == nil {
 		unhealthyHandler = DefaultUnhealthyHandler
@@ -39,20 +39,18 @@ func (c Checker) MakeHealthHandlerFunc() http.HandlerFunc {
 		successHandler = DefaultHealthyHandler
 	}
 
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" {
-			w.Header().Set("Allow", "GET")
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			return
-		}
-
-		if err := Check(c.Checks); err != nil {
-			unhealthyHandler(w, r, err)
-			return
-		}
-
-		successHandler(w, r)
+	if r.Method != "GET" {
+		w.Header().Set("Allow", "GET")
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
 	}
+
+	if err := Check(c.Checks); err != nil {
+		unhealthyHandler(w, r, err)
+		return
+	}
+
+	successHandler(w, r)
 }
 
 type UnhealthyHandler func(w http.ResponseWriter, r *http.Request, err error)
@@ -111,4 +109,19 @@ func DefaultUnhealthyHandler(w http.ResponseWriter, r *http.Request, err error) 
 		// once it lands.
 		log.Printf("Failed to write JSON response: %v", err)
 	}
+}
+
+// ExpvarHandler is copied from https://golang.org/src/expvar/expvar.go, where it's sadly unexported.
+func ExpvarHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	fmt.Fprintf(w, "{\n")
+	first := true
+	expvar.Do(func(kv expvar.KeyValue) {
+		if !first {
+			fmt.Fprintf(w, ",\n")
+		}
+		first = false
+		fmt.Fprintf(w, "%q: %s", kv.Key, kv.Value)
+	})
+	fmt.Fprintf(w, "\n}\n")
 }

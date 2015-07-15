@@ -3,6 +3,7 @@ package email
 import (
 	"encoding/json"
 	"errors"
+	"expvar"
 
 	"github.com/coreos-inc/auth/pkg/log"
 	mailgun "github.com/mailgun/mailgun-go"
@@ -10,6 +11,10 @@ import (
 
 const (
 	MailgunEmailerType = "mailgun"
+)
+
+var (
+	counterEmailSendErr = expvar.NewInt("mailgun.send.err")
 )
 
 func init() {
@@ -75,6 +80,7 @@ func (m *mailgunEmailer) SendMail(from, subject, text, html string, to ...string
 	}
 	mes, id, err := m.mg.Send(msg)
 	if err != nil {
+		counterEmailSendErr.Add(1)
 		return err
 	}
 	log.Infof("SendMail: msgID: %v: %q", id, mes)

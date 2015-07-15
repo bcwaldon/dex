@@ -37,6 +37,7 @@ var (
 	httpPathVerifyEmailResend = "/resend-verify-email"
 	httpPathSendResetPassword = "/send-reset-password"
 	httpPathResetPassword     = "/reset-password"
+	httpPathDebugVars         = "/debug/vars"
 )
 
 func handleDiscoveryFunc(cfg oidc.ProviderConfig) http.HandlerFunc {
@@ -396,10 +397,10 @@ func handleTokenFunc(srv OIDCServer) http.HandlerFunc {
 	}
 }
 
-func handleHealthFunc(checks []health.Checkable) http.HandlerFunc {
+func makeHealthHandler(checks []health.Checkable) http.Handler {
 	return health.Checker{
 		Checks: checks,
-	}.MakeHealthHandlerFunc()
+	}
 }
 
 type oAuth2Token struct {

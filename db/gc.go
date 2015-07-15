@@ -29,7 +29,7 @@ func NewGarbageCollector(dbm *gorp.DbMap, ival time.Duration) *GarbageCollector 
 			purger: sRepo,
 		},
 		namedPurger{
-			name:   "sessionkey",
+			name:   "session_key",
 			purger: skRepo,
 		},
 	}

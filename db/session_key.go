@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	sessionKeyTableName = "sessionkey"
+	sessionKeyTableName = "session_key"
 )
 
 func init() {
@@ -28,8 +28,8 @@ func init() {
 
 type sessionKeyModel struct {
 	Key       string `db:"key"`
-	SessionID string `db:"sessionID"`
-	ExpiresAt int64  `db:"expiresAt"`
+	SessionID string `db:"session_id"`
+	ExpiresAt int64  `db:"expires_at"`
 	Stale     bool   `db:"stale"`
 }
 
@@ -80,7 +80,7 @@ func (r *SessionKeyRepo) Pop(key string) (string, error) {
 
 	if n, err := res.RowsAffected(); n != 1 {
 		if err != nil {
-			log.Errorf("Failed determining rows affected by UPDATE sessionKey query: %v", err)
+			log.Errorf("Failed determining rows affected by UPDATE session_key query: %v", err)
 		}
 		return "", fmt.Errorf("failed to pop entity")
 	}
@@ -90,7 +90,7 @@ func (r *SessionKeyRepo) Pop(key string) (string, error) {
 
 func (r *SessionKeyRepo) purge() error {
 	qt := pq.QuoteIdentifier(sessionKeyTableName)
-	q := fmt.Sprintf("DELETE FROM %s WHERE stale = $1 OR expiresAt < $2", qt)
+	q := fmt.Sprintf("DELETE FROM %s WHERE stale = $1 OR expires_at < $2", qt)
 	res, err := r.dbMap.Exec(q, true, r.clock.Now().Unix())
 	if err != nil {
 		return err

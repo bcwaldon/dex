@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	connectorConfigTableName = "connectorconfig"
+	connectorConfigTableName = "connector_config"
 )
 
 func init() {

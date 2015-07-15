@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	passwordInfoTableName = "passwordinfo"
+	passwordInfoTableName = "password_info"
 )
 
 func init() {
@@ -19,15 +19,15 @@ func init() {
 		name:    passwordInfoTableName,
 		model:   passwordInfoModel{},
 		autoinc: false,
-		pkey:    []string{"userId"},
+		pkey:    []string{"user_id"},
 	})
 
 }
 
 type passwordInfoModel struct {
-	UserID          string `db:"userId"`
+	UserID          string `db:"user_id"`
 	Password        string `db:"password"`
-	PasswordExpires int64  `db:"passwordExpires"`
+	PasswordExpires int64  `db:"password_expires"`
 }
 
 func NewPasswordInfoRepo(dbm *gorp.DbMap) user.PasswordInfoRepo {

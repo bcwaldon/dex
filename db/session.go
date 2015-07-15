@@ -32,14 +32,14 @@ func init() {
 type sessionModel struct {
 	ID          string `db:"id"`
 	State       string `db:"state"`
-	CreatedAt   int64  `db:"createdAt"`
-	ExpiresAt   int64  `db:"expiresAt"`
-	ClientID    string `db:"clientID"`
-	ClientState string `db:"clientState"`
-	RedirectURL string `db:"RedirectURL"`
+	CreatedAt   int64  `db:"created_at"`
+	ExpiresAt   int64  `db:"expires_at"`
+	ClientID    string `db:"client_id"`
+	ClientState string `db:"client_state"`
+	RedirectURL string `db:"redirect_url"`
 	Identity    string `db:"identity"`
-	ConnectorID string `db:"connectorID"`
-	UserID      string `db:"userID"`
+	ConnectorID string `db:"connector_id"`
+	UserID      string `db:"user_id"`
 	Register    bool   `db:"register"`
 }
 
@@ -171,7 +171,7 @@ func (r *SessionRepo) Update(s session.Session) error {
 
 func (r *SessionRepo) purge() error {
 	qt := pq.QuoteIdentifier(sessionTableName)
-	q := fmt.Sprintf("DELETE FROM %s WHERE expiresAt < $1 OR state = $2", qt)
+	q := fmt.Sprintf("DELETE FROM %s WHERE expires_at < $1 OR state = $2", qt)
 	res, err := r.dbMap.Exec(q, r.clock.Now().Unix(), string(session.SessionStateDead))
 	if err != nil {
 		return err

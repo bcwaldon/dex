@@ -6,13 +6,14 @@ import (
 	"fmt"
 
 	"github.com/coopernurse/gorp"
+	"github.com/lib/pq"
 
 	"github.com/coreos-inc/auth/user"
 )
 
 const (
-	userTableName                  = "authduser"
-	remoteIdentityMappingTableName = "remoteidentitymapping"
+	userTableName                  = "authd_user"
+	remoteIdentityMappingTableName = "remote_identity_mapping"
 )
 
 func init() {
@@ -27,7 +28,7 @@ func init() {
 		name:    remoteIdentityMappingTableName,
 		model:   remoteIdentityMappingModel{},
 		autoinc: false,
-		pkey:    []string{"connectorID", "remoteID"},
+		pkey:    []string{"connector_id", "remote_id"},
 	})
 }
 
@@ -291,8 +292,9 @@ func (r *userRepo) GetRemoteIdentities(userID string) ([]user.RemoteIdentity, er
 		return nil, user.ErrorInvalidID
 	}
 
+	qt := pq.QuoteIdentifier(remoteIdentityMappingTableName)
 	rims, err := r.dbMap.Select(&remoteIdentityMappingModel{},
-		"select * from remoteidentitymapping where userID = $1", userID)
+		fmt.Sprintf("select * from %s where user_id = $1", qt), userID)
 
 	if err != nil {
 		if err != sql.ErrNoRows {
@@ -321,7 +323,8 @@ func (r *userRepo) GetRemoteIdentities(userID string) ([]user.RemoteIdentity, er
 }
 
 func (r *userRepo) GetAdminCount() (int, error) {
-	i, err := r.dbMap.SelectInt(fmt.Sprintf("SELECT count(*) FROM %s where admin=true", userTableName))
+	qt := pq.QuoteIdentifier(userTableName)
+	i, err := r.dbMap.SelectInt(fmt.Sprintf("SELECT count(*) FROM %s where admin=true", qt))
 	return int(i), err
 }
 
@@ -392,9 +395,10 @@ func (r *userRepo) getUserIDForRemoteIdentity(tx *gorp.Transaction, ri user.Remo
 }
 
 func (r *userRepo) getByEmail(tx *gorp.Transaction, email string) (user.User, error) {
+	qt := pq.QuoteIdentifier(userTableName)
 	ex := r.executor(tx)
 	var um userModel
-	err := ex.SelectOne(&um, "select * from authduser where email = $1", email)
+	err := ex.SelectOne(&um, fmt.Sprintf("select * from %s where email = $1", qt), email)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -419,8 +423,8 @@ func (r *userRepo) insertRemoteIdentity(tx *gorp.Transaction, userID string, ri 
 type userModel struct {
 	ID            string `db:"id"`
 	Email         string `db:"email"`
-	EmailVerified bool   `db:"emailVerified"`
-	DisplayName   string `db:"displayName"`
+	EmailVerified bool   `db:"email_verified"`
+	DisplayName   string `db:"display_name"`
 	Admin         bool   `db:"admin"`
 }
 
@@ -457,7 +461,7 @@ func newRemoteIdentityMappingModel(userID string, ri user.RemoteIdentity) (*remo
 }
 
 type remoteIdentityMappingModel struct {
-	ConnectorID string `db:"connectorID"`
-	UserID      string `db:"userID"`
-	RemoteID    string `db:"remoteID"`
+	ConnectorID string `db:"connector_id"`
+	UserID      string `db:"user_id"`
+	RemoteID    string `db:"remote_id"`
 }

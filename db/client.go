@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	clientIdentityTableName = "clientidentity"
+	clientIdentityTableName = "client_identity"
 
 	bcryptHashCost = 10
 

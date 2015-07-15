@@ -4,9 +4,11 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/coopernurse/gorp"
+	"github.com/lib/pq"
 
 	"github.com/coreos-inc/auth/key"
 	pcrypto "github.com/coreos-inc/auth/pkg/crypto"
@@ -64,7 +66,7 @@ func (m *privateKeyModel) PrivateKey() (*key.PrivateKey, error) {
 
 type privateKeySetModel struct {
 	Keys      []privateKeyModel `json:"keys"`
-	ExpiresAt time.Time         `json:"expiresAt"`
+	ExpiresAt time.Time         `json:"expires_at"`
 }
 
 func (m *privateKeySetModel) PrivateKeySet() (*key.PrivateKeySet, error) {
@@ -103,7 +105,8 @@ type PrivateKeySetRepo struct {
 }
 
 func (r *PrivateKeySetRepo) Set(ks key.KeySet) error {
-	_, err := r.dbMap.Exec("DELETE FROM key")
+	qt := pq.QuoteIdentifier(keyTableName)
+	_, err := r.dbMap.Exec(fmt.Sprintf("DELETE FROM %s", qt))
 	if err != nil {
 		return err
 	}
@@ -133,7 +136,8 @@ func (r *PrivateKeySetRepo) Set(ks key.KeySet) error {
 }
 
 func (r *PrivateKeySetRepo) Get() (key.KeySet, error) {
-	objs, err := r.dbMap.Select(&privateKeySetBlob{}, "SELECT * FROM key")
+	qt := pq.QuoteIdentifier(keyTableName)
+	objs, err := r.dbMap.Select(&privateKeySetBlob{}, fmt.Sprintf("SELECT * FROM %s", qt))
 	if err != nil {
 		return nil, err
 	}

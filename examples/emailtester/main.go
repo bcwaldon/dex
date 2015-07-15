@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/coreos-inc/auth/email"
+	"github.com/coreos-inc/auth/pkg/log"
 )
 
 func getEmailer(emailerConfigFile, emailTemplateDir string) (*email.TemplatizedEmailer, error) {
@@ -50,6 +51,8 @@ func die(format string, args ...interface{}) {
 }
 
 func main() {
+	log.EnableDebug()
+
 	emailTemplates := flag.String("templates-dir", "./static/email", "directory of email template files")
 	emailFrom := flag.String("from", "no-reply@coreos.com", "")
 	emailTo := flag.String("to", "", "")

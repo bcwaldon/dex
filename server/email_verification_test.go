@@ -46,10 +46,11 @@ func TestHandleVerifyEmailResend(t *testing.T) {
 	verifyURL := url.URL{Scheme: "http", Host: "example.com", Path: "/verify"}
 
 	tests := []struct {
-		bearerJWT   string
-		userJWT     string
-		redirectURL url.URL
-		wantCode    int
+		bearerJWT         string
+		userJWT           string
+		redirectURL       url.URL
+		wantCode          int
+		verifyEmailUserID string
 	}{
 		{
 			// The happy case
@@ -59,6 +60,16 @@ func TestHandleVerifyEmailResend(t *testing.T) {
 				"ID-1", testClientID, now, tomorrow),
 			redirectURL: testRedirectURL,
 			wantCode:    http.StatusOK,
+		},
+		{
+			// Already verified
+			bearerJWT: makeToken(testIssuerURL.String(),
+				testClientID, testClientID, now, tomorrow),
+			userJWT: makeToken(testIssuerURL.String(),
+				"ID-1", testClientID, now, tomorrow),
+			redirectURL:       testRedirectURL,
+			wantCode:          http.StatusBadRequest,
+			verifyEmailUserID: "ID-1",
 		},
 		{
 			// Expired userJWT
@@ -109,6 +120,12 @@ func TestHandleVerifyEmailResend(t *testing.T) {
 
 	for i, tt := range tests {
 		f, err := makeTestFixtures()
+		if tt.verifyEmailUserID != "" {
+			usr, _ := f.userRepo.Get(tt.verifyEmailUserID)
+			usr.EmailVerified = true
+			f.userRepo.Update(usr)
+		}
+
 		if err != nil {
 			t.Fatalf("case %d: could not make test fixtures: %v", i, err)
 		}

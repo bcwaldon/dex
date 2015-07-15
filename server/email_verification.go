@@ -127,6 +127,13 @@ func handleVerifyEmailResendFunc(
 			return
 		}
 
+		if usr.EmailVerified {
+			log.Debugf("User's email already verified")
+			writeAPIError(w, http.StatusBadRequest,
+				newAPIError(errorInvalidRequest, "email already verified"))
+			return
+		}
+
 		aud, _, _ := claims.StringClaim("aud")
 		if aud != clientID {
 			log.Debugf("aud of token and sub of bearer token must match: %v", err)

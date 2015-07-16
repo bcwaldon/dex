@@ -41,7 +41,8 @@ cat << EOF > $AUTHD_CONNECTORS_FILE
 		"id": "google",
 		"issuerURL": "$AUTHD_GOOGLE_ISSUER_URL",
 		"clientID": "$AUTHD_GOOGLE_CLIENT_ID",
-		"clientSecret": "$AUTHD_GOOGLE_CLIENT_SECRET"
+		"clientSecret": "$AUTHD_GOOGLE_CLIENT_SECRET",
+		"trustedEmailProvider": true
 	}
 ]
 EOF

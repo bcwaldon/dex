@@ -169,7 +169,7 @@ func handleRegisterFunc(s *Server) http.HandlerFunc {
 				return
 			} else {
 				if err == user.ErrorDuplicateRemoteIdentity {
-					errPage(w, "You already have an account registered with this identity", "", http.StatusConflict)
+					errPage(w, "You already registered an account with this identity", "", http.StatusConflict)
 					return
 				}
 				internalError(w, err)

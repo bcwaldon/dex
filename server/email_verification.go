@@ -237,18 +237,18 @@ func handleEmailVerifyFunc(verifiedTpl *template.Template, issuer url.URL, keysF
 			switch err {
 			case user.ErrorEmailAlreadyVerified:
 				execTemplateWithStatus(w, verifiedTpl, emailVerifiedTemplateData{
-					Error:   "Email Address already verified.",
-					Message: "The email address that this link verifies has already been verified.",
+					Error:   "Invalid Verification Link",
+					Message: "Your email link has expired or has already been verified.",
 				}, http.StatusBadRequest)
 			case user.ErrorEVEmailDoesntMatch:
 				execTemplateWithStatus(w, verifiedTpl, emailVerifiedTemplateData{
-					Error:   "Email Address in token doesn't match current email.",
-					Message: "The email address that this link is not the same as the most recent email on file. Perhaps you have a more recent verification link?",
+					Error:   "Invalid Verification Link",
+					Message: "Your email link does not match the email address on file. Perhaps you have a more recent verification link?",
 				}, http.StatusBadRequest)
 			default:
 				execTemplateWithStatus(w, verifiedTpl, emailVerifiedTemplateData{
-					Error:   "There's been an error processing your request.",
-					Message: "Plesae try again later.",
+					Error:   "Error Processing Request",
+					Message: "Please try again later.",
 				}, http.StatusInternalServerError)
 			}
 			return

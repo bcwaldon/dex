@@ -105,9 +105,16 @@ type templateData struct {
 	Register           bool
 	RegisterOrLoginURL string
 	Links              []struct {
-		URL string
-		ID  string
+		URL         string
+		ID          string
+		DisplayName string
 	}
+}
+
+// TODO(sym3tri): store this with the connector config
+var connectorDisplayNameMap = map[string]string{
+	"google": "Google",
+	"local":  "Email",
 }
 
 func execTemplate(w http.ResponseWriter, tpl *template.Template, data interface{}) {
@@ -182,8 +189,9 @@ func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idp
 	}
 
 	td.Links = make([]struct {
-		URL string
-		ID  string
+		URL         string
+		ID          string
+		DisplayName string
 	}, len(idpcs))
 
 	link := *r.URL
@@ -200,7 +208,14 @@ func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idp
 
 	n := 0
 	for _, idpc := range idpcs {
-		td.Links[n].ID = idpc.ID()
+		id := idpc.ID()
+		td.Links[n].ID = id
+
+		displayName, ok := connectorDisplayNameMap[id]
+		if !ok {
+			displayName = id
+		}
+		td.Links[n].DisplayName = displayName
 
 		v := r.URL.Query()
 		v.Set("connector_id", idpc.ID())

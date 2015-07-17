@@ -145,6 +145,9 @@
       </a>
 
       <div id="panel">
+        {{ if .ShowEmailVerifiedMessage }}
+        <h2 id="heading">Your email has been verified! Now Log in to continue to the site.</h2>
+        {{ end }}
         {{ if .Error }}
           <h2 id="heading">{{ .Message }}</h2>
         {{ else }}

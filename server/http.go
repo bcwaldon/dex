@@ -38,6 +38,9 @@ var (
 	httpPathSendResetPassword = "/send-reset-password"
 	httpPathResetPassword     = "/reset-password"
 	httpPathDebugVars         = "/debug/vars"
+
+	cookieLastSeen                 = "LastSeen"
+	cookieShowEmailVerifiedMessage = "ShowEmailVerifiedMessage"
 )
 
 func handleDiscoveryFunc(cfg oidc.ProviderConfig) http.HandlerFunc {
@@ -98,13 +101,14 @@ func handleKeysFunc(km key.PrivateKeyManager, clock clockwork.Clock) http.Handle
 }
 
 type templateData struct {
-	Error              bool
-	Message            string
-	Instruction        string
-	Detail             string
-	Register           bool
-	RegisterOrLoginURL string
-	Links              []struct {
+	Error                    bool
+	Message                  string
+	Instruction              string
+	Detail                   string
+	Register                 bool
+	RegisterOrLoginURL       string
+	ShowEmailVerifiedMessage bool
+	Links                    []struct {
 		URL         string
 		ID          string
 		DisplayName string
@@ -137,9 +141,10 @@ func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idp
 	}
 
 	td := templateData{
-		Message:     "Error",
-		Instruction: "Please try again or contact the system administrator",
-		Register:    register,
+		Message:                  "Error",
+		Instruction:              "Please try again or contact the system administrator",
+		Register:                 register,
+		ShowEmailVerifiedMessage: consumeShowEmailVerifiedCookie(r, w),
 	}
 
 	// Render error if remote IdP connector errored and redirected here.
@@ -430,7 +435,7 @@ func createLastSeenCookie() *http.Cookie {
 	now := time.Now().UTC()
 	return &http.Cookie{
 		HttpOnly: true,
-		Name:     "LastSeen",
+		Name:     cookieLastSeen,
 		MaxAge:   int(lastSeenMaxAge.Seconds()),
 		// For old IE, ignored by most browsers.
 		Expires: now.Add(lastSeenMaxAge),
@@ -439,11 +444,29 @@ func createLastSeenCookie() *http.Cookie {
 
 // shouldReprompt determines if user should be re-prompted for login based on existence of a cookie.
 func shouldReprompt(r *http.Request) bool {
-	_, err := r.Cookie("LastSeen")
+	_, err := r.Cookie(cookieLastSeen)
 	if err == nil {
 		return true
 	}
 	return false
+}
+
+func consumeShowEmailVerifiedCookie(r *http.Request, w http.ResponseWriter) bool {
+	_, err := r.Cookie(cookieShowEmailVerifiedMessage)
+	if err == nil {
+		deleteCookie(w, cookieShowEmailVerifiedMessage)
+		return true
+	}
+	return false
+}
+
+func deleteCookie(w http.ResponseWriter, name string) {
+	now := time.Now().UTC()
+	http.SetCookie(w, &http.Cookie{
+		Name:    name,
+		MaxAge:  -100,
+		Expires: now.Add(time.Second * -100),
+	})
 }
 
 func makeConnectorMap(idpcs []connector.Connector) map[string]connector.Connector {

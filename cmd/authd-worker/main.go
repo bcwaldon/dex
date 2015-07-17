@@ -51,6 +51,8 @@ func main() {
 
 	if *logDebug {
 		log.EnableDebug()
+		log.Infof("Debug logging enabled.")
+		log.Debugf("Debug logging enabled.")
 	}
 	if *logTimestamps {
 		log.EnableTimestamps()

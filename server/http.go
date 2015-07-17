@@ -284,12 +284,14 @@ func handleAuthFunc(srv OIDCServer, idpcs []connector.Connector, tpl *template.T
 		}
 
 		if acr.ResponseType != oauth2.ResponseTypeCode {
+			log.Errorf("unexpected ResponseType: %v: ", acr.ResponseType)
 			redirectAuthError(w, oauth2.NewError(oauth2.ErrorUnsupportedResponseType), acr.State, redirectURL)
 			return
 		}
 
 		key, err := srv.NewSession(connectorID, acr.ClientID, acr.State, redirectURL, register)
 		if err != nil {
+			log.Errorf("Error creating new session: %v: ", err)
 			redirectAuthError(w, err, acr.State, redirectURL)
 			return
 		}

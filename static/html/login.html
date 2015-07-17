@@ -158,11 +158,17 @@
           {{ end}}
         {{ end }}
         <div id="button-container">
-
           {{ if .Error }}
             <div class="instruction-block">{{ .Instruction }}</div>
             <div class="detail-block">{{ .Detail }}</div>
           {{ else }}
+
+            {{ if eq .MsgCode  "login-maybe" }}
+              <div class="instruction-block">This email address is already in use.</div>
+              <div class="detail-block">Looks like you've already registered. Try logging in instead:</div>
+            {{ end }}
+          
+
             {{ range $c := .Links }}
                 <div>
                   <a class="btn-link" href="{{ $c.URL }}" target="_self">

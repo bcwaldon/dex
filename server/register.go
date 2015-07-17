@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/oidc"
@@ -160,6 +162,20 @@ func handleRegisterFunc(s *Server) http.HandlerFunc {
 				email,
 				trustedEmail)
 		}
+		if err == user.ErrorDuplicateEmail {
+			// In this case, the user probably just forgot that they registered.
+			connID, err := getConnectorForUserByEmail(s.UserRepo, email)
+			if err != nil {
+				internalError(w, err)
+			}
+			loginURL := newLoginURLFromSession(
+				s.IssuerURL, ses, false, []string{connID}, "login-maybe")
+			if err = s.KillSession(code); err != nil {
+				log.Errorf("Error killing session: %v", err)
+			}
+			http.Redirect(w, r, loginURL.String(), http.StatusSeeOther)
+
+		}
 
 		if err != nil {
 			formErrors := errToFormErrors(err)
@@ -261,4 +277,43 @@ func errToFormErrors(err error) []formError {
 		fes = append(fes, fe)
 	}
 	return fes
+}
+
+func getConnectorForUserByEmail(ur user.UserRepo, email string) (string, error) {
+	usr, err := ur.GetByEmail(email)
+	if err != nil {
+		return "", err
+	}
+
+	rids, err := ur.GetRemoteIdentities(usr.ID)
+	if err != nil {
+		return "", err
+	}
+
+	if len(rids) == 0 {
+		return "", fmt.Errorf("No remote Identities for user %v", usr.ID)
+	}
+
+	return rids[0].ConnectorID, nil
+}
+
+func newLoginURLFromSession(issuer url.URL, ses *session.Session, register bool, connectorFilter []string, msgCode string) url.URL {
+	loginURL := issuer
+	v := loginURL.Query()
+	loginURL.Path = httpPathAuth
+	v.Set("redirect_uri", ses.RedirectURL.String())
+	v.Set("state", ses.ClientState)
+	v.Set("client_id", ses.ClientID)
+	if register {
+		v.Set("register", "1")
+	}
+	if len(connectorFilter) > 0 {
+		v.Set("show_connectors", strings.Join(connectorFilter, ","))
+	}
+	if msgCode != "" {
+		v.Set("msg_code", msgCode)
+	}
+
+	loginURL.RawQuery = v.Encode()
+	return loginURL
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"expvar"
 	"flag"
 	"fmt"
 	"net/http"
@@ -13,6 +14,13 @@ import (
 	"github.com/coreos-inc/auth/pkg/log"
 	"github.com/coreos-inc/auth/server"
 )
+
+var version = "DEV"
+
+func init() {
+	versionVar := expvar.NewString("authd.version")
+	versionVar.Set(version)
+}
 
 func main() {
 	fs := flag.NewFlagSet("authd-worker", flag.ExitOnError)

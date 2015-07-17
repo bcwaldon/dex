@@ -133,7 +133,7 @@ func handleLoginFunc(lf oidc.LoginFunc, tpl *template.Template, idp *LocalIdenti
 
 		userid := r.PostForm.Get("userid")
 		if userid == "" {
-			handleGET(w, r, "missing userid")
+			handleGET(w, r, "missing email address")
 			return
 		}
 

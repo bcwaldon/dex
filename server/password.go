@@ -281,18 +281,18 @@ func (r *resetPasswordRequest) handlePOST() {
 	if err != nil {
 		switch err {
 		case user.ErrorPasswordAlreadyChanged:
-			r.data.Error = "Link Expired.."
+			r.data.Error = "Link Expired"
 			r.data.Message = "The link in your email is no longer valid. If you need to change your password, generate a new email."
 			r.data.DontShowForm = true
 			execTemplateWithStatus(r.w, r.h.tpl, r.data, http.StatusBadRequest)
 			return
 		case user.ErrorInvalidPassword:
-			r.data.Error = "Invalid Password."
+			r.data.Error = "Invalid Password"
 			r.data.Message = "Please choose a password which is at least six characters."
 			execTemplateWithStatus(r.w, r.h.tpl, r.data, http.StatusBadRequest)
 			return
 		default:
-			r.data.Error = "There's been an error processing your request."
+			r.data.Error = "Error Processing Request"
 			r.data.Message = "Plesae try again later."
 			execTemplateWithStatus(r.w, r.h.tpl, r.data, http.StatusInternalServerError)
 			return

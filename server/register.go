@@ -297,7 +297,7 @@ func getConnectorForUserByEmail(ur user.UserRepo, email string) (string, error) 
 	return rids[0].ConnectorID, nil
 }
 
-func newLoginURLFromSession(issuer url.URL, ses *session.Session, register bool, connectorFilter []string, msgCode string) url.URL {
+func newLoginURLFromSession(issuer url.URL, ses *session.Session, register bool, connectorFilter []string, msgCode string) *url.URL {
 	loginURL := issuer
 	v := loginURL.Query()
 	loginURL.Path = httpPathAuth
@@ -315,5 +315,5 @@ func newLoginURLFromSession(issuer url.URL, ses *session.Session, register bool,
 	}
 
 	loginURL.RawQuery = v.Encode()
-	return loginURL
+	return &loginURL
 }

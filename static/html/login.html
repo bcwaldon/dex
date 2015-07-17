@@ -167,6 +167,16 @@
               <div class="instruction-block">This email address is already in use.</div>
               <div class="detail-block">Looks like you've already registered. Try logging in instead:</div>
             {{ end }}
+
+            {{ if eq .MsgCode  "register-maybe" }}
+              <div class="instruction-block">There's no account for this user.</div>
+              <div class="detail-block">Try registering with this first:</div>
+            {{ end }}
+
+            {{ if eq .MsgCode  "wrong-connector" }}
+              <div class="instruction-block">Wrong login method.</div>
+              <div class="detail-block">Try logging in again with this instead:</div>
+            {{ end }}
           
 
             {{ range $c := .Links }}

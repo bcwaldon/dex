@@ -202,15 +202,15 @@ func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idp
 	}
 
 	link := *r.URL
-	q = link.Query()
+	linkParams := link.Query()
 	if !register {
-		q.Set("register", "1")
+		linkParams.Set("register", "1")
 	} else {
-		q.Del("register")
+		linkParams.Del("register")
 	}
-	q.Del("msg_code")
-	q.Del("show_connectors")
-	link.RawQuery = q.Encode()
+	linkParams.Del("msg_code")
+	linkParams.Del("show_connectors")
+	link.RawQuery = linkParams.Encode()
 	td.RegisterOrLoginURL = link.String()
 
 	var showConnectors map[string]struct{}

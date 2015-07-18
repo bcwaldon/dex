@@ -298,6 +298,25 @@ func (s *Server) Login(ident oidc.Identity, key string) (string, error) {
 		ID:          ses.Identity.ID,
 	})
 	if err != nil {
+		if err == user.ErrorNotFound {
+			// If has authenticated via a connector, but no local identity there
+			// are a couple of possibilities:
+
+			// * Maybe they are using the wrong connector:
+			if ses.Identity.Email != "" {
+				if connID, err := getConnectorForUserByEmail(s.UserRepo,
+					ses.Identity.Email); err == nil {
+
+					return newLoginURLFromSession(s.IssuerURL,
+						ses, true, []string{connID},
+						"wrong-connector").String(), nil
+				}
+			}
+
+			// * User needs to register
+			return newLoginURLFromSession(s.IssuerURL,
+				ses, true, []string{ses.ConnectorID}, "register-maybe").String(), nil
+		}
 		return "", err
 	}
 

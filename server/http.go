@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/jonboulle/clockwork"
@@ -100,6 +101,12 @@ func handleKeysFunc(km key.PrivateKeyManager, clock clockwork.Clock) http.Handle
 	}
 }
 
+type Link struct {
+	URL         string
+	ID          string
+	DisplayName string
+}
+
 type templateData struct {
 	Error                    bool
 	Message                  string
@@ -107,12 +114,9 @@ type templateData struct {
 	Detail                   string
 	Register                 bool
 	RegisterOrLoginURL       string
+	MsgCode                  string
 	ShowEmailVerifiedMessage bool
-	Links                    []struct {
-		URL         string
-		ID          string
-		DisplayName string
-	}
+	Links                    []Link
 }
 
 // TODO(sym3tri): store this with the connector config
@@ -167,6 +171,10 @@ func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idp
 		return
 	}
 
+	if q.Get("msg_code") != "" {
+		td.MsgCode = q.Get("msg_code")
+	}
+
 	// Render error message if client id is invalid.
 	clientID := q.Get("client_id")
 	cm, err := srv.ClientMetadata(clientID)
@@ -193,12 +201,6 @@ func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idp
 		return
 	}
 
-	td.Links = make([]struct {
-		URL         string
-		ID          string
-		DisplayName string
-	}, len(idpcs))
-
 	link := *r.URL
 	if !register {
 		q := link.Query()
@@ -211,22 +213,40 @@ func renderLoginPage(w http.ResponseWriter, r *http.Request, srv OIDCServer, idp
 	}
 	td.RegisterOrLoginURL = link.String()
 
-	n := 0
+	var showConnectors map[string]struct{}
+
+	// Only show the following connectors, if param is present
+	if q.Get("show_connectors") != "" {
+		conns := strings.Split(q.Get("show_connectors"), ",")
+		if len(conns) != 0 {
+			showConnectors = make(map[string]struct{})
+			for _, connID := range conns {
+				showConnectors[connID] = struct{}{}
+			}
+		}
+	}
+
 	for _, idpc := range idpcs {
 		id := idpc.ID()
-		td.Links[n].ID = id
+		if showConnectors != nil {
+			if _, ok := showConnectors[id]; !ok {
+				continue
+			}
+		}
+		var link Link
+		link.ID = id
 
 		displayName, ok := connectorDisplayNameMap[id]
 		if !ok {
 			displayName = id
 		}
-		td.Links[n].DisplayName = displayName
+		link.DisplayName = displayName
 
 		v := r.URL.Query()
 		v.Set("connector_id", idpc.ID())
 		v.Set("response_type", "code")
-		td.Links[n].URL = httpPathAuth + "?" + v.Encode()
-		n++
+		link.URL = httpPathAuth + "?" + v.Encode()
+		td.Links = append(td.Links, link)
 	}
 
 	execTemplate(w, tpl, td)

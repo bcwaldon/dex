@@ -377,6 +377,7 @@ func (s *Server) CodeToken(creds oidc.ClientCredentials, sessionKey string) (*jo
 		log.Errorf("Failed fetching client %s from repo: %v", creds.ID, err)
 		return nil, oauth2.NewError(oauth2.ErrorServerError)
 	} else if !ok {
+		log.Errorf("Failed to Authenticate client %s", creds.ID)
 		return nil, oauth2.NewError(oauth2.ErrorInvalidClient)
 	}
 

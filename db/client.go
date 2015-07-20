@@ -13,6 +13,7 @@ import (
 
 	"github.com/coreos-inc/auth/oidc"
 	pcrypto "github.com/coreos-inc/auth/pkg/crypto"
+	"github.com/coreos-inc/auth/pkg/log"
 )
 
 const (
@@ -160,6 +161,7 @@ func (r *clientIdentityRepo) Authenticate(creds oidc.ClientCredentials) (bool, e
 
 	dec, err := base64.URLEncoding.DecodeString(creds.Secret)
 	if err != nil {
+		log.Errorf("error Decoding client creds ")
 		return false, nil
 	}
 

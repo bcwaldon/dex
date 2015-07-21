@@ -282,7 +282,7 @@ func handleAuthFunc(srv OIDCServer, idpcs []connector.Connector, tpl *template.T
 
 		acr, err := oauth2.ParseAuthCodeRequest(q)
 		if err != nil {
-			log.Debugf("Invalid auth request")
+			log.Errorf("Invalid auth request: %v", err)
 			writeAuthError(w, err, acr.State)
 			return
 		}
@@ -294,7 +294,7 @@ func handleAuthFunc(srv OIDCServer, idpcs []connector.Connector, tpl *template.T
 			return
 		}
 		if cm == nil {
-			log.Debugf("Client %q not found", acr.ClientID)
+			log.Errorf("Client %q not found", acr.ClientID)
 			writeAuthError(w, oauth2.NewError(oauth2.ErrorInvalidRequest), acr.State)
 			return
 		}
@@ -309,11 +309,11 @@ func handleAuthFunc(srv OIDCServer, idpcs []connector.Connector, tpl *template.T
 		if err != nil {
 			switch err {
 			case (ErrorCantChooseRedirectURL):
-				log.Debugf("Request must provide redirect URL as client %q has registered many", acr.ClientID)
+				log.Errorf("Request must provide redirect URL as client %q has registered many", acr.ClientID)
 				writeAuthError(w, oauth2.NewError(oauth2.ErrorInvalidRequest), acr.State)
 				return
 			case (ErrorInvalidRedirectURL):
-				log.Debugf("Request provided unregistered redirect URL: %s", acr.RedirectURL)
+				log.Errorf("Request provided unregistered redirect URL: %s", acr.RedirectURL)
 				writeAuthError(w, oauth2.NewError(oauth2.ErrorInvalidRequest), acr.State)
 				return
 			case (ErrorNoValidRedirectURLs):
@@ -379,6 +379,7 @@ func handleTokenFunc(srv OIDCServer) http.HandlerFunc {
 
 		err := r.ParseForm()
 		if err != nil {
+			log.Errorf("error parsing request: %v", err)
 			writeTokenError(w, oauth2.NewError(oauth2.ErrorInvalidRequest), "")
 			return
 		}
@@ -387,6 +388,7 @@ func handleTokenFunc(srv OIDCServer) http.HandlerFunc {
 
 		user, password, ok := phttp.BasicAuth(r)
 		if !ok {
+			log.Errorf("error parsing basic auth")
 			writeTokenError(w, oauth2.NewError(oauth2.ErrorInvalidClient), state)
 			return
 		}
@@ -400,22 +402,26 @@ func handleTokenFunc(srv OIDCServer) http.HandlerFunc {
 		case oauth2.GrantTypeAuthCode:
 			code := r.PostForm.Get("code")
 			if code == "" {
+				log.Errorf("missing code param")
 				writeTokenError(w, oauth2.NewError(oauth2.ErrorInvalidRequest), state)
 				return
 			}
 
 			jwt, err = srv.CodeToken(creds, code)
 			if err != nil {
+				log.Errorf("couldn't exchange code for token: %v", err)
 				writeTokenError(w, err, state)
 				return
 			}
 		case oauth2.GrantTypeClientCreds:
 			jwt, err = srv.ClientCredsToken(creds)
 			if err != nil {
+				log.Errorf("couldn't creds for token: %v", err)
 				writeTokenError(w, err, state)
 				return
 			}
 		default:
+			log.Errorf("unsupported grant: %v", grantType)
 			writeTokenError(w, oauth2.NewError(oauth2.ErrorUnsupportedGrantType), state)
 			return
 		}

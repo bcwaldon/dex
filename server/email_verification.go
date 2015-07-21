@@ -52,7 +52,7 @@ func handleVerifyEmailResendFunc(
 
 		clientID, err := getClientIDFromAuthorizedRequest(r)
 		if err != nil {
-			log.Debugf("Failed to extract clientID: %v", err)
+			log.Errorf("Failed to extract clientID: %v", err)
 			writeAPIError(w, http.StatusUnauthorized,
 				newAPIError(errorInvalidRequest, "cilent could not be extracted from bearer token."))
 			return
@@ -66,7 +66,7 @@ func handleVerifyEmailResendFunc(
 			return
 		}
 		if cm == nil {
-			log.Debugf("No such client: %v", err)
+			log.Errorf("No such client: %v", err)
 			writeAPIError(w, http.StatusBadRequest,
 				newAPIError(errorInvalidRequest, "invalid client_id"))
 			return
@@ -83,7 +83,7 @@ func handleVerifyEmailResendFunc(
 
 		jwt, err := jose.ParseJWT(token)
 		if err != nil {
-			log.Debugf("Failed to Parse JWT: %v", err)
+			log.Errorf("Failed to Parse JWT: %v", err)
 			writeAPIError(w, http.StatusBadRequest,
 				newAPIError(errorInvalidRequest, "token could not be parsed"))
 			return
@@ -91,7 +91,7 @@ func handleVerifyEmailResendFunc(
 
 		verifier := oidc.NewJWTVerifier(issuerURL.String(), clientID, noop, keysFunc)
 		if err := verifier.Verify(jwt); err != nil {
-			log.Debugf("Failed to Verify JWT: %v", err)
+			log.Errorf("Failed to Verify JWT: %v", err)
 			writeAPIError(w, http.StatusUnauthorized,
 				newAPIError(errorAccessDenied, "invalid token could not be verified"))
 			return
@@ -99,7 +99,7 @@ func handleVerifyEmailResendFunc(
 
 		claims, err := jwt.Claims()
 		if err != nil {
-			log.Debugf("Failed to extract claims from JWT: %v", err)
+			log.Errorf("Failed to extract claims from JWT: %v", err)
 			writeAPIError(w, http.StatusBadRequest,
 				newAPIError(errorInvalidRequest, "invalid token could not be parsed"))
 			return
@@ -107,7 +107,7 @@ func handleVerifyEmailResendFunc(
 
 		sub, ok, err := claims.StringClaim("sub")
 		if err != nil || !ok || sub == "" {
-			log.Debugf("Failed to extract sub claim from JWT: err:%q ok:%v", err, ok)
+			log.Errorf("Failed to extract sub claim from JWT: err:%q ok:%v", err, ok)
 			writeAPIError(w, http.StatusBadRequest,
 				newAPIError(errorInvalidRequest, "could not extract sub claim from token"))
 			return
@@ -116,7 +116,7 @@ func handleVerifyEmailResendFunc(
 		usr, err := userRepo.Get(sub)
 		if err != nil {
 			if err == user.ErrorNotFound {
-				log.Debugf("Failed to find user specified by token: %v", err)
+				log.Errorf("Failed to find user specified by token: %v", err)
 				writeAPIError(w, http.StatusBadRequest,
 					newAPIError(errorInvalidRequest, "could not find user"))
 				return
@@ -128,7 +128,7 @@ func handleVerifyEmailResendFunc(
 		}
 
 		if usr.EmailVerified {
-			log.Debugf("User's email already verified")
+			log.Errorf("User's email already verified")
 			writeAPIError(w, http.StatusBadRequest,
 				newAPIError(errorInvalidRequest, "email already verified"))
 			return
@@ -136,7 +136,7 @@ func handleVerifyEmailResendFunc(
 
 		aud, _, _ := claims.StringClaim("aud")
 		if aud != clientID {
-			log.Debugf("aud of token and sub of bearer token must match: %v", err)
+			log.Errorf("aud of token and sub of bearer token must match: %v", err)
 			writeAPIError(w, http.StatusForbidden,
 				newAPIError(errorAccessDenied, "JWT is from another client."))
 			return
@@ -144,7 +144,7 @@ func handleVerifyEmailResendFunc(
 
 		redirectURLStr := params.RedirectURI
 		if redirectURLStr == "" {
-			log.Debugf("No redirect URL: %v", err)
+			log.Errorf("No redirect URL: %v", err)
 			writeAPIError(w, http.StatusBadRequest,
 				newAPIError(errorInvalidRequest, "must provide a redirect_uri"))
 			return
@@ -152,7 +152,7 @@ func handleVerifyEmailResendFunc(
 
 		redirectURL, err := url.Parse(redirectURLStr)
 		if err != nil {
-			log.Debugf("Unparsable URL: %v", err)
+			log.Errorf("Unparsable URL: %v", err)
 			writeAPIError(w, http.StatusBadRequest,
 				newAPIError(errorInvalidRequest, "invalid redirect_uri"))
 			return
@@ -162,7 +162,7 @@ func handleVerifyEmailResendFunc(
 		if err != nil {
 			switch err {
 			case (ErrorInvalidRedirectURL):
-				log.Debugf("Request provided unregistered redirect URL: %s", redirectURLStr)
+				log.Errorf("Request provided unregistered redirect URL: %s", redirectURLStr)
 				writeAPIError(w, http.StatusBadRequest,
 					newAPIError(errorInvalidRequest, "invalid redirect_uri"))
 				return

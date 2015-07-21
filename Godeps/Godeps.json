@@ -33,6 +33,10 @@
 			"Rev": "fa94270d4bac0d8ae5dc6b71894e251aada93f74"
 		},
 		{
+			"ImportPath": "github.com/gorilla/handlers",
+			"Rev": "60c7bfde3e33c201519a200a4507a158cc03a17b"
+		},
+		{
 			"ImportPath": "github.com/jonboulle/clockwork",
 			"Rev": "3f831b65b61282ba6bece21b91beea2edc4c887a"
 		},

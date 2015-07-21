@@ -2,6 +2,7 @@ package log
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 )
@@ -71,4 +72,15 @@ func Fatalf(format string, v ...interface{}) {
 
 func header(lvl, msg string) string {
 	return fmt.Sprintf("%s: %s", lvl, msg)
+}
+
+type logWriter string
+
+func (l logWriter) Write(p []byte) (n int, err error) {
+	logger.Output(calldepth, header(string(l), string(p)))
+	return len(p), nil
+}
+
+func InfoWriter() io.Writer {
+	return logWriter("INFO")
 }

@@ -8,9 +8,10 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/gorilla/handlers"
+
 	"github.com/coreos-inc/auth/db"
 	pflag "github.com/coreos-inc/auth/pkg/flag"
-	phttp "github.com/coreos-inc/auth/pkg/http"
 	"github.com/coreos-inc/auth/pkg/log"
 	"github.com/coreos-inc/auth/server"
 )
@@ -129,7 +130,8 @@ func main() {
 	}
 
 	h := srv.HTTPHandler()
-	h = &phttp.LoggingMiddleware{h}
+
+	h = handlers.LoggingHandler(log.InfoWriter(), h)
 
 	httpsrv := &http.Server{
 		Addr:    lu.Host,

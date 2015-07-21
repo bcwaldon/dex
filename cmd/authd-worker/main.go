@@ -129,9 +129,7 @@ func main() {
 	}
 
 	h := srv.HTTPHandler()
-	if *logDebug {
-		h = &phttp.LoggingMiddleware{h}
-	}
+	h = &phttp.LoggingMiddleware{h}
 
 	httpsrv := &http.Server{
 		Addr:    lu.Host,

@@ -47,6 +47,7 @@ func (s *AdminServer) HTTPHandler() http.Handler {
 	r.POST(AdminCreateEndpoint, s.createAdmin)
 	r.GET(AdminGetStateEndpoint, s.getState)
 	r.Handler("GET", httpPathHealth, s.checker)
+	r.HandlerFunc("GET", httpPathDebugVars, health.ExpvarHandler)
 	return r
 }
 

@@ -6,6 +6,8 @@ import (
 	"html/template"
 	"net/url"
 	"os"
+	"path/filepath"
+	texttemplate "text/template"
 	"time"
 
 	"github.com/coreos-inc/auth/connector"
@@ -24,7 +26,7 @@ type ServerConfig interface {
 type SingleServerConfig struct {
 	IssuerURL         string
 	TemplateDir       string
-	EmailTemplateDir  string
+	EmailTemplateDirs []string
 	ClientsFile       string
 	ConnectorsFile    string
 	EmailerConfigFile string
@@ -104,7 +106,7 @@ func (cfg *SingleServerConfig) Server() (*Server, error) {
 		return nil, err
 	}
 
-	err = setEmailer(&srv, cfg.EmailerConfigFile, cfg.EmailTemplateDir)
+	err = setEmailer(&srv, cfg.EmailerConfigFile, cfg.EmailTemplateDirs)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +119,7 @@ type MultiServerConfig struct {
 	TemplateDir       string
 	KeySecret         string
 	DatabaseConfig    db.Config
-	EmailTemplateDir  string
+	EmailTemplateDirs []string
 	EmailerConfigFile string
 	EmailFromAddress  string
 }
@@ -183,7 +185,7 @@ func (cfg *MultiServerConfig) Server() (*Server, error) {
 		return nil, err
 	}
 
-	err = setEmailer(&srv, cfg.EmailerConfigFile, cfg.EmailTemplateDir)
+	err = setEmailer(&srv, cfg.EmailerConfigFile, cfg.EmailTemplateDirs)
 	if err != nil {
 		return nil, err
 	}
@@ -229,7 +231,8 @@ func setTemplates(srv *Server, tpls *template.Template) error {
 	return nil
 }
 
-func setEmailer(srv *Server, emailerConfigFile, emailTemplateDir string) error {
+func setEmailer(srv *Server, emailerConfigFile string, emailTemplateDirs []string) error {
+
 	cfg, err := email.NewEmailerConfigFromFile(emailerConfigFile)
 	if err != nil {
 		return err
@@ -240,13 +243,48 @@ func setEmailer(srv *Server, emailerConfigFile, emailTemplateDir string) error {
 		return err
 	}
 
-	tMailer, err := email.NewTemplatizedEmailerFromGlobs(emailTemplateDir+"/*.txt", emailTemplateDir+"/*.html", emailer)
-	if err != nil {
-		return err
+	getFileNames := func(dir, ext string) ([]string, error) {
+		fns, err := filepath.Glob(dir + "/*." + ext)
+		if err != nil {
+			return nil, err
+		}
+		return fns, nil
+	}
+	getTextFiles := func(dir string) ([]string, error) {
+		return getFileNames(dir, "txt")
+	}
+	getHTMLFiles := func(dir string) ([]string, error) {
+		return getFileNames(dir, "html")
 	}
 
-	srv.Emailer = tMailer
+	textTemplates := texttemplate.New("textTemplates")
+	htmlTemplates := template.New("htmlTemplates")
+	for _, dir := range emailTemplateDirs {
+		textFileNames, err := getTextFiles(dir)
+		if err != nil {
+			return err
+		}
+		if len(textFileNames) != 0 {
+			textTemplates, err = textTemplates.ParseFiles(textFileNames...)
+		}
+		if err != nil {
+			return err
+		}
 
+		htmlFileNames, err := getHTMLFiles(dir)
+		if err != nil {
+			return err
+		}
+		if len(htmlFileNames) != 0 {
+			htmlTemplates, err = htmlTemplates.ParseFiles(htmlFileNames...)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	tMailer := email.NewTemplatizedEmailerFromTemplates(textTemplates, htmlTemplates, emailer)
+
+	srv.Emailer = tMailer
 	return nil
 }
 

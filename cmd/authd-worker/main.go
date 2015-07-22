@@ -14,6 +14,8 @@ import (
 	pflag "github.com/coreos-inc/auth/pkg/flag"
 	"github.com/coreos-inc/auth/pkg/log"
 	"github.com/coreos-inc/auth/server"
+
+	"github.com/coreos/pkg/flagutil"
 )
 
 var version = "DEV"
@@ -28,7 +30,10 @@ func main() {
 	listen := fs.String("listen", "http://0.0.0.0:5556", "")
 	issuer := fs.String("issuer", "http://127.0.0.1:5556", "")
 	templates := fs.String("html-assets", "./static/html", "directory of html template files")
-	emailTemplates := fs.String("email-templates", "./static/email", "directory of email template files")
+
+	emailTemplateDirs := flagutil.StringSliceFlag{"./static/email"}
+	fs.Var(&emailTemplateDirs, "email-templates", "comma separated list of directories of email template files")
+
 	emailFrom := fs.String("email-from", "no-reply@coreos.com", "emails sent from authd will come from this address")
 	emailConfig := fs.String("email-cfg", "./static/fixtures/emailer.json", "configures emailer.")
 
@@ -82,7 +87,7 @@ func main() {
 		scfg = &server.SingleServerConfig{
 			IssuerURL:         *issuer,
 			TemplateDir:       *templates,
-			EmailTemplateDir:  *emailTemplates,
+			EmailTemplateDirs: emailTemplateDirs,
 			ClientsFile:       *clients,
 			ConnectorsFile:    *connectors,
 			UsersFile:         *users,
@@ -106,7 +111,7 @@ func main() {
 			TemplateDir:       *templates,
 			KeySecret:         *keySecret,
 			DatabaseConfig:    dbCfg,
-			EmailTemplateDir:  *emailTemplates,
+			EmailTemplateDirs: emailTemplateDirs,
 			EmailFromAddress:  *emailFrom,
 			EmailerConfigFile: *emailConfig,
 		}

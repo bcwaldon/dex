@@ -5,9 +5,11 @@ import (
 	"net/http"
 	"path"
 
+	"github.com/coreos/pkg/health"
 	"github.com/julienschmidt/httprouter"
 
 	"github.com/coreos-inc/auth/admin"
+	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/pkg/log"
 	"github.com/coreos-inc/auth/schema/adminschema"
 )
@@ -25,11 +27,17 @@ var (
 // AdminServer serves the admin API.
 type AdminServer struct {
 	adminAPI *admin.AdminAPI
+	checker  health.Checker
 }
 
-func NewAdminServer(adminAPI *admin.AdminAPI) *AdminServer {
+func NewAdminServer(adminAPI *admin.AdminAPI, rotator *key.PrivateKeyRotator) *AdminServer {
 	return &AdminServer{
 		adminAPI: adminAPI,
+		checker: health.Checker{
+			Checks: []health.Checkable{
+				rotator,
+			},
+		},
 	}
 }
 
@@ -38,6 +46,8 @@ func (s *AdminServer) HTTPHandler() http.Handler {
 	r.GET(AdminGetEndpoint, s.getAdmin)
 	r.POST(AdminCreateEndpoint, s.createAdmin)
 	r.GET(AdminGetStateEndpoint, s.getState)
+	r.Handler("GET", httpPathHealth, s.checker)
+	r.HandlerFunc("GET", httpPathDebugVars, health.ExpvarHandler)
 	return r
 }
 

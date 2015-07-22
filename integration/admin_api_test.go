@@ -47,7 +47,7 @@ func makeTestFixtures() *testFixtures {
 	})
 
 	f.adAPI = admin.NewAdminAPI(f.ur, f.pwr, "local")
-	f.adSrv = server.NewAdminServer(f.adAPI)
+	f.adSrv = server.NewAdminServer(f.adAPI, nil)
 	f.hSrv = httptest.NewServer(f.adSrv.HTTPHandler())
 	f.hc = &http.Client{}
 	f.adClient, _ = adminschema.NewWithBasePath(f.hc, f.hSrv.URL)

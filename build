@@ -10,6 +10,6 @@ ln -s ${PWD} $GOPATH/src/github.com/coreos-inc/auth
 LD_FLAGS="-X main.version $(git rev-parse HEAD)"
 go build -o bin/authd-worker -ldflags="$LD_FLAGS" github.com/coreos-inc/auth/cmd/authd-worker
 go build -o bin/authctl github.com/coreos-inc/auth/cmd/authctl
-go build -o bin/authd-overlord github.com/coreos-inc/auth/cmd/authd-overlord
+go build -o bin/authd-overlord -ldflags="$LD_FLAGS" github.com/coreos-inc/auth/cmd/authd-overlord
 go build -o bin/example-app github.com/coreos-inc/auth/examples/app
 go build -o bin/example-cli github.com/coreos-inc/auth/examples/cli

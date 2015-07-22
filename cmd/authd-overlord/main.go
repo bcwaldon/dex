@@ -68,7 +68,13 @@ func main() {
 	userRepo := db.NewUserRepo(dbc)
 	pwiRepo := db.NewPasswordInfoRepo(dbc)
 	adminAPI := admin.NewAdminAPI(userRepo, pwiRepo, *localConnectorID)
-	s := server.NewAdminServer(adminAPI)
+	kRepo, err := db.NewPrivateKeySetRepo(dbc, *secret)
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	krot := key.NewPrivateKeyRotator(kRepo, *keyPeriod)
+	s := server.NewAdminServer(adminAPI, krot)
 	h := s.HTTPHandler()
 	httpsrv := &http.Server{
 		Addr:    adminURL.Host,
@@ -76,12 +82,6 @@ func main() {
 	}
 
 	gc := db.NewGarbageCollector(dbc, *gcInterval)
-
-	kRepo, err := db.NewPrivateKeySetRepo(dbc, *secret)
-	if err != nil {
-		log.Fatalf(err.Error())
-	}
-	krot := key.NewPrivateKeyRotator(kRepo, *keyPeriod)
 
 	log.Infof("Binding to %s...", httpsrv.Addr)
 	go func() {

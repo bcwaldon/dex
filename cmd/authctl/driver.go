@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/coreos-inc/auth/connector"
-	"github.com/coreos-inc/auth/oidc"
+	"github.com/coreos/go-oidc/oidc"
 )
 
 type driver interface {

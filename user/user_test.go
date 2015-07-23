@@ -7,7 +7,7 @@ import (
 
 	"github.com/kylelemons/godebug/pretty"
 
-	"github.com/coreos-inc/auth/jose"
+	"github.com/coreos/go-oidc/jose"
 )
 
 func TestNewUsersFromReader(t *testing.T) {

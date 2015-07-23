@@ -8,8 +8,8 @@ import (
 	"github.com/jonboulle/clockwork"
 	"github.com/kylelemons/godebug/pretty"
 
-	"github.com/coreos-inc/auth/jose"
-	"github.com/coreos-inc/auth/key"
+	"github.com/coreos/go-oidc/jose"
+	"github.com/coreos/go-oidc/key"
 )
 
 func TestNewEmailVerification(t *testing.T) {

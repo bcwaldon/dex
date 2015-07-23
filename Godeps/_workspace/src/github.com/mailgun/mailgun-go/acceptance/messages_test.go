@@ -169,7 +169,7 @@ func TestGetStoredMessage(t *testing.T) {
 func findStoredMessageID(mg mailgun.Mailgun) (string, error) {
 	ei := mg.NewEventIterator()
 	err := ei.GetFirstPage(mailgun.GetEventsOptions{})
-	for{
+	for {
 		if err != nil {
 			return "", err
 		}
@@ -299,7 +299,7 @@ func TestSendMGBatchFailRecipients(t *testing.T) {
 	mg := mailgun.NewMailgun(domain, apiKey, "")
 	m := mg.NewMessage(fromUser, exampleSubject, exampleText+"Batch\n")
 	for i := 0; i < mailgun.MaxNumberOfRecipients; i++ {
-		m.AddRecipient("")	// We expect this to indicate a failure at the API
+		m.AddRecipient("") // We expect this to indicate a failure at the API
 	}
 	err := m.AddRecipientAndVariables(toUser, nil)
 	if err == nil {
@@ -316,7 +316,7 @@ func TestSendMGBatchRecipientVariables(t *testing.T) {
 	mg := mailgun.NewMailgun(domain, apiKey, "")
 	m := mg.NewMessage(fromUser, exampleSubject, templateText)
 	err := m.AddRecipientAndVariables(toUser, map[string]interface{}{
-		"name": "Joe Cool Example",
+		"name":  "Joe Cool Example",
 		"table": 42,
 	})
 	if err != nil {

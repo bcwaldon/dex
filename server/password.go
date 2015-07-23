@@ -8,10 +8,10 @@ import (
 	"github.com/coreos-inc/auth/pkg/log"
 
 	"github.com/coreos-inc/auth/email"
-	"github.com/coreos-inc/auth/jose"
-	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/session"
 	"github.com/coreos-inc/auth/user"
+	"github.com/coreos/go-oidc/jose"
+	"github.com/coreos/go-oidc/key"
 )
 
 type sendResetPasswordEmailData struct {

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/coreos-inc/auth/key"
-	"github.com/coreos-inc/auth/oidc"
 	"github.com/coreos-inc/auth/pkg/log"
+	"github.com/coreos/go-oidc/key"
+	"github.com/coreos/go-oidc/oidc"
 )
 
 type clientTokenMiddleware struct {

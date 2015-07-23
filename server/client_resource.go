@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"path"
 
-	"github.com/coreos-inc/auth/oidc"
 	phttp "github.com/coreos-inc/auth/pkg/http"
 	"github.com/coreos-inc/auth/pkg/log"
 	schema "github.com/coreos-inc/auth/schema/workerschema"
+	"github.com/coreos/go-oidc/oidc"
 )
 
 type clientResource struct {

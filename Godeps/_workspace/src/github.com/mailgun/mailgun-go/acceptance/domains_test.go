@@ -49,7 +49,7 @@ func TestGetSingleDomainNotExist(t *testing.T) {
 	domain := reqEnv(t, "MG_DOMAIN")
 	apiKey := reqEnv(t, "MG_API_KEY")
 	mg := mailgun.NewMailgun(domain, apiKey, "")
-	_, _, _, err := mg.GetSingleDomain(randomString(32, "com.edu.org.")+".com")
+	_, _, _, err := mg.GetSingleDomain(randomString(32, "com.edu.org.") + ".com")
 	if err == nil {
 		t.Fatal("Did not expect a domain to exist")
 	}

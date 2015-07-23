@@ -7,9 +7,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/coreos-inc/auth/oidc"
 	pflag "github.com/coreos-inc/auth/pkg/flag"
 	"github.com/coreos-inc/auth/pkg/log"
+	"github.com/coreos/go-oidc/oidc"
 )
 
 func main() {

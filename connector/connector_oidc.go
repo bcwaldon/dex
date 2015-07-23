@@ -6,10 +6,10 @@ import (
 	"net/url"
 	"path"
 
-	"github.com/coreos-inc/auth/oauth2"
-	"github.com/coreos-inc/auth/oidc"
 	phttp "github.com/coreos-inc/auth/pkg/http"
 	"github.com/coreos-inc/auth/pkg/log"
+	"github.com/coreos/go-oidc/oauth2"
+	"github.com/coreos/go-oidc/oidc"
 )
 
 const (

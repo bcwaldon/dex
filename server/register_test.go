@@ -9,9 +9,9 @@ import (
 
 	"github.com/kylelemons/godebug/pretty"
 
-	"github.com/coreos-inc/auth/oidc"
 	"github.com/coreos-inc/auth/pkg/html"
 	"github.com/coreos-inc/auth/user"
+	"github.com/coreos/go-oidc/oidc"
 )
 
 func TestHandleRegister(t *testing.T) {

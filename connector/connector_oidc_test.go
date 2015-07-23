@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/coreos-inc/auth/oidc"
+	"github.com/coreos/go-oidc/oidc"
 )
 
 func TestLoginURL(t *testing.T) {

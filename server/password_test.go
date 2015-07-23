@@ -14,10 +14,10 @@ import (
 	"github.com/kylelemons/godebug/pretty"
 
 	"github.com/coreos-inc/auth/email"
-	"github.com/coreos-inc/auth/jose"
-	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/pkg/html"
 	"github.com/coreos-inc/auth/user"
+	"github.com/coreos/go-oidc/jose"
+	"github.com/coreos/go-oidc/key"
 )
 
 func TestSendResetPasswordEmailHandler(t *testing.T) {

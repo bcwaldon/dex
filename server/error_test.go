@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/coreos-inc/auth/oauth2"
+	"github.com/coreos/go-oidc/oauth2"
 )
 
 func TestWriteAPIError(t *testing.T) {

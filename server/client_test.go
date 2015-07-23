@@ -7,7 +7,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/coreos-inc/auth/oidc"
+	"github.com/coreos/go-oidc/oidc"
 )
 
 func TestMemClientIdentityRepoNew(t *testing.T) {

@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos-inc/auth/jose"
-	"github.com/coreos-inc/auth/oidc"
+	"github.com/coreos/go-oidc/jose"
+	"github.com/coreos/go-oidc/oidc"
 
 	"github.com/kylelemons/godebug/pretty"
 )

@@ -10,8 +10,8 @@ import (
 	"github.com/coopernurse/gorp"
 	"github.com/lib/pq"
 
-	"github.com/coreos-inc/auth/key"
 	pcrypto "github.com/coreos-inc/auth/pkg/crypto"
+	"github.com/coreos/go-oidc/key"
 )
 
 const (

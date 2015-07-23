@@ -16,10 +16,10 @@ import (
 	"github.com/jonboulle/clockwork"
 
 	"github.com/coreos-inc/auth/connector"
-	"github.com/coreos-inc/auth/jose"
-	"github.com/coreos-inc/auth/oauth2"
-	"github.com/coreos-inc/auth/oidc"
 	"github.com/coreos-inc/auth/session"
+	"github.com/coreos/go-oidc/jose"
+	"github.com/coreos/go-oidc/oauth2"
+	"github.com/coreos/go-oidc/oidc"
 )
 
 type fakeConnector struct {

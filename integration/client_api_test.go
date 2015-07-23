@@ -8,8 +8,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/coreos-inc/auth/oidc"
 	schema "github.com/coreos-inc/auth/schema/workerschema"
+	"github.com/coreos/go-oidc/oidc"
 )
 
 type tokenHandlerTransport struct {

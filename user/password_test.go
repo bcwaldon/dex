@@ -10,8 +10,8 @@ import (
 	"github.com/kylelemons/godebug/pretty"
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/coreos-inc/auth/jose"
-	"github.com/coreos-inc/auth/key"
+	"github.com/coreos/go-oidc/jose"
+	"github.com/coreos/go-oidc/key"
 )
 
 func TestNewPasswordInfosFromReader(t *testing.T) {

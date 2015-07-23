@@ -3,7 +3,7 @@ package main
 import (
 	"net/url"
 
-	"github.com/coreos-inc/auth/oidc"
+	"github.com/coreos/go-oidc/oidc"
 )
 
 var (

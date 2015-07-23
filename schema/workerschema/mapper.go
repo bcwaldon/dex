@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/url"
 
-	"github.com/coreos-inc/auth/oidc"
+	"github.com/coreos/go-oidc/oidc"
 )
 
 func MapSchemaClientToClientIdentity(sc Client) (oidc.ClientIdentity, error) {

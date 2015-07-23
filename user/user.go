@@ -10,7 +10,7 @@ import (
 
 	"code.google.com/p/go-uuid/uuid"
 
-	"github.com/coreos-inc/auth/jose"
+	"github.com/coreos/go-oidc/jose"
 )
 
 const (

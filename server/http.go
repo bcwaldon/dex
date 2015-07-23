@@ -12,12 +12,12 @@ import (
 	"github.com/jonboulle/clockwork"
 
 	"github.com/coreos-inc/auth/connector"
-	"github.com/coreos-inc/auth/jose"
-	"github.com/coreos-inc/auth/key"
-	"github.com/coreos-inc/auth/oauth2"
-	"github.com/coreos-inc/auth/oidc"
 	phttp "github.com/coreos-inc/auth/pkg/http"
 	"github.com/coreos-inc/auth/pkg/log"
+	"github.com/coreos/go-oidc/jose"
+	"github.com/coreos/go-oidc/key"
+	"github.com/coreos/go-oidc/oauth2"
+	"github.com/coreos/go-oidc/oidc"
 	"github.com/coreos/pkg/health"
 )
 

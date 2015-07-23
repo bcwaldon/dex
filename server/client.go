@@ -10,8 +10,8 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/coreos-inc/auth/oidc"
 	pcrypto "github.com/coreos-inc/auth/pkg/crypto"
+	"github.com/coreos/go-oidc/oidc"
 )
 
 var (

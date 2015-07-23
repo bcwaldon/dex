@@ -9,9 +9,9 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"github.com/coreos-inc/auth/admin"
-	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/pkg/log"
 	"github.com/coreos-inc/auth/schema/adminschema"
+	"github.com/coreos/go-oidc/key"
 )
 
 const (

@@ -14,13 +14,13 @@ import (
 
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/email"
-	"github.com/coreos-inc/auth/jose"
-	"github.com/coreos-inc/auth/key"
-	"github.com/coreos-inc/auth/oauth2"
-	"github.com/coreos-inc/auth/oidc"
 	"github.com/coreos-inc/auth/pkg/log"
 	"github.com/coreos-inc/auth/session"
 	"github.com/coreos-inc/auth/user"
+	"github.com/coreos/go-oidc/jose"
+	"github.com/coreos/go-oidc/key"
+	"github.com/coreos/go-oidc/oauth2"
+	"github.com/coreos/go-oidc/oidc"
 	"github.com/coreos/pkg/health"
 )
 

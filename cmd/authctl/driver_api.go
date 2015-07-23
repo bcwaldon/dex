@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/coreos-inc/auth/connector"
-	"github.com/coreos-inc/auth/oidc"
 	schema "github.com/coreos-inc/auth/schema/workerschema"
+	"github.com/coreos/go-oidc/oidc"
 )
 
 func newAPIDriver(pcfg oidc.ProviderConfig, creds oidc.ClientCredentials) (driver, error) {

@@ -9,13 +9,13 @@ import (
 	"time"
 
 	"github.com/coreos-inc/auth/connector"
-	"github.com/coreos-inc/auth/jose"
-	"github.com/coreos-inc/auth/key"
-	"github.com/coreos-inc/auth/oidc"
 	phttp "github.com/coreos-inc/auth/pkg/http"
 	"github.com/coreos-inc/auth/server"
 	"github.com/coreos-inc/auth/session"
 	"github.com/coreos-inc/auth/user"
+	"github.com/coreos/go-oidc/jose"
+	"github.com/coreos/go-oidc/key"
+	"github.com/coreos/go-oidc/oidc"
 )
 
 func mockServer(cis []oidc.ClientIdentity) (*server.Server, error) {

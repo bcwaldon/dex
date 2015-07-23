@@ -13,9 +13,9 @@ import (
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/db"
 	"github.com/coreos-inc/auth/email"
-	"github.com/coreos-inc/auth/key"
 	"github.com/coreos-inc/auth/session"
 	"github.com/coreos-inc/auth/user"
+	"github.com/coreos/go-oidc/key"
 	"github.com/coreos/pkg/health"
 )
 

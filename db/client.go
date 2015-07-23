@@ -11,9 +11,9 @@ import (
 	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/coreos-inc/auth/oidc"
 	pcrypto "github.com/coreos-inc/auth/pkg/crypto"
 	"github.com/coreos-inc/auth/pkg/log"
+	"github.com/coreos/go-oidc/oidc"
 )
 
 const (

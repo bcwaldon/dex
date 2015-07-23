@@ -11,9 +11,9 @@ import (
 	"github.com/kylelemons/godebug/pretty"
 
 	"github.com/coreos-inc/auth/db"
-	"github.com/coreos-inc/auth/key"
-	"github.com/coreos-inc/auth/oidc"
 	"github.com/coreos-inc/auth/session"
+	"github.com/coreos/go-oidc/key"
+	"github.com/coreos/go-oidc/oidc"
 )
 
 var (

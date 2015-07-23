@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/coreos-inc/auth/oidc"
 	schema "github.com/coreos-inc/auth/schema/workerschema"
+	"github.com/coreos/go-oidc/oidc"
 )
 
 func makeBody(s string) io.ReadCloser {

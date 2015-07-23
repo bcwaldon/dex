@@ -11,10 +11,10 @@ import (
 
 	"github.com/coreos-inc/auth/admin"
 	"github.com/coreos-inc/auth/db"
-	"github.com/coreos-inc/auth/key"
 	pflag "github.com/coreos-inc/auth/pkg/flag"
 	"github.com/coreos-inc/auth/pkg/log"
 	"github.com/coreos-inc/auth/server"
+	"github.com/coreos/go-oidc/key"
 )
 
 var version = "DEV"

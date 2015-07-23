@@ -11,9 +11,9 @@ import (
 	"github.com/jonboulle/clockwork"
 	"github.com/lib/pq"
 
-	"github.com/coreos-inc/auth/oidc"
 	"github.com/coreos-inc/auth/pkg/log"
 	"github.com/coreos-inc/auth/session"
+	"github.com/coreos/go-oidc/oidc"
 )
 
 const (

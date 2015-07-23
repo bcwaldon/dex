@@ -11,10 +11,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/coreos-inc/auth/oidc"
 	pflag "github.com/coreos-inc/auth/pkg/flag"
 	phttp "github.com/coreos-inc/auth/pkg/http"
 	"github.com/coreos-inc/auth/pkg/log"
+	"github.com/coreos/go-oidc/oidc"
 )
 
 var (

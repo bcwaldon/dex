@@ -3,8 +3,8 @@ package main
 import (
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/db"
-	"github.com/coreos-inc/auth/oidc"
 	"github.com/coreos-inc/auth/server"
+	"github.com/coreos/go-oidc/oidc"
 )
 
 func newDBDriver(dsn string) (driver, error) {

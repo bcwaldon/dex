@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"text/tabwriter"
 	"text/template"
 )
 
@@ -31,9 +32,13 @@ var (
 			return fmt.Sprintf("\n\t%s%s=%s\t%s", prefix, name, defvalue, usage)
 		},
 	}
+
+	tabOut *tabwriter.Writer
 )
 
 func init() {
+	tabOut = tabwriter.NewWriter(os.Stdout, 0, 8, 1, '\t', 0)
+
 	commands = append(commands, cmdHelp)
 
 	globalUsageTemplate = template.Must(template.New("global_usage").Funcs(templFuncs).Parse(`
@@ -94,7 +99,7 @@ func runHelp(args []string) (exit int) {
 }
 
 func printGlobalUsage() {
-	globalUsageTemplate.Execute(os.Stdout, struct {
+	globalUsageTemplate.Execute(tabOut, struct {
 		Executable  string
 		Commands    []*command
 		Flags       []*flag.Flag
@@ -105,10 +110,11 @@ func printGlobalUsage() {
 		getFlags(globalFS),
 		cliDescription,
 	})
+	tabOut.Flush()
 }
 
 func printCommandUsage(cmd *command) {
-	commandUsageTemplate.Execute(os.Stdout, struct {
+	commandUsageTemplate.Execute(tabOut, struct {
 		Executable string
 		Cmd        *command
 		CmdFlags   []*flag.Flag
@@ -117,6 +123,7 @@ func printCommandUsage(cmd *command) {
 		cmd,
 		getFlags(&cmd.Flags),
 	})
+	tabOut.Flush()
 }
 
 func getFlags(flagset *flag.FlagSet) (flags []*flag.Flag) {

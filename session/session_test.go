@@ -61,6 +61,29 @@ func TestSessionClaims(t *testing.T) {
 				"exp": float64(now.Add(time.Hour).Unix()),
 			},
 		},
+		// Nonce gets propagated.
+		{
+			ses: Session{
+				CreatedAt: now,
+				ExpiresAt: now.Add(time.Hour),
+				ClientID:  "XXX",
+				Identity: oidc.Identity{
+					ID:    "YYY",
+					Name:  "elroy",
+					Email: "elroy@example.com",
+				},
+				UserID: "elroy-id",
+				Nonce:  "oncenay",
+			},
+			want: jose.Claims{
+				"iss":   issuerURL,
+				"sub":   "elroy-id",
+				"aud":   "XXX",
+				"iat":   float64(now.Unix()),
+				"exp":   float64(now.Add(time.Hour).Unix()),
+				"nonce": "oncenay",
+			},
+		},
 	}
 
 	for i, tt := range tests {

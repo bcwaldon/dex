@@ -39,15 +39,20 @@ type Session struct {
 	Identity    oidc.Identity
 	UserID      string
 
-	// Indicates that this session is a registration flow.
+	// Regsiter indicates that this session is a registration flow.
 	Register bool
+
+	// Nonce is optionally provided in the initial authorization request, and propogated in such cases to the generated claims.
+	Nonce string
 }
 
 // Claims returns a new set of Claims for the current session.
 // The "sub" of the returned Claims is that of the authd User, not whatever
-// remote Identity was used to authenticate. However the "email" from the
-// Identity is used.
+// remote Identity was used to authenticate.
 func (s *Session) Claims(issuerURL string) jose.Claims {
 	claims := oidc.NewClaims(issuerURL, s.UserID, s.ClientID, s.CreatedAt, s.ExpiresAt)
+	if s.Nonce != "" {
+		claims["nonce"] = s.Nonce
+	}
 	return claims
 }

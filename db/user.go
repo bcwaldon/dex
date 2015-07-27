@@ -22,6 +22,7 @@ func init() {
 		model:   userModel{},
 		autoinc: false,
 		pkey:    []string{"id"},
+		unique:  []string{"email"},
 	})
 
 	register(table{

@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -18,6 +19,9 @@ type table struct {
 	model   interface{}
 	autoinc bool
 	pkey    []string
+
+	// unique are non-primary key fields which should have uniqueness constraints.
+	unique []string
 }
 
 var (
@@ -58,7 +62,14 @@ func NewConnection(cfg Config) (*gorp.DbMap, error) {
 	}
 
 	for _, t := range tables {
-		dbm.AddTableWithName(t.model, t.name).SetKeys(t.autoinc, t.pkey...)
+		tm := dbm.AddTableWithName(t.model, t.name).SetKeys(t.autoinc, t.pkey...)
+		for _, unique := range t.unique {
+			cm := tm.ColMap(unique)
+			if cm == nil {
+				return nil, fmt.Errorf("no such column: %q", unique)
+			}
+			cm.SetUnique(true)
+		}
 	}
 
 	var sleep time.Duration

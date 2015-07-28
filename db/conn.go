@@ -12,6 +12,7 @@ import (
 
 	"github.com/coreos-inc/auth/pkg/log"
 	ptime "github.com/coreos-inc/auth/pkg/time"
+	"github.com/coreos-inc/auth/repo"
 )
 
 type table struct {
@@ -83,6 +84,12 @@ func NewConnection(cfg Config) (*gorp.DbMap, error) {
 	}
 
 	return &dbm, nil
+}
+
+func TransactionFactory(conn *gorp.DbMap) repo.TransactionFactory {
+	return func() (repo.Transaction, error) {
+		return conn.Begin()
+	}
 }
 
 func rollback(tx *gorp.Transaction) {

@@ -3,6 +3,8 @@ package user
 import (
 	"errors"
 	"net/url"
+
+	"github.com/coreos-inc/auth/repo"
 )
 
 var (
@@ -15,8 +17,9 @@ var (
 // Manager performs user-related "business-logic" functions on user and related objects.
 // This is in contrast to the Repos which perform little more than CRUD operations.
 type Manager struct {
-	userRepo UserRepo
-	pwRepo   PasswordInfoRepo
+	userRepo   UserRepo
+	pwRepo     PasswordInfoRepo
+	txnFactory repo.TransactionFactory
 }
 
 type ManagerOptions struct {
@@ -25,10 +28,11 @@ type ManagerOptions struct {
 	// variable policies
 }
 
-func NewManager(userRepo UserRepo, pwRepo PasswordInfoRepo, options ManagerOptions) *Manager {
+func NewManager(userRepo UserRepo, pwRepo PasswordInfoRepo, txnFactory repo.TransactionFactory, options ManagerOptions) *Manager {
 	return &Manager{
-		userRepo: userRepo,
-		pwRepo:   pwRepo,
+		userRepo:   userRepo,
+		pwRepo:     pwRepo,
+		txnFactory: txnFactory,
 	}
 }
 

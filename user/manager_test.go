@@ -7,6 +7,8 @@ import (
 
 	"github.com/coreos/go-oidc/jose"
 	"github.com/kylelemons/godebug/pretty"
+
+	"github.com/coreos-inc/auth/repo"
 )
 
 type testFixtures struct {
@@ -54,7 +56,7 @@ func makeTestFixtures() *testFixtures {
 			Password: []byte("password-2"),
 		},
 	})
-	f.mgr = NewManager(f.ur, f.pwr, ManagerOptions{})
+	f.mgr = NewManager(f.ur, f.pwr, repo.InMemTransactionFactory, ManagerOptions{})
 	return f
 }
 

@@ -36,7 +36,7 @@ const (
 
 type OIDCServer interface {
 	ClientMetadata(string) (*oidc.ClientMetadata, error)
-	NewSession(connectorID, clientID, clientState string, redirectURL url.URL, register bool) (string, error)
+	NewSession(connectorID, clientID, clientState string, redirectURL url.URL, nonce string, register bool) (string, error)
 	Login(oidc.Identity, string) (string, error)
 	CodeToken(creds oidc.ClientCredentials, sessionKey string) (*jose.JWT, error)
 	ClientCredsToken(creds oidc.ClientCredentials) (*jose.JWT, error)
@@ -257,8 +257,8 @@ func (s *Server) ClientMetadata(clientID string) (*oidc.ClientMetadata, error) {
 	return s.ClientIdentityRepo.Metadata(clientID)
 }
 
-func (s *Server) NewSession(ipdcID, clientID, clientState string, redirectURL url.URL, register bool) (string, error) {
-	sessionID, err := s.SessionManager.NewSession(ipdcID, clientID, clientState, redirectURL, register)
+func (s *Server) NewSession(ipdcID, clientID, clientState string, redirectURL url.URL, nonce string, register bool) (string, error) {
+	sessionID, err := s.SessionManager.NewSession(ipdcID, clientID, clientState, redirectURL, nonce, register)
 	if err != nil {
 		return "", err
 	}

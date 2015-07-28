@@ -41,6 +41,7 @@ type sessionModel struct {
 	ConnectorID string `db:"connector_id"`
 	UserID      string `db:"user_id"`
 	Register    bool   `db:"register"`
+	Nonce       string `db:"nonce"`
 }
 
 func (s *sessionModel) session() (*session.Session, error) {
@@ -69,6 +70,7 @@ func (s *sessionModel) session() (*session.Session, error) {
 		ConnectorID: s.ConnectorID,
 		UserID:      s.UserID,
 		Register:    s.Register,
+		Nonce:       s.Nonce,
 	}
 
 	if s.CreatedAt != 0 {
@@ -98,6 +100,7 @@ func newSessionModel(s *session.Session) (*sessionModel, error) {
 		ConnectorID: s.ConnectorID,
 		UserID:      s.UserID,
 		Register:    s.Register,
+		Nonce:       s.Nonce,
 	}
 
 	if !s.CreatedAt.IsZero() {

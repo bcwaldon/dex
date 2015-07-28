@@ -44,7 +44,7 @@ type SessionManager struct {
 	keys           SessionKeyRepo
 }
 
-func (m *SessionManager) NewSession(connectorID, clientID, clientState string, redirectURL url.URL, register bool) (string, error) {
+func (m *SessionManager) NewSession(connectorID, clientID, clientState string, redirectURL url.URL, nonce string, register bool) (string, error) {
 	sID, err := m.GenerateCode()
 	if err != nil {
 		return "", err
@@ -61,6 +61,7 @@ func (m *SessionManager) NewSession(connectorID, clientID, clientState string, r
 		ClientState: clientState,
 		RedirectURL: redirectURL,
 		Register:    register,
+		Nonce:       nonce,
 	}
 
 	err = m.sessions.Create(s)

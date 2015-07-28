@@ -92,7 +92,7 @@ func handleKeysFunc(km key.PrivateKeyManager, clock clockwork.Clock) http.Handle
 		exp := km.ExpiresAt()
 		w.Header().Set("Expires", exp.Format(time.RFC1123))
 
-		ttl := int(exp.Sub(clock.Now().UTC()).Seconds())
+		ttl := int(exp.Sub(clock.Now()).Seconds())
 		w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", ttl))
 
 		w.Header().Set("Content-Type", "application/json")
@@ -460,7 +460,7 @@ type oAuth2Token struct {
 }
 
 func createLastSeenCookie() *http.Cookie {
-	now := time.Now().UTC()
+	now := time.Now()
 	return &http.Cookie{
 		HttpOnly: true,
 		Name:     cookieLastSeen,
@@ -489,7 +489,7 @@ func consumeShowEmailVerifiedCookie(r *http.Request, w http.ResponseWriter) bool
 }
 
 func deleteCookie(w http.ResponseWriter, name string) {
-	now := time.Now().UTC()
+	now := time.Now()
 	http.SetCookie(w, &http.Cookie{
 		Name:    name,
 		MaxAge:  -100,

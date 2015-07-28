@@ -50,7 +50,7 @@ func (m *SessionManager) NewSession(connectorID, clientID, clientState string, r
 		return "", err
 	}
 
-	now := m.Clock.Now().UTC()
+	now := m.Clock.Now()
 	s := Session{
 		ConnectorID: connectorID,
 		ID:          sID,

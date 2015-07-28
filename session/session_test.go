@@ -12,7 +12,7 @@ import (
 
 func TestSessionClaims(t *testing.T) {
 	issuerURL := "http://server.example.com"
-	now := time.Now().UTC()
+	now := time.Now()
 
 	tests := []struct {
 		ses  Session

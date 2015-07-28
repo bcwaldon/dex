@@ -408,7 +408,7 @@ func TestHandleKeysFuncMethodNotAllowed(t *testing.T) {
 
 func TestHandleKeysFunc(t *testing.T) {
 	fc := clockwork.NewFakeClock()
-	exp := fc.Now().UTC().Add(13 * time.Second)
+	exp := fc.Now().Add(13 * time.Second)
 	km := &StaticKeyManager{
 		expiresAt: exp,
 		keys: []jose.JWK{

@@ -105,7 +105,7 @@ func TestDBSessionRepoCreateUpdate(t *testing.T) {
 	}
 
 	if diff := pretty.Compare(ses, got); diff != "" {
-		t.Fatalf("Retrieved incorrect KeySet: Compare(want,got): %v", diff)
+		t.Fatalf("Retrieved incorrect Session: Compare(want,got): %v", diff)
 	}
 }
 

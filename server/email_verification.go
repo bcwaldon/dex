@@ -257,7 +257,7 @@ func handleEmailVerifyFunc(verifiedTpl *template.Template, issuer url.URL, keysF
 			HttpOnly: true,
 			Name:     "ShowEmailVerifiedMessage",
 			MaxAge:   int(60 * 5),
-			Expires:  time.Now().UTC().Add(time.Minute * 5),
+			Expires:  time.Now().Add(time.Minute * 5),
 		})
 		http.Redirect(w, r, cbURL.String(), http.StatusSeeOther)
 	}

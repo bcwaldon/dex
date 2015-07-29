@@ -142,7 +142,7 @@ func (r *SessionRepo) Get(sessionID string) (*session.Session, error) {
 	if err != nil {
 		return nil, err
 	}
-	if ses.ExpiresAt.Before(r.clock.Now().UTC()) {
+	if ses.ExpiresAt.Before(r.clock.Now()) {
 		return nil, errors.New("session does not exist")
 	}
 

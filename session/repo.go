@@ -36,7 +36,7 @@ type memSessionRepo struct {
 
 func (m *memSessionRepo) Get(sessionID string) (*Session, error) {
 	s, ok := m.store[sessionID]
-	if !ok || s.ExpiresAt.Before(m.clock.Now().UTC()) {
+	if !ok || s.ExpiresAt.Before(m.clock.Now()) {
 		return nil, errors.New("unrecognized ID")
 	}
 	return &s, nil
@@ -87,7 +87,7 @@ func (m *memSessionKeyRepo) Pop(key string) (string, error) {
 	}
 	defer delete(m.store, key)
 
-	if esk.expiresAt.Before(m.clock.Now().UTC()) {
+	if esk.expiresAt.Before(m.clock.Now()) {
 		return "", errors.New("expired key")
 	}
 
@@ -97,7 +97,7 @@ func (m *memSessionKeyRepo) Pop(key string) (string, error) {
 func (m *memSessionKeyRepo) Push(sk SessionKey, ttl time.Duration) error {
 	m.store[sk.Key] = expiringSessionKey{
 		SessionKey: sk,
-		expiresAt:  m.clock.Now().UTC().Add(ttl),
+		expiresAt:  m.clock.Now().Add(ttl),
 	}
 	return nil
 }

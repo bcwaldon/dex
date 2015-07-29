@@ -109,7 +109,7 @@ func TestRegisterWithRemoteIdentity(t *testing.T) {
 			continue
 		}
 
-		usr, err := f.ur.Get(userID)
+		usr, err := f.ur.Get(nil, userID)
 		if err != nil {
 			t.Errorf("case %d: err != nil: %q", i, err)
 		}
@@ -121,7 +121,7 @@ func TestRegisterWithRemoteIdentity(t *testing.T) {
 			t.Errorf("case %d: user.EmailVerified: want=%v, got=%v", i, tt.emailVerified, usr.EmailVerified)
 		}
 
-		ridUSR, err := f.ur.GetByRemoteIdentity(tt.rid)
+		ridUSR, err := f.ur.GetByRemoteIdentity(nil, tt.rid)
 		if err != nil {
 			t.Errorf("case %d: err != nil: %q", i, err)
 		}
@@ -167,7 +167,7 @@ func TestRegisterWithPassword(t *testing.T) {
 			continue
 		}
 
-		usr, err := f.ur.Get(userID)
+		usr, err := f.ur.Get(nil, userID)
 		if err != nil {
 			t.Errorf("case %d: err != nil: %q", i, err)
 		}
@@ -179,7 +179,7 @@ func TestRegisterWithPassword(t *testing.T) {
 			t.Errorf("case %d: user.EmailVerified: want=%v, got=%v", i, false, usr.EmailVerified)
 		}
 
-		ridUSR, err := f.ur.GetByRemoteIdentity(RemoteIdentity{
+		ridUSR, err := f.ur.GetByRemoteIdentity(nil, RemoteIdentity{
 			ID:          userID,
 			ConnectorID: connID,
 		})
@@ -190,7 +190,7 @@ func TestRegisterWithPassword(t *testing.T) {
 			t.Errorf("case %d: Compare(want, got) = %v", i, diff)
 		}
 
-		pwi, err := f.pwr.Get(userID)
+		pwi, err := f.pwr.Get(nil, userID)
 		if err != nil {
 			t.Errorf("case %d: err != nil: %q", i, err)
 		}

@@ -2,11 +2,11 @@ package db
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/coopernurse/gorp"
 
+	"github.com/coreos-inc/auth/repo"
 	"github.com/coreos-inc/auth/user"
 )
 
@@ -40,46 +40,33 @@ type passwordInfoRepo struct {
 	dbMap *gorp.DbMap
 }
 
-func (r *passwordInfoRepo) Get(userID string) (user.PasswordInfo, error) {
-	return r.get(nil, userID)
+func (r *passwordInfoRepo) Get(tx repo.Transaction, userID string) (user.PasswordInfo, error) {
+	return r.get(tx, userID)
 }
 
-func (r *passwordInfoRepo) Create(pw user.PasswordInfo) (err error) {
+func (r *passwordInfoRepo) Create(tx repo.Transaction, pw user.PasswordInfo) (err error) {
 	if pw.UserID == "" {
 		return user.ErrorInvalidID
-	}
-
-	tx, err := r.dbMap.Begin()
-	if err != nil {
-		return err
 	}
 
 	_, err = r.get(tx, pw.UserID)
 	if err != nil {
 		if err != user.ErrorNotFound {
-			rollback(tx)
 			return err
 		}
 	} else {
-		rollback(tx)
 		return user.ErrorDuplicateID
 	}
 
 	err = r.insert(tx, pw)
 	if err != nil {
-		rollback(tx)
 		return err
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		rollback(tx)
-		return fmt.Errorf("error inserting PasswordInfo: %v", err)
-	}
 	return nil
 }
 
-func (r *passwordInfoRepo) Update(pw user.PasswordInfo) error {
+func (r *passwordInfoRepo) Update(tx repo.Transaction, pw user.PasswordInfo) error {
 	if pw.UserID == "" {
 		return user.ErrorInvalidID
 	}
@@ -88,40 +75,33 @@ func (r *passwordInfoRepo) Update(pw user.PasswordInfo) error {
 		return user.ErrorInvalidPassword
 	}
 
-	tx, err := r.dbMap.Begin()
-	if err != nil {
-		return err
-	}
-
 	// make sure this user exists already
-	_, err = r.get(tx, pw.UserID)
+	_, err := r.get(tx, pw.UserID)
 	if err != nil {
-		rollback(tx)
 		return err
 	}
 
 	err = r.update(tx, pw)
 	if err != nil {
-		rollback(tx)
 		return err
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		rollback(tx)
-		return err
-	}
 	return nil
 }
 
-func (r *passwordInfoRepo) executor(tx *gorp.Transaction) gorp.SqlExecutor {
+func (r *passwordInfoRepo) executor(tx repo.Transaction) gorp.SqlExecutor {
 	if tx == nil {
 		return r.dbMap
 	}
-	return tx
+
+	gorpTx, ok := tx.(*gorp.Transaction)
+	if !ok {
+		panic("wrong kind of transaction passed to a DB repo")
+	}
+	return gorpTx
 }
 
-func (r *passwordInfoRepo) get(tx *gorp.Transaction, id string) (user.PasswordInfo, error) {
+func (r *passwordInfoRepo) get(tx repo.Transaction, id string) (user.PasswordInfo, error) {
 	ex := r.executor(tx)
 
 	m, err := ex.Get(passwordInfoModel{}, id)
@@ -141,7 +121,7 @@ func (r *passwordInfoRepo) get(tx *gorp.Transaction, id string) (user.PasswordIn
 	return pwm.passwordInfo()
 }
 
-func (r *passwordInfoRepo) insert(tx *gorp.Transaction, pw user.PasswordInfo) error {
+func (r *passwordInfoRepo) insert(tx repo.Transaction, pw user.PasswordInfo) error {
 	ex := r.executor(tx)
 	pm, err := newPasswordInfoModel(&pw)
 	if err != nil {
@@ -150,7 +130,7 @@ func (r *passwordInfoRepo) insert(tx *gorp.Transaction, pw user.PasswordInfo) er
 	return ex.Insert(pm)
 }
 
-func (r *passwordInfoRepo) update(tx *gorp.Transaction, pw user.PasswordInfo) error {
+func (r *passwordInfoRepo) update(tx repo.Transaction, pw user.PasswordInfo) error {
 	ex := r.executor(tx)
 	pm, err := newPasswordInfoModel(&pw)
 	if err != nil {

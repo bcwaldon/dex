@@ -121,9 +121,9 @@ func TestHandleVerifyEmailResend(t *testing.T) {
 	for i, tt := range tests {
 		f, err := makeTestFixtures()
 		if tt.verifyEmailUserID != "" {
-			usr, _ := f.userRepo.Get(tt.verifyEmailUserID)
+			usr, _ := f.userRepo.Get(nil, tt.verifyEmailUserID)
 			usr.EmailVerified = true
-			f.userRepo.Update(usr)
+			f.userRepo.Update(nil, usr)
 		}
 
 		if err != nil {

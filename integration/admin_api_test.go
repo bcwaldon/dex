@@ -5,13 +5,14 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/kylelemons/godebug/pretty"
+	"google.golang.org/api/googleapi"
+
 	"github.com/coreos-inc/auth/admin"
+	"github.com/coreos-inc/auth/repo"
 	"github.com/coreos-inc/auth/schema/adminschema"
 	"github.com/coreos-inc/auth/server"
 	"github.com/coreos-inc/auth/user"
-
-	"github.com/kylelemons/godebug/pretty"
-	"google.golang.org/api/googleapi"
 )
 
 type testFixtures struct {
@@ -46,7 +47,8 @@ func makeTestFixtures() *testFixtures {
 		},
 	})
 
-	f.adAPI = admin.NewAdminAPI(f.ur, f.pwr, "local")
+	um := user.NewManager(f.ur, f.pwr, repo.InMemTransactionFactory, user.ManagerOptions{})
+	f.adAPI = admin.NewAdminAPI(um, f.ur, f.pwr, "local")
 	f.adSrv = server.NewAdminServer(f.adAPI, nil)
 	f.hSrv = httptest.NewServer(f.adSrv.HTTPHandler())
 	f.hc = &http.Client{}
@@ -174,7 +176,7 @@ func TestCreateAdmin(t *testing.T) {
 					t.Errorf("case %d: Compare(want, got) = %v", i, diff)
 				}
 
-				usr, err := f.ur.GetByRemoteIdentity(user.RemoteIdentity{
+				usr, err := f.ur.GetByRemoteIdentity(nil, user.RemoteIdentity{
 					ConnectorID: "local",
 					ID:          tt.admn.Id,
 				})
@@ -199,6 +201,7 @@ func TestGetState(t *testing.T) {
 		{
 			addUsers: []user.User{
 				user.User{
+					ID:    "ID-admin",
 					Email: "Admin@example.com",
 					Admin: true,
 				},
@@ -220,7 +223,7 @@ func TestGetState(t *testing.T) {
 			defer f.close()
 
 			for _, usr := range tt.addUsers {
-				_, err := f.ur.Create(usr)
+				err := f.ur.Create(nil, usr)
 				if err != nil {
 					t.Fatalf("case %d: err != nil: %v", i, err)
 				}

@@ -10,6 +10,7 @@ import (
 
 	"code.google.com/p/go-uuid/uuid"
 
+	"github.com/coreos-inc/auth/repo"
 	"github.com/coreos/go-oidc/jose"
 )
 
@@ -56,23 +57,23 @@ func (u *User) AddToClaims(claims jose.Claims) {
 //  * No other Users may have the same RemoteIdentity as one of the
 //    users. (This constraint may be relaxed in the future)
 type UserRepo interface {
-	Get(id string) (User, error)
+	Get(tx repo.Transaction, id string) (User, error)
 
-	GetByEmail(email string) (User, error)
+	Create(repo.Transaction, User) error
 
-	Create(User) (userID string, err error)
+	GetByEmail(tx repo.Transaction, email string) (User, error)
 
-	Update(User) error
+	Update(repo.Transaction, User) error
 
-	GetByRemoteIdentity(RemoteIdentity) (User, error)
+	GetByRemoteIdentity(repo.Transaction, RemoteIdentity) (User, error)
 
-	AddRemoteIdentity(userID string, remoteID RemoteIdentity) error
+	AddRemoteIdentity(tx repo.Transaction, userID string, remoteID RemoteIdentity) error
 
-	RemoveRemoteIdentity(userID string, remoteID RemoteIdentity) error
+	RemoveRemoteIdentity(tx repo.Transaction, userID string, remoteID RemoteIdentity) error
 
-	GetRemoteIdentities(userID string) ([]RemoteIdentity, error)
+	GetRemoteIdentities(tx repo.Transaction, userID string) ([]RemoteIdentity, error)
 
-	GetAdminCount() (int, error)
+	GetAdminCount(repo.Transaction) (int, error)
 }
 
 var (
@@ -112,17 +113,11 @@ func ValidPassword(plaintext string) bool {
 
 // NewUserRepo returns an in-memory UserRepo useful for development.
 func NewUserRepo() UserRepo {
-	return NewUserRepoWithIDGenerator(DefaultUserIDGenerator)
-}
-
-// NewUserRepoWithIDGenerator is the same as NewUserRepo but with the ability to provide your own UserIDGenerator.
-func NewUserRepoWithIDGenerator(userIDGenerator UserIDGenerator) UserRepo {
 	return &memUserRepo{
 		usersByID:         make(map[string]User),
 		userIDsByEmail:    make(map[string]string),
 		userIDsByRemoteID: make(map[RemoteIdentity]string),
 		remoteIDsByUserID: make(map[string]map[RemoteIdentity]struct{}),
-		userIDGenerator:   userIDGenerator,
 	}
 }
 
@@ -130,11 +125,10 @@ type memUserRepo struct {
 	usersByID         map[string]User
 	userIDsByEmail    map[string]string
 	userIDsByRemoteID map[RemoteIdentity]string
-	userIDGenerator   UserIDGenerator
 	remoteIDsByUserID map[string]map[RemoteIdentity]struct{}
 }
 
-func (r *memUserRepo) Get(id string) (User, error) {
+func (r *memUserRepo) Get(_ repo.Transaction, id string) (User, error) {
 	user, ok := r.usersByID[id]
 	if !ok {
 		return User{}, ErrorNotFound
@@ -142,47 +136,41 @@ func (r *memUserRepo) Get(id string) (User, error) {
 	return user, nil
 }
 
-func (r *memUserRepo) GetByEmail(email string) (User, error) {
+func (r *memUserRepo) GetByEmail(tx repo.Transaction, email string) (User, error) {
 	userID, ok := r.userIDsByEmail[email]
 	if !ok {
 		return User{}, ErrorNotFound
 	}
-	return r.Get(userID)
+	return r.Get(tx, userID)
 }
 
-func (r *memUserRepo) Create(user User) (string, error) {
-	if user.ID != "" {
-		return "", ErrorInvalidID
+func (r *memUserRepo) Create(_ repo.Transaction, user User) error {
+	if user.ID == "" {
+		return ErrorInvalidID
 	}
 
 	if !ValidEmail(user.Email) {
-		return "", ErrorInvalidEmail
-	}
-
-	newID, err := r.userIDGenerator()
-	if err != nil {
-		return "", err
+		return ErrorInvalidEmail
 	}
 
 	// make sure no one has the same ID; if using UUID the chances of this
 	// happening are astronomically small.
 	_, ok := r.usersByID[user.ID]
 	if ok {
-		return "", ErrorDuplicateID
+		return ErrorDuplicateID
 	}
 
 	// make sure there's no other user with the same Email
 	_, ok = r.userIDsByEmail[user.Email]
 	if ok {
-		return "", ErrorDuplicateEmail
+		return ErrorDuplicateEmail
 	}
 
-	user.ID = newID
 	r.set(user)
-	return newID, nil
+	return nil
 }
 
-func (r *memUserRepo) Update(user User) error {
+func (r *memUserRepo) Update(_ repo.Transaction, user User) error {
 	if user.ID == "" {
 		return ErrorInvalidID
 	}
@@ -207,7 +195,7 @@ func (r *memUserRepo) Update(user User) error {
 	return nil
 }
 
-func (r *memUserRepo) AddRemoteIdentity(userID string, ri RemoteIdentity) error {
+func (r *memUserRepo) AddRemoteIdentity(_ repo.Transaction, userID string, ri RemoteIdentity) error {
 	_, ok := r.usersByID[userID]
 	if !ok {
 		return ErrorNotFound
@@ -228,7 +216,7 @@ func (r *memUserRepo) AddRemoteIdentity(userID string, ri RemoteIdentity) error 
 	return nil
 }
 
-func (r *memUserRepo) RemoveRemoteIdentity(userID string, ri RemoteIdentity) error {
+func (r *memUserRepo) RemoveRemoteIdentity(_ repo.Transaction, userID string, ri RemoteIdentity) error {
 	otherID, ok := r.userIDsByRemoteID[ri]
 	if !ok {
 		return ErrorNotFound
@@ -241,7 +229,7 @@ func (r *memUserRepo) RemoveRemoteIdentity(userID string, ri RemoteIdentity) err
 	return nil
 }
 
-func (r *memUserRepo) GetByRemoteIdentity(ri RemoteIdentity) (User, error) {
+func (r *memUserRepo) GetByRemoteIdentity(_ repo.Transaction, ri RemoteIdentity) (User, error) {
 	userID, ok := r.userIDsByRemoteID[ri]
 	if !ok {
 		return User{}, ErrorNotFound
@@ -254,7 +242,7 @@ func (r *memUserRepo) GetByRemoteIdentity(ri RemoteIdentity) (User, error) {
 	return user, nil
 }
 
-func (r *memUserRepo) GetRemoteIdentities(userID string) ([]RemoteIdentity, error) {
+func (r *memUserRepo) GetRemoteIdentities(_ repo.Transaction, userID string) ([]RemoteIdentity, error) {
 	ids := []RemoteIdentity{}
 	for id := range r.remoteIDsByUserID[userID] {
 		ids = append(ids, id)
@@ -262,7 +250,7 @@ func (r *memUserRepo) GetRemoteIdentities(userID string) ([]RemoteIdentity, erro
 	return ids, nil
 }
 
-func (r *memUserRepo) GetAdminCount() (int, error) {
+func (r *memUserRepo) GetAdminCount(_ repo.Transaction) (int, error) {
 	var i int
 	for _, usr := range r.usersByID {
 		if usr.Admin {
@@ -297,7 +285,7 @@ func NewUserRepoFromUsers(us []UserWithRemoteIdentities) UserRepo {
 	for _, u := range us {
 		memUserRepo.set(u.User)
 		for _, ri := range u.RemoteIdentities {
-			memUserRepo.AddRemoteIdentity(u.User.ID, ri)
+			memUserRepo.AddRemoteIdentity(nil, u.User.ID, ri)
 		}
 	}
 	return memUserRepo

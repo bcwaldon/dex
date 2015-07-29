@@ -192,14 +192,14 @@ type LocalIdentityProvider struct {
 }
 
 func (m *LocalIdentityProvider) Identity(email, password string) (*oidc.Identity, error) {
-	user, err := m.UserRepo.GetByEmail(email)
+	user, err := m.UserRepo.GetByEmail(nil, email)
 	if err != nil {
 		return nil, err
 	}
 
 	id := user.ID
 
-	pi, err := m.PasswordInfoRepo.Get(id)
+	pi, err := m.PasswordInfoRepo.Get(nil, id)
 	if err != nil {
 		return nil, err
 	}

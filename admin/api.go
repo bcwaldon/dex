@@ -10,17 +10,19 @@ import (
 
 // AdminAPI provides the logic necessary to implement the Admin API.
 type AdminAPI struct {
+	userManager      *user.Manager
 	userRepo         user.UserRepo
 	passwordInfoRepo user.PasswordInfoRepo
 	localConnectorID string
 }
 
-func NewAdminAPI(userRepo user.UserRepo, pwiRepo user.PasswordInfoRepo, localConnectorID string) *AdminAPI {
+func NewAdminAPI(userManager *user.Manager, userRepo user.UserRepo, pwiRepo user.PasswordInfoRepo, localConnectorID string) *AdminAPI {
 	if localConnectorID == "" {
 		panic("must specify non-blank localConnectorID")
 	}
 
 	return &AdminAPI{
+		userManager:      userManager,
 		userRepo:         userRepo,
 		passwordInfoRepo: pwiRepo,
 		localConnectorID: localConnectorID,
@@ -64,13 +66,13 @@ var (
 )
 
 func (a *AdminAPI) GetAdmin(id string) (adminschema.Admin, error) {
-	usr, err := a.userRepo.Get(id)
+	usr, err := a.userRepo.Get(nil, id)
 
 	if err != nil {
 		return adminschema.Admin{}, mapError(err)
 	}
 
-	pwi, err := a.passwordInfoRepo.Get(id)
+	pwi, err := a.passwordInfoRepo.Get(nil, id)
 	if err != nil {
 		return adminschema.Admin{}, mapError(err)
 	}
@@ -83,41 +85,17 @@ func (a *AdminAPI) GetAdmin(id string) (adminschema.Admin, error) {
 }
 
 func (a *AdminAPI) CreateAdmin(admn adminschema.Admin) (string, error) {
-	usr := user.User{}
-	usr.Email = admn.Email
-	usr.Admin = true
-
-	id, err := a.userRepo.Create(usr)
+	userID, err := a.userManager.CreateAdminUser(admn.Email, user.Password(admn.Password), a.localConnectorID)
 	if err != nil {
 		return "", mapError(err)
 	}
-
-	err = a.userRepo.AddRemoteIdentity(id, user.RemoteIdentity{
-		ConnectorID: a.localConnectorID,
-		ID:          id,
-	})
-	if err != nil {
-		return "", mapError(err)
-	}
-
-	pwi := user.PasswordInfo{
-		UserID:   id,
-		Password: user.Password(admn.Password),
-	}
-
-	// TODO(bobbyrullo): This is racy and difficult to recover from since we're not using transactions.
-	err = a.passwordInfoRepo.Create(pwi)
-	if err != nil {
-		return "", mapError(err)
-	}
-
-	return id, nil
+	return userID, nil
 }
 
 func (a *AdminAPI) GetState() (adminschema.State, error) {
 	state := adminschema.State{}
 
-	admins, err := a.userRepo.GetAdminCount()
+	admins, err := a.userRepo.GetAdminCount(nil)
 	if err != nil {
 		return adminschema.State{}, err
 	}

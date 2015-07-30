@@ -247,6 +247,8 @@ func (s *Server) HTTPHandler() http.Handler {
 	clientPath, clientHandler := registerClientResource(apiBasePath, s.ClientIdentityRepo)
 	mux.Handle(path.Join(apiBasePath, clientPath), s.NewClientTokenAuthHandler(clientHandler))
 
+	mux.Handle(path.Join(apiBasePath, UsersSubTree)+"/", NewUserMgmtServer(nil).HTTPHandler())
+
 	return http.Handler(mux)
 }
 

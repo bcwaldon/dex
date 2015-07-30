@@ -9,12 +9,14 @@ import (
 	"os"
 	"time"
 
+	"github.com/coreos/go-oidc/key"
+
 	"github.com/coreos-inc/auth/admin"
 	"github.com/coreos-inc/auth/db"
 	pflag "github.com/coreos-inc/auth/pkg/flag"
 	"github.com/coreos-inc/auth/pkg/log"
 	"github.com/coreos-inc/auth/server"
-	"github.com/coreos/go-oidc/key"
+	"github.com/coreos-inc/auth/user"
 )
 
 var version = "DEV"
@@ -74,7 +76,9 @@ func main() {
 
 	userRepo := db.NewUserRepo(dbc)
 	pwiRepo := db.NewPasswordInfoRepo(dbc)
-	adminAPI := admin.NewAdminAPI(userRepo, pwiRepo, *localConnectorID)
+	userManager := user.NewManager(userRepo,
+		pwiRepo, db.TransactionFactory(dbc), user.ManagerOptions{})
+	adminAPI := admin.NewAdminAPI(userManager, userRepo, pwiRepo, *localConnectorID)
 	kRepo, err := db.NewPrivateKeySetRepo(dbc, *secret)
 	if err != nil {
 		log.Fatalf(err.Error())

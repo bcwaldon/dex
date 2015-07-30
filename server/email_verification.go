@@ -113,7 +113,7 @@ func handleVerifyEmailResendFunc(
 			return
 		}
 
-		usr, err := userRepo.Get(sub)
+		usr, err := userRepo.Get(nil, sub)
 		if err != nil {
 			if err == user.ErrorNotFound {
 				log.Errorf("Failed to find user specified by token: %v", err)

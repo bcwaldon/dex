@@ -14,6 +14,8 @@ import (
 	"github.com/coreos/go-oidc/jose"
 	"github.com/coreos/go-oidc/key"
 	"github.com/coreos/go-oidc/oidc"
+
+	"github.com/coreos-inc/auth/repo"
 )
 
 const (
@@ -86,9 +88,9 @@ func (p PasswordInfo) Identity() oidc.Identity {
 }
 
 type PasswordInfoRepo interface {
-	Get(id string) (PasswordInfo, error)
-	Update(PasswordInfo) error
-	Create(PasswordInfo) error
+	Get(tx repo.Transaction, id string) (PasswordInfo, error)
+	Update(repo.Transaction, PasswordInfo) error
+	Create(repo.Transaction, PasswordInfo) error
 }
 
 func NewPasswordInfoRepo() PasswordInfoRepo {
@@ -101,7 +103,7 @@ type memPasswordInfoRepo struct {
 	pws map[string]PasswordInfo
 }
 
-func (m *memPasswordInfoRepo) Get(id string) (PasswordInfo, error) {
+func (m *memPasswordInfoRepo) Get(_ repo.Transaction, id string) (PasswordInfo, error) {
 	pw, ok := m.pws[id]
 	if !ok {
 		return PasswordInfo{}, ErrorNotFound
@@ -109,7 +111,7 @@ func (m *memPasswordInfoRepo) Get(id string) (PasswordInfo, error) {
 	return pw, nil
 }
 
-func (m *memPasswordInfoRepo) Create(pw PasswordInfo) error {
+func (m *memPasswordInfoRepo) Create(_ repo.Transaction, pw PasswordInfo) error {
 	_, ok := m.pws[pw.UserID]
 	if ok {
 		return ErrorDuplicateID
@@ -127,7 +129,7 @@ func (m *memPasswordInfoRepo) Create(pw PasswordInfo) error {
 	return nil
 }
 
-func (m *memPasswordInfoRepo) Update(pw PasswordInfo) error {
+func (m *memPasswordInfoRepo) Update(_ repo.Transaction, pw PasswordInfo) error {
 	if pw.UserID == "" {
 		return ErrorInvalidID
 	}
@@ -194,7 +196,7 @@ func readPasswordInfosFromFile(loc string) ([]PasswordInfo, error) {
 
 func LoadPasswordInfos(repo PasswordInfoRepo, pws []PasswordInfo) error {
 	for i, pw := range pws {
-		err := repo.Create(pw)
+		err := repo.Create(nil, pw)
 		if err != nil {
 			return fmt.Errorf("error loading PasswordInfo[%d]: %q", i, err)
 		}

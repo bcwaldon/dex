@@ -153,7 +153,7 @@ func (h *SendResetPasswordEmailHandler) exchangeKeyForClientAndRedirect(key stri
 }
 
 func (h *SendResetPasswordEmailHandler) sendResetPasswordEmail(email, redirectURL, clientID string) error {
-	usr, err := h.ur.GetByEmail(email)
+	usr, err := h.ur.GetByEmail(nil, email)
 	if err == user.ErrorNotFound {
 		log.Errorf("No Such user for email: %q", email)
 		return err
@@ -163,7 +163,7 @@ func (h *SendResetPasswordEmailHandler) sendResetPasswordEmail(email, redirectUR
 		return err
 	}
 
-	pwi, err := h.pwi.Get(usr.ID)
+	pwi, err := h.pwi.Get(nil, usr.ID)
 	if err == user.ErrorNotFound {
 		// TODO(bobbyrullo): In this case, maybe send a different email explaining that
 		// they don't have a local password.

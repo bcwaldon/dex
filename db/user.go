@@ -8,6 +8,7 @@ import (
 	"github.com/coopernurse/gorp"
 	"github.com/lib/pq"
 
+	"github.com/coreos-inc/auth/repo"
 	"github.com/coreos-inc/auth/user"
 )
 
@@ -35,8 +36,7 @@ func init() {
 
 func NewUserRepo(dbm *gorp.DbMap) user.UserRepo {
 	return &userRepo{
-		dbMap:           dbm,
-		userIDGenerator: user.DefaultUserIDGenerator,
+		dbMap: dbm,
 	}
 }
 
@@ -49,7 +49,7 @@ func NewUserRepoFromUsers(dbm *gorp.DbMap, us []user.UserWithRemoteIdentities) (
 		}
 		err = repo.dbMap.Insert(um)
 		for _, ri := range u.RemoteIdentities {
-			err = repo.AddRemoteIdentity(u.User.ID, ri)
+			err = repo.AddRemoteIdentity(nil, u.User.ID, ri)
 			if err != nil {
 				return nil, err
 			}
@@ -59,95 +59,65 @@ func NewUserRepoFromUsers(dbm *gorp.DbMap, us []user.UserWithRemoteIdentities) (
 }
 
 type userRepo struct {
-	dbMap           *gorp.DbMap
-	userIDGenerator user.UserIDGenerator
+	dbMap *gorp.DbMap
 }
 
-func (r *userRepo) Get(userID string) (user.User, error) {
-	return r.get(nil, userID)
+func (r *userRepo) Get(tx repo.Transaction, userID string) (user.User, error) {
+	return r.get(tx, userID)
 }
 
-func (r *userRepo) GetByEmail(email string) (user.User, error) {
-	return r.getByEmail(nil, email)
-}
-
-func (r *userRepo) Create(usr user.User) (userID string, err error) {
-	if usr.ID != "" {
-		return "", user.ErrorInvalidID
+func (r *userRepo) Create(tx repo.Transaction, usr user.User) (err error) {
+	if usr.ID == "" {
+		return user.ErrorInvalidID
 	}
 
-	newID, err := r.userIDGenerator()
-	if err != nil {
-		return "", err
-	}
-
-	tx, err := r.dbMap.Begin()
-	if err != nil {
-		return "", err
-	}
-
-	_, err = r.get(tx, userID)
+	_, err = r.get(tx, usr.ID)
 	if err != nil {
 		if err != user.ErrorNotFound {
-			rollback(tx)
-			return "", err
+			return err
 		}
 	} else {
-		rollback(tx)
-		return "", user.ErrorDuplicateID
+		return user.ErrorDuplicateID
 	}
 
 	if !user.ValidEmail(usr.Email) {
-		rollback(tx)
-		return "", user.ErrorInvalidEmail
+		return user.ErrorInvalidEmail
 	}
 
 	// make sure there's no other user with the same Email
 	_, err = r.getByEmail(tx, usr.Email)
 	if err != nil {
 		if err != user.ErrorNotFound {
-			rollback(tx)
-			return "", err
+			return err
 		}
 	} else {
-		rollback(tx)
-		return "", user.ErrorDuplicateEmail
+		return user.ErrorDuplicateEmail
 	}
 
-	usr.ID = newID
 	err = r.insert(tx, usr)
-	if err != nil {
-		rollback(tx)
-		return "", err
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		rollback(tx)
-		return "", fmt.Errorf("error inserting user: %v", err)
-	}
-	return newID, nil
-}
-
-func (r *userRepo) Update(usr user.User) error {
-	if usr.ID == "" {
-		return user.ErrorInvalidID
-	}
-
-	tx, err := r.dbMap.Begin()
 	if err != nil {
 		return err
 	}
 
+	return nil
+}
+
+func (r *userRepo) GetByEmail(tx repo.Transaction, email string) (user.User, error) {
+	return r.getByEmail(tx, email)
+}
+
+func (r *userRepo) Update(tx repo.Transaction, usr user.User) error {
+	if usr.ID == "" {
+		return user.ErrorInvalidID
+	}
+
 	if !user.ValidEmail(usr.Email) {
-		rollback(tx)
 		return user.ErrorInvalidEmail
 	}
 
 	// make sure this user exists already
-	_, err = r.get(tx, usr.ID)
+	_, err := r.get(tx, usr.ID)
 	if err != nil {
-		rollback(tx)
 		return err
 	}
 
@@ -155,146 +125,101 @@ func (r *userRepo) Update(usr user.User) error {
 	otherUser, err := r.getByEmail(tx, usr.Email)
 	if err != user.ErrorNotFound {
 		if err != nil {
-			rollback(tx)
 			return err
 		}
 		if otherUser.ID != usr.ID {
-			rollback(tx)
 			return user.ErrorDuplicateEmail
 		}
 	}
 
 	err = r.update(tx, usr)
 	if err != nil {
-		rollback(tx)
 		return err
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		rollback(tx)
-		return err
-	}
 	return nil
 }
 
-func (r *userRepo) GetByRemoteIdentity(ri user.RemoteIdentity) (user.User, error) {
-	tx, err := r.dbMap.Begin()
-	if err != nil {
-		return user.User{}, err
-	}
-
+func (r *userRepo) GetByRemoteIdentity(tx repo.Transaction, ri user.RemoteIdentity) (user.User, error) {
 	userID, err := r.getUserIDForRemoteIdentity(tx, ri)
 	if err != nil {
-		rollback(tx)
 		return user.User{}, err
 	}
 
 	usr, err := r.get(tx, userID)
 	if err != nil {
-		rollback(tx)
 		return user.User{}, err
 	}
 
-	err = tx.Commit()
 	if err != nil {
-		rollback(tx)
 		return user.User{}, err
 	}
 
 	return usr, nil
 }
 
-func (r *userRepo) AddRemoteIdentity(userID string, ri user.RemoteIdentity) error {
-	tx, err := r.dbMap.Begin()
+func (r *userRepo) AddRemoteIdentity(tx repo.Transaction, userID string, ri user.RemoteIdentity) error {
+	_, err := r.get(tx, userID)
 	if err != nil {
-		return err
-	}
-
-	_, err = r.get(tx, userID)
-	if err != nil {
-		rollback(tx)
 		return err
 	}
 
 	otherUserID, err := r.getUserIDForRemoteIdentity(tx, ri)
 	if err != user.ErrorNotFound {
 		if err == nil && otherUserID != "" {
-			rollback(tx)
 			return user.ErrorDuplicateRemoteIdentity
 		}
-		rollback(tx)
 		return err
 	}
 
 	err = r.insertRemoteIdentity(tx, userID, ri)
 	if err != nil {
-		rollback(tx)
-		return err
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		rollback(tx)
 		return err
 	}
 
 	return nil
 }
 
-func (r *userRepo) RemoveRemoteIdentity(userID string, rid user.RemoteIdentity) error {
+func (r *userRepo) RemoveRemoteIdentity(tx repo.Transaction, userID string, rid user.RemoteIdentity) error {
 	if userID == "" || rid.ID == "" || rid.ConnectorID == "" {
 		return user.ErrorInvalidID
 	}
 
-	tx, err := r.dbMap.Begin()
-	if err != nil {
-		return err
-	}
-
 	otherUserID, err := r.getUserIDForRemoteIdentity(tx, rid)
 	if err != nil {
-		rollback(tx)
 		return err
 	}
 	if otherUserID != userID {
-		rollback(tx)
 		return user.ErrorNotFound
 	}
 
 	rim, err := newRemoteIdentityMappingModel(userID, rid)
 	if err != nil {
-		rollback(tx)
 		return err
 	}
 
-	deleted, err := tx.Delete(rim)
+	ex := r.executor(tx)
+	deleted, err := ex.Delete(rim)
 
 	if err != nil {
-		rollback(tx)
 		return err
 	}
 
 	if deleted == 0 {
-		rollback(tx)
 		return user.ErrorNotFound
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		rollback(tx)
-		return err
-	}
 	return nil
 }
 
-func (r *userRepo) GetRemoteIdentities(userID string) ([]user.RemoteIdentity, error) {
+func (r *userRepo) GetRemoteIdentities(tx repo.Transaction, userID string) ([]user.RemoteIdentity, error) {
+	ex := r.executor(tx)
 	if userID == "" {
 		return nil, user.ErrorInvalidID
 	}
 
 	qt := pq.QuoteIdentifier(remoteIdentityMappingTableName)
-	rims, err := r.dbMap.Select(&remoteIdentityMappingModel{},
+	rims, err := ex.Select(&remoteIdentityMappingModel{},
 		fmt.Sprintf("select * from %s where user_id = $1", qt), userID)
 
 	if err != nil {
@@ -323,20 +248,26 @@ func (r *userRepo) GetRemoteIdentities(userID string) ([]user.RemoteIdentity, er
 	return ris, nil
 }
 
-func (r *userRepo) GetAdminCount() (int, error) {
+func (r *userRepo) GetAdminCount(tx repo.Transaction) (int, error) {
 	qt := pq.QuoteIdentifier(userTableName)
-	i, err := r.dbMap.SelectInt(fmt.Sprintf("SELECT count(*) FROM %s where admin=true", qt))
+	ex := r.executor(tx)
+	i, err := ex.SelectInt(fmt.Sprintf("SELECT count(*) FROM %s where admin=true", qt))
 	return int(i), err
 }
 
-func (r *userRepo) executor(tx *gorp.Transaction) gorp.SqlExecutor {
+func (r *userRepo) executor(tx repo.Transaction) gorp.SqlExecutor {
 	if tx == nil {
 		return r.dbMap
 	}
-	return tx
+
+	gorpTx, ok := tx.(*gorp.Transaction)
+	if !ok {
+		panic("wrong kind of transaction passed to a DB repo")
+	}
+	return gorpTx
 }
 
-func (r *userRepo) insert(tx *gorp.Transaction, usr user.User) error {
+func (r *userRepo) insert(tx repo.Transaction, usr user.User) error {
 	ex := r.executor(tx)
 	um, err := newUserModel(&usr)
 	if err != nil {
@@ -345,7 +276,7 @@ func (r *userRepo) insert(tx *gorp.Transaction, usr user.User) error {
 	return ex.Insert(um)
 }
 
-func (r *userRepo) update(tx *gorp.Transaction, usr user.User) error {
+func (r *userRepo) update(tx repo.Transaction, usr user.User) error {
 	ex := r.executor(tx)
 	um, err := newUserModel(&usr)
 	if err != nil {
@@ -355,7 +286,7 @@ func (r *userRepo) update(tx *gorp.Transaction, usr user.User) error {
 	return err
 }
 
-func (r *userRepo) get(tx *gorp.Transaction, userID string) (user.User, error) {
+func (r *userRepo) get(tx repo.Transaction, userID string) (user.User, error) {
 	ex := r.executor(tx)
 
 	m, err := ex.Get(userModel{}, userID)
@@ -375,7 +306,7 @@ func (r *userRepo) get(tx *gorp.Transaction, userID string) (user.User, error) {
 	return um.user()
 }
 
-func (r *userRepo) getUserIDForRemoteIdentity(tx *gorp.Transaction, ri user.RemoteIdentity) (string, error) {
+func (r *userRepo) getUserIDForRemoteIdentity(tx repo.Transaction, ri user.RemoteIdentity) (string, error) {
 	ex := r.executor(tx)
 
 	m, err := ex.Get(remoteIdentityMappingModel{}, ri.ConnectorID, ri.ID)
@@ -395,7 +326,7 @@ func (r *userRepo) getUserIDForRemoteIdentity(tx *gorp.Transaction, ri user.Remo
 	return rim.UserID, nil
 }
 
-func (r *userRepo) getByEmail(tx *gorp.Transaction, email string) (user.User, error) {
+func (r *userRepo) getByEmail(tx repo.Transaction, email string) (user.User, error) {
 	qt := pq.QuoteIdentifier(userTableName)
 	ex := r.executor(tx)
 	var um userModel
@@ -410,7 +341,7 @@ func (r *userRepo) getByEmail(tx *gorp.Transaction, email string) (user.User, er
 	return um.user()
 }
 
-func (r *userRepo) insertRemoteIdentity(tx *gorp.Transaction, userID string, ri user.RemoteIdentity) error {
+func (r *userRepo) insertRemoteIdentity(tx repo.Transaction, userID string, ri user.RemoteIdentity) error {
 	ex := r.executor(tx)
 	rim, err := newRemoteIdentityMappingModel(userID, ri)
 	if err != nil {

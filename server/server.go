@@ -293,7 +293,7 @@ func (s *Server) Login(ident oidc.Identity, key string) (string, error) {
 		return ru.String(), nil
 	}
 
-	usr, err := s.UserRepo.GetByRemoteIdentity(user.RemoteIdentity{
+	usr, err := s.UserRepo.GetByRemoteIdentity(nil, user.RemoteIdentity{
 		ConnectorID: ses.ConnectorID,
 		ID:          ses.Identity.ID,
 	})
@@ -401,7 +401,7 @@ func (s *Server) CodeToken(creds oidc.ClientCredentials, sessionKey string) (*jo
 		return nil, oauth2.NewError(oauth2.ErrorServerError)
 	}
 
-	user, err := s.UserRepo.Get(ses.UserID)
+	user, err := s.UserRepo.Get(nil, ses.UserID)
 	if err != nil {
 		log.Errorf("Failed to fetch user %q from repo: %v: ", ses.UserID, err)
 		return nil, oauth2.NewError(oauth2.ErrorServerError)

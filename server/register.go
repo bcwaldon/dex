@@ -198,7 +198,7 @@ func handleRegisterFunc(s *Server) http.HandlerFunc {
 			return
 		}
 
-		usr, err := s.UserRepo.Get(userID)
+		usr, err := s.UserRepo.Get(nil, userID)
 		if err != nil {
 			internalError(w, err)
 			return
@@ -280,12 +280,12 @@ func errToFormErrors(err error) []formError {
 }
 
 func getConnectorForUserByEmail(ur user.UserRepo, email string) (string, error) {
-	usr, err := ur.GetByEmail(email)
+	usr, err := ur.GetByEmail(nil, email)
 	if err != nil {
 		return "", err
 	}
 
-	rids, err := ur.GetRemoteIdentities(usr.ID)
+	rids, err := ur.GetRemoteIdentities(nil, usr.ID)
 	if err != nil {
 		return "", err
 	}

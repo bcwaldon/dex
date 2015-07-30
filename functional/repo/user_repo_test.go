@@ -76,12 +76,14 @@ func TestNewUser(t *testing.T) {
 	}{
 		{
 			user: user.User{
+				ID:    "ID-bob",
 				Email: "bob@example.com",
 			},
 			err: nil,
 		},
 		{
 			user: user.User{
+				ID:    "ID-admin",
 				Email: "admin@example.com",
 				Admin: true,
 			},
@@ -89,6 +91,7 @@ func TestNewUser(t *testing.T) {
 		},
 		{
 			user: user.User{
+				ID:            "ID-verified",
 				Email:         "verified@example.com",
 				EmailVerified: true,
 			},
@@ -96,6 +99,7 @@ func TestNewUser(t *testing.T) {
 		},
 		{
 			user: user.User{
+				ID:          "ID-same",
 				Email:       "Email-1@example.com",
 				DisplayName: "Oops Same Email",
 			},
@@ -103,7 +107,6 @@ func TestNewUser(t *testing.T) {
 		},
 		{
 			user: user.User{
-				ID:          "MyOwnID",
 				Email:       "AnotherEmail@example.com",
 				DisplayName: "Can't set your own ID!",
 			},
@@ -111,6 +114,7 @@ func TestNewUser(t *testing.T) {
 		},
 		{
 			user: user.User{
+				ID:          "ID-noemail",
 				DisplayName: "No Email",
 			},
 			err: user.ErrorInvalidEmail,
@@ -119,7 +123,7 @@ func TestNewUser(t *testing.T) {
 
 	for i, tt := range tests {
 		repo := makeTestUserRepo()
-		id, err := repo.Create(tt.user)
+		err := repo.Create(nil, tt.user)
 		if tt.err != nil {
 			if err != tt.err {
 				t.Errorf("case %d: want=%v, got=%v", i, tt.err, err)
@@ -129,12 +133,11 @@ func TestNewUser(t *testing.T) {
 				t.Errorf("case %d: want nil err, got %v", i, err)
 			}
 
-			gotUser, err := repo.Get(id)
+			gotUser, err := repo.Get(nil, tt.user.ID)
 			if err != nil {
 				t.Errorf("case %d: want nil err, got %v", i, err)
 			}
 
-			tt.user.ID = id
 			if diff := pretty.Compare(tt.user, gotUser); diff != "" {
 				t.Errorf("case %d: Compare(want, got) = %v", i,
 					diff)
@@ -192,7 +195,7 @@ func TestUpdateUser(t *testing.T) {
 
 	for i, tt := range tests {
 		repo := makeTestUserRepo()
-		err := repo.Update(tt.user)
+		err := repo.Update(nil, tt.user)
 		if tt.err != nil {
 			if err != tt.err {
 				t.Errorf("case %d: want=%q, got=%q", i, tt.err, err)
@@ -202,7 +205,7 @@ func TestUpdateUser(t *testing.T) {
 				t.Errorf("case %d: want nil err, got %q", i, err)
 			}
 
-			gotUser, err := repo.Get(tt.user.ID)
+			gotUser, err := repo.Get(nil, tt.user.ID)
 			if err != nil {
 				t.Errorf("case %d: want nil err, got %q", i, err)
 			}
@@ -248,7 +251,7 @@ func TestAttachRemoteIdentity(t *testing.T) {
 
 	for i, tt := range tests {
 		repo := makeTestUserRepo()
-		err := repo.AddRemoteIdentity(tt.id, tt.rid)
+		err := repo.AddRemoteIdentity(nil, tt.id, tt.rid)
 		if tt.err != nil {
 			if err != tt.err {
 				t.Errorf("case %d: want=%q, got=%q", i, tt.err, err)
@@ -258,17 +261,17 @@ func TestAttachRemoteIdentity(t *testing.T) {
 				t.Errorf("case %d: want nil err, got %q", i, err)
 			}
 
-			gotUser, err := repo.GetByRemoteIdentity(tt.rid)
+			gotUser, err := repo.GetByRemoteIdentity(nil, tt.rid)
 			if err != nil {
 				t.Errorf("case %d: want nil err, got %q", i, err)
 			}
 
-			wantUser, err := repo.Get(tt.id)
+			wantUser, err := repo.Get(nil, tt.id)
 			if err != nil {
 				t.Errorf("case %d: want nil err, got %q", i, err)
 			}
 
-			gotRIDs, err := repo.GetRemoteIdentities(tt.id)
+			gotRIDs, err := repo.GetRemoteIdentities(nil, tt.id)
 			if err != nil {
 				t.Errorf("case %d: want nil err, got %q", i, err)
 			}
@@ -318,7 +321,7 @@ func TestRemoveRemoteIdentity(t *testing.T) {
 
 	for i, tt := range tests {
 		repo := makeTestUserRepo()
-		err := repo.RemoveRemoteIdentity(tt.id, tt.rid)
+		err := repo.RemoveRemoteIdentity(nil, tt.id, tt.rid)
 		if tt.err != nil {
 			if err != tt.err {
 				t.Errorf("case %d: want=%q, got=%q", i, tt.err, err)
@@ -328,7 +331,7 @@ func TestRemoveRemoteIdentity(t *testing.T) {
 				t.Errorf("case %d: want nil err, got %q", i, err)
 			}
 
-			gotUser, err := repo.GetByRemoteIdentity(tt.rid)
+			gotUser, err := repo.GetByRemoteIdentity(nil, tt.rid)
 			if err == nil {
 				if gotUser.ID == tt.id {
 					t.Errorf("case %d: user found.", i)
@@ -338,7 +341,7 @@ func TestRemoveRemoteIdentity(t *testing.T) {
 				t.Errorf("case %d: want %q err, got %q err", i, user.ErrorNotFound, err)
 			}
 
-			gotRIDs, err := repo.GetRemoteIdentities(tt.id)
+			gotRIDs, err := repo.GetRemoteIdentities(nil, tt.id)
 			if err != nil {
 				t.Errorf("case %d: want nil err, got %q", i, err)
 			}
@@ -392,12 +395,12 @@ func TestNewUserRepoFromUsers(t *testing.T) {
 	for i, tt := range tests {
 		repo := user.NewUserRepoFromUsers(tt.users)
 		for _, want := range tt.users {
-			gotUser, err := repo.Get(want.User.ID)
+			gotUser, err := repo.Get(nil, want.User.ID)
 			if err != nil {
 				t.Errorf("case %d: want nil err: %v", i, err)
 			}
 
-			gotRIDs, err := repo.GetRemoteIdentities(want.User.ID)
+			gotRIDs, err := repo.GetRemoteIdentities(nil, want.User.ID)
 			if err != nil {
 				t.Errorf("case %d: want nil err: %v", i, err)
 			}
@@ -430,7 +433,7 @@ func TestGetByEmail(t *testing.T) {
 
 	for i, tt := range tests {
 		repo := makeTestUserRepo()
-		gotUser, gotErr := repo.GetByEmail(tt.email)
+		gotUser, gotErr := repo.GetByEmail(nil, tt.email)
 		if tt.wantErr != nil {
 			if tt.wantErr != gotErr {
 				t.Errorf("case %d: wantErr=%q, gotErr=%q", i, tt.wantErr, gotErr)
@@ -456,6 +459,7 @@ func TestGetAdminCount(t *testing.T) {
 		{
 			addUsers: []user.User{
 				user.User{
+					ID:    "ID-admin",
 					Email: "Admin@example.com",
 					Admin: true,
 				},
@@ -468,6 +472,7 @@ func TestGetAdminCount(t *testing.T) {
 		{
 			addUsers: []user.User{
 				user.User{
+					ID:    "ID-admin",
 					Email: "NotAdmin@example.com",
 				},
 			},
@@ -476,10 +481,12 @@ func TestGetAdminCount(t *testing.T) {
 		{
 			addUsers: []user.User{
 				user.User{
+					ID:    "ID-admin",
 					Email: "Admin@example.com",
 					Admin: true,
 				},
 				user.User{
+					ID:    "ID-admin2",
 					Email: "AnotherAdmin@example.com",
 					Admin: true,
 				},
@@ -491,13 +498,13 @@ func TestGetAdminCount(t *testing.T) {
 	for i, tt := range tests {
 		repo := makeTestUserRepo()
 		for _, addUser := range tt.addUsers {
-			_, err := repo.Create(addUser)
+			err := repo.Create(nil, addUser)
 			if err != nil {
 				t.Fatalf("case %d: couldn't add user: %q", i, err)
 			}
 		}
 
-		got, err := repo.GetAdminCount()
+		got, err := repo.GetAdminCount(nil)
 		if err != nil {
 			t.Errorf("case %d: couldn't get admin count: %q", i, err)
 			continue

@@ -11,6 +11,8 @@ import (
 	"github.com/coreos-inc/auth/user"
 	"github.com/coreos/go-oidc/key"
 	"github.com/coreos/go-oidc/oidc"
+
+	"github.com/coreos-inc/auth/repo"
 )
 
 const (
@@ -70,7 +72,7 @@ func sequentialGenerateCodeFunc() session.GenerateCodeFunc {
 func makeTestFixtures() (*testFixtures, error) {
 	userRepo := user.NewUserRepoFromUsers(testUsers)
 	pwRepo := user.NewPasswordInfoRepoFromPasswordInfos(testPasswordInfos)
-	manager := user.NewManager(userRepo, pwRepo, user.ManagerOptions{})
+	manager := user.NewManager(userRepo, pwRepo, repo.InMemTransactionFactory, user.ManagerOptions{})
 
 	connConfigs := []connector.ConnectorConfig{
 		&connector.OIDCConnectorConfig{

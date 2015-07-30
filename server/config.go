@@ -13,6 +13,7 @@ import (
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/db"
 	"github.com/coreos-inc/auth/email"
+	"github.com/coreos-inc/auth/repo"
 	"github.com/coreos-inc/auth/session"
 	"github.com/coreos-inc/auth/user"
 	"github.com/coreos/go-oidc/key"
@@ -81,7 +82,8 @@ func (cfg *SingleServerConfig) Server() (*Server, error) {
 	}
 
 	passwordInfoRepo := user.NewPasswordInfoRepo()
-	userManager := user.NewManager(userRepo, passwordInfoRepo, user.ManagerOptions{})
+	txnFactory := repo.InMemTransactionFactory
+	userManager := user.NewManager(userRepo, passwordInfoRepo, txnFactory, user.ManagerOptions{})
 
 	km := key.NewPrivateKeyManager()
 	srv := Server{
@@ -154,7 +156,7 @@ func (cfg *MultiServerConfig) Server() (*Server, error) {
 	cfgRepo := db.NewConnectorConfigRepo(dbc)
 	userRepo := db.NewUserRepo(dbc)
 	pwiRepo := db.NewPasswordInfoRepo(dbc)
-	userManager := user.NewManager(userRepo, pwiRepo, user.ManagerOptions{})
+	userManager := user.NewManager(userRepo, pwiRepo, db.TransactionFactory(dbc), user.ManagerOptions{})
 
 	sm := session.NewSessionManager(sRepo, skRepo)
 

@@ -105,14 +105,13 @@ func TestHTTPExchangeToken(t *testing.T) {
 	}
 
 	usr := user.User{
+		ID:          "ID-test",
 		Email:       "testemail@example.com",
 		DisplayName: "displayname",
 	}
 	userRepo := user.NewUserRepo()
-	if userID, err := userRepo.Create(usr); err != nil {
+	if err := userRepo.Create(nil, usr); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
-	} else {
-		usr.ID = userID
 	}
 
 	passwordInfoRepo := user.NewPasswordInfoRepo()

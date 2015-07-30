@@ -239,7 +239,7 @@ func TestHandleRegister(t *testing.T) {
 			t.Errorf("case %d: wantStatus=%v, got=%v", i, tt.wantStatus, w.Code)
 		}
 
-		_, err = f.userRepo.GetByEmail("test@example.com")
+		_, err = f.userRepo.GetByEmail(nil, "test@example.com")
 		if tt.wantUserCreated {
 			if err != nil {
 				t.Errorf("case %d: user not created: %v", i, err)

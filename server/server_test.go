@@ -9,7 +9,6 @@ import (
 
 	"github.com/coreos-inc/auth/session"
 	"github.com/coreos-inc/auth/user"
-	"github.com/coreos-inc/auth/user/usertest"
 	"github.com/coreos/go-oidc/jose"
 	"github.com/coreos/go-oidc/key"
 	"github.com/coreos/go-oidc/oauth2"
@@ -71,19 +70,18 @@ func staticGenerateCodeFunc(code string) session.GenerateCodeFunc {
 }
 
 func makeNewUserRepo() (user.UserRepo, error) {
-	userRepo, err := usertest.NewTestUserRepo()
-	if err != nil {
-		return nil, err
-	}
+	userRepo := user.NewUserRepo()
 
-	id, err := userRepo.Create(user.User{
+	id := "testid-1"
+	err := userRepo.Create(nil, user.User{
+		ID:    id,
 		Email: "testname@example.com",
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	err = userRepo.AddRemoteIdentity(id, user.RemoteIdentity{
+	err = userRepo.AddRemoteIdentity(nil, id, user.RemoteIdentity{
 		ConnectorID: "test_connector_id",
 		ID:          "YYY",
 	})

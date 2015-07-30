@@ -88,7 +88,7 @@ func TestCreatePasswordInfo(t *testing.T) {
 
 	for i, tt := range tests {
 		repo := makeTestPasswordInfoRepo()
-		err := repo.Create(tt.pw)
+		err := repo.Create(nil, tt.pw)
 		if tt.err != nil {
 			if err != tt.err {
 				t.Errorf("case %d: want=%v, got=%v", i, tt.err, err)
@@ -98,7 +98,7 @@ func TestCreatePasswordInfo(t *testing.T) {
 				t.Errorf("case %d: want nil err, got %v", i, err)
 			}
 
-			gotPW, err := repo.Get(tt.pw.UserID)
+			gotPW, err := repo.Get(nil, tt.pw.UserID)
 			if err != nil {
 				t.Errorf("case %d: want nil err, got %v", i, err)
 			}
@@ -143,7 +143,7 @@ func TestUpdatePasswordInfo(t *testing.T) {
 
 	for i, tt := range tests {
 		repo := makeTestPasswordInfoRepo()
-		err := repo.Update(tt.pw)
+		err := repo.Update(nil, tt.pw)
 		if tt.err != nil {
 			if err != tt.err {
 				t.Errorf("case %d: want=%q, got=%q", i, tt.err, err)
@@ -153,7 +153,7 @@ func TestUpdatePasswordInfo(t *testing.T) {
 				t.Errorf("case %d: want nil err, got %q", i, err)
 			}
 
-			gotPW, err := repo.Get(tt.pw.UserID)
+			gotPW, err := repo.Get(nil, tt.pw.UserID)
 			if err != nil {
 				t.Errorf("case %d: want nil err, got %q", i, err)
 			}

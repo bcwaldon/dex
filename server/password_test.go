@@ -547,7 +547,7 @@ func TestResetPasswordHandler(t *testing.T) {
 				t.Logf("case %d: Body: %v ", i, w.Body)
 			}
 		}
-		pwi, err := f.srv.PasswordInfoRepo.Get("ID-1")
+		pwi, err := f.srv.PasswordInfoRepo.Get(nil, "ID-1")
 		if err != nil {
 			t.Errorf("case %d: Error getting Password info: %v", i, err)
 		}

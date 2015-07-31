@@ -39,21 +39,25 @@ func NewManager(userRepo UserRepo, pwRepo PasswordInfoRepo, txnFactory repo.Tran
 	}
 }
 
-// CreateAdminUser creates a new admin user with the specified email address and hashedPassword.
-// The primary use of this method is the overlord admin api.
-func (m *Manager) CreateAdminUser(email string, hashedPassword Password, connID string) (string, error) {
+func (m *Manager) Get(id string) (User, error) {
+	return m.userRepo.Get(nil, id)
+}
+
+// CreateUser creates a new user with the given hashedPassword; the connID should be the ID of the local connector.
+// The userID of the created user is returned as the first argument.
+func (m *Manager) CreateUser(user User, hashedPassword Password, connID string) (string, error) {
 	tx, err := m.begin()
 	if err != nil {
 		return "", err
 	}
 
-	user, err := m.insertNewUser(tx, email, true)
+	insertedUser, err := m.insertNewUser(tx, user.Email, user.EmailVerified)
 	if err != nil {
 		rollback(tx)
 		return "", err
 	}
 
-	user.Admin = true
+	user.ID = insertedUser.ID
 	err = m.userRepo.Update(tx, user)
 	if err != nil {
 		rollback(tx)

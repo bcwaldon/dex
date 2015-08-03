@@ -29,6 +29,7 @@ var (
 // NewEmailVerification creates an object which can be sent to a user in serialized form to verify that they control an email address.
 // The clientID is the ID of the registering user. The callback is where a user should land after verifying their email.
 func NewEmailVerification(user User, clientID string, issuer url.URL, callback url.URL, expires time.Duration) EmailVerification {
+
 	claims := oidc.NewClaims(issuer.String(), user.ID, clientID, clock.Now(), clock.Now().Add(expires))
 	claims.Add(ClaimEmailVerificationCallback, callback.String())
 	claims.Add(ClaimEmailVerificationEmail, user.Email)
@@ -118,7 +119,7 @@ func ParseAndVerifyEmailVerificationToken(token string, issuer url.URL, keys []k
 
 }
 
-func (e EmailVerification) userID() string {
+func (e EmailVerification) UserID() string {
 	uid, ok, err := e.claims.StringClaim("sub")
 	if !ok || err != nil {
 		panic("EmailVerification: no sub claim. This should be impossible.")
@@ -126,7 +127,7 @@ func (e EmailVerification) userID() string {
 	return uid
 }
 
-func (e EmailVerification) email() string {
+func (e EmailVerification) Email() string {
 	email, ok, err := e.claims.StringClaim(ClaimEmailVerificationEmail)
 	if !ok || err != nil {
 		panic("EmailVerification: no email claim. This should be impossible.")
@@ -134,7 +135,7 @@ func (e EmailVerification) email() string {
 	return email
 }
 
-func (e EmailVerification) callback() *url.URL {
+func (e EmailVerification) Callback() *url.URL {
 	cb, ok, err := e.claims.StringClaim(ClaimEmailVerificationCallback)
 	if !ok || err != nil {
 		panic("EmailVerification: no callback claim. This should be impossible.")

@@ -192,13 +192,13 @@ func (m *Manager) VerifyEmail(ev EmailVerification) (*url.URL, error) {
 		return nil, err
 	}
 
-	user, err := m.userRepo.Get(tx, ev.userID())
+	user, err := m.userRepo.Get(tx, ev.UserID())
 	if err != nil {
 		rollback(tx)
 		return nil, err
 	}
 
-	if user.Email != ev.email() {
+	if user.Email != ev.Email() {
 		rollback(tx)
 		return nil, ErrorEVEmailDoesntMatch
 	}
@@ -221,7 +221,7 @@ func (m *Manager) VerifyEmail(ev EmailVerification) (*url.URL, error) {
 		rollback(tx)
 		return nil, err
 	}
-	return ev.callback(), nil
+	return ev.Callback(), nil
 }
 
 func (m *Manager) ChangePassword(pwr PasswordReset, plaintext string) (*url.URL, error) {

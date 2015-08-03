@@ -204,29 +204,13 @@ func handleRegisterFunc(s *Server) http.HandlerFunc {
 			return
 		}
 
-		signer, err := s.KeyManager.Signer()
-		if err != nil {
-			log.Errorf("Error sending email verification: %v", err)
-			goto Redirect
-		}
-
 		if !trustedEmail {
-			err = sendEmailVerification(usr,
-				ses.ClientID,
-				s.absURL(httpPathEmailVerify),
-				ses.RedirectURL,
-				s.SessionManager.ValidityWindow,
-				s.EmailFromAddress,
-				s.Emailer,
-				s.IssuerURL,
-				signer)
+			_, err = s.UserEmailer.SendEmailVerification(usr.ID, ses.ClientID, ses.RedirectURL)
 
 			if err != nil {
 				log.Errorf("Error sending email verification: %v", err)
 			}
 		}
-
-	Redirect:
 
 		ru := ses.RedirectURL
 		q := ru.Query()

@@ -21,6 +21,7 @@ import (
 	"github.com/coreos-inc/auth/repo"
 	"github.com/coreos-inc/auth/session"
 	"github.com/coreos-inc/auth/user"
+	useremail "github.com/coreos-inc/auth/user/email"
 )
 
 type ServerConfig struct {
@@ -64,9 +65,13 @@ func (cfg *ServerConfig) Server() (*Server, error) {
 		KeyManager: km,
 		Templates:  tpl,
 
-		HealthChecks:     []health.Checkable{km},
-		Connectors:       []connector.Connector{},
-		EmailFromAddress: cfg.EmailFromAddress,
+		HealthChecks: []health.Checkable{km},
+		Connectors:   []connector.Connector{},
+	}
+
+	err = cfg.StateConfig.Configure(&srv)
+	if err != nil {
+		return nil, err
 	}
 
 	err = setTemplates(&srv, tpl)
@@ -74,12 +79,7 @@ func (cfg *ServerConfig) Server() (*Server, error) {
 		return nil, err
 	}
 
-	err = setEmailer(&srv, cfg.EmailerConfigFile, cfg.EmailTemplateDirs)
-	if err != nil {
-		return nil, err
-	}
-
-	err = cfg.StateConfig.Configure(&srv)
+	err = setEmailer(&srv, cfg.EmailFromAddress, cfg.EmailerConfigFile, cfg.EmailTemplateDirs)
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +219,7 @@ func setTemplates(srv *Server, tpls *template.Template) error {
 	return nil
 }
 
-func setEmailer(srv *Server, emailerConfigFile string, emailTemplateDirs []string) error {
+func setEmailer(srv *Server, fromAddress, emailerConfigFile string, emailTemplateDirs []string) error {
 
 	cfg, err := email.NewEmailerConfigFromFile(emailerConfigFile)
 	if err != nil {
@@ -272,7 +272,17 @@ func setEmailer(srv *Server, emailerConfigFile string, emailTemplateDirs []strin
 	}
 	tMailer := email.NewTemplatizedEmailerFromTemplates(textTemplates, htmlTemplates, emailer)
 
-	srv.Emailer = tMailer
+	ue := useremail.NewUserEmailer(srv.UserRepo,
+		srv.PasswordInfoRepo,
+		srv.KeyManager.Signer,
+		srv.SessionManager.ValidityWindow,
+		srv.IssuerURL,
+		tMailer,
+		fromAddress,
+		srv.absURL(httpPathResetPassword),
+		srv.absURL(httpPathEmailVerify))
+
+	srv.UserEmailer = ue
 	return nil
 }
 

@@ -10,20 +10,20 @@ import (
 	"sort"
 	"time"
 
-	"github.com/jonboulle/clockwork"
-
-	"github.com/coreos-inc/auth/client"
-	"github.com/coreos-inc/auth/connector"
-	"github.com/coreos-inc/auth/email"
-	"github.com/coreos-inc/auth/pkg/log"
-	"github.com/coreos-inc/auth/refresh"
-	"github.com/coreos-inc/auth/session"
-	"github.com/coreos-inc/auth/user"
 	"github.com/coreos/go-oidc/jose"
 	"github.com/coreos/go-oidc/key"
 	"github.com/coreos/go-oidc/oauth2"
 	"github.com/coreos/go-oidc/oidc"
 	"github.com/coreos/pkg/health"
+	"github.com/jonboulle/clockwork"
+
+	"github.com/coreos-inc/auth/client"
+	"github.com/coreos-inc/auth/connector"
+	"github.com/coreos-inc/auth/pkg/log"
+	"github.com/coreos-inc/auth/refresh"
+	"github.com/coreos-inc/auth/session"
+	"github.com/coreos-inc/auth/user"
+	useremail "github.com/coreos-inc/auth/user/email"
 )
 
 const (
@@ -68,8 +68,7 @@ type Server struct {
 	UserManager                    *user.Manager
 	PasswordInfoRepo               user.PasswordInfoRepo
 	RefreshTokenRepo               refresh.RefreshTokenRepo
-	Emailer                        *email.TemplatizedEmailer
-	EmailFromAddress               string
+	UserEmailer                    *useremail.UserEmailer
 }
 
 func (s *Server) Run() chan struct{} {
@@ -202,25 +201,16 @@ func (s *Server) HTTPHandler() http.Handler {
 		s.IssuerURL, s.KeyManager.PublicKeys, s.UserManager))
 
 	mux.Handle(httpPathVerifyEmailResend, s.NewClientTokenAuthHandler(handleVerifyEmailResendFunc(s.IssuerURL,
-		s.absURL(httpPathEmailVerify),
-		s.SessionManager.ValidityWindow,
 		s.KeyManager.PublicKeys,
-		s.KeyManager.Signer,
-		s.Emailer,
-		s.EmailFromAddress,
+		s.UserEmailer,
 		s.UserRepo,
 		s.ClientIdentityRepo)))
 
 	mux.Handle(httpPathSendResetPassword, &SendResetPasswordEmailHandler{
-		tpl:         s.SendResetPasswordEmailTemplate,
-		emailer:     s.Emailer,
-		sm:          s.SessionManager,
-		cr:          s.ClientIdentityRepo,
-		ur:          s.UserRepo,
-		pwi:         s.PasswordInfoRepo,
-		issuerURL:   s.IssuerURL,
-		fromAddress: s.EmailFromAddress,
-		signerFunc:  s.KeyManager.Signer,
+		tpl:     s.SendResetPasswordEmailTemplate,
+		emailer: s.UserEmailer,
+		sm:      s.SessionManager,
+		cr:      s.ClientIdentityRepo,
 	})
 
 	mux.Handle(httpPathResetPassword, &ResetPasswordHandler{

@@ -38,11 +38,16 @@ type ClientIdentityRepo interface {
 	// An unused ID must be provided. A corresponding secret will be returned
 	// in a ClientCredentials struct along with the provided ID.
 	New(id string, meta oidc.ClientMetadata) (*oidc.ClientCredentials, error)
+
+	SetAuthdAdmin(clientID string, isAdmin bool) error
+
+	IsAuthdAdmin(clientID string) (bool, error)
 }
 
 func NewClientIdentityRepo(cs []oidc.ClientIdentity) ClientIdentityRepo {
 	cr := memClientIdentityRepo{
 		idents: make(map[string]oidc.ClientIdentity, len(cs)),
+		admins: make(map[string]bool),
 	}
 
 	for _, c := range cs {
@@ -55,6 +60,7 @@ func NewClientIdentityRepo(cs []oidc.ClientIdentity) ClientIdentityRepo {
 
 type memClientIdentityRepo struct {
 	idents map[string]oidc.ClientIdentity
+	admins map[string]bool
 }
 
 func (cr *memClientIdentityRepo) New(id string, meta oidc.ClientMetadata) (*oidc.ClientCredentials, error) {
@@ -102,6 +108,15 @@ func (cr *memClientIdentityRepo) All() ([]oidc.ClientIdentity, error) {
 	}
 	sort.Sort(cs)
 	return cs, nil
+}
+
+func (cr *memClientIdentityRepo) SetAuthdAdmin(clientID string, isAdmin bool) error {
+	cr.admins[clientID] = isAdmin
+	return nil
+}
+
+func (cr *memClientIdentityRepo) IsAuthdAdmin(clientID string) (bool, error) {
+	return cr.admins[clientID], nil
 }
 
 type sortableClientIdentities []oidc.ClientIdentity

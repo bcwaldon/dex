@@ -93,7 +93,6 @@ func (m *Manager) CreateUser(user User, hashedPassword Password, connID string) 
 		return "", err
 	}
 	return user.ID, nil
-
 }
 
 // RegisterWithRemoteIdentity creates new user and attaches the given remote identity.

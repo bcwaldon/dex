@@ -6,6 +6,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"github.com/coreos-inc/auth/schema/workerschema"
+	"github.com/coreos-inc/auth/user/api"
 )
 
 var (
@@ -16,10 +17,10 @@ var (
 )
 
 type UserMgmtServer struct {
-	userMgmtAPI interface{}
+	userMgmtAPI *api.UsersAPI
 }
 
-func NewUserMgmtServer(userMgmtAPI interface{}) *UserMgmtServer {
+func NewUserMgmtServer(userMgmtAPI *api.UsersAPI) *UserMgmtServer {
 	return &UserMgmtServer{
 		userMgmtAPI: userMgmtAPI,
 	}

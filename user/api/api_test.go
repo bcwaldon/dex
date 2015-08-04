@@ -34,6 +34,8 @@ func (t *testEmailer) SendResetPasswordEmail(email string, redirectURL url.URL, 
 }
 
 var (
+	clock = clockwork.NewFakeClock()
+
 	goodCreds = Creds{
 		User: user.User{
 			ID:    "ID-1",

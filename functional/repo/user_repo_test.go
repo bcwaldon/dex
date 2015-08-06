@@ -5,6 +5,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/kylelemons/godebug/pretty"
 
@@ -18,8 +19,9 @@ var (
 	testUsers = []user.UserWithRemoteIdentities{
 		{
 			User: user.User{
-				ID:    "ID-1",
-				Email: "Email-1@example.com",
+				ID:        "ID-1",
+				Email:     "Email-1@example.com",
+				CreatedAt: time.Now().Truncate(time.Second),
 			},
 			RemoteIdentities: []user.RemoteIdentity{
 				{
@@ -70,22 +72,25 @@ func makeTestUserRepoDB(dsn string) func() user.UserRepo {
 }
 
 func TestNewUser(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second)
 	tests := []struct {
 		user user.User
 		err  error
 	}{
 		{
 			user: user.User{
-				ID:    "ID-bob",
-				Email: "bob@example.com",
+				ID:        "ID-bob",
+				Email:     "bob@example.com",
+				CreatedAt: now,
 			},
 			err: nil,
 		},
 		{
 			user: user.User{
-				ID:    "ID-admin",
-				Email: "admin@example.com",
-				Admin: true,
+				ID:        "ID-admin",
+				Email:     "admin@example.com",
+				Admin:     true,
+				CreatedAt: now,
 			},
 			err: nil,
 		},
@@ -94,6 +99,7 @@ func TestNewUser(t *testing.T) {
 				ID:            "ID-verified",
 				Email:         "verified@example.com",
 				EmailVerified: true,
+				CreatedAt:     now,
 			},
 			err: nil,
 		},
@@ -102,6 +108,7 @@ func TestNewUser(t *testing.T) {
 				ID:          "ID-same",
 				Email:       "Email-1@example.com",
 				DisplayName: "Oops Same Email",
+				CreatedAt:   now,
 			},
 			err: user.ErrorDuplicateEmail,
 		},
@@ -109,6 +116,7 @@ func TestNewUser(t *testing.T) {
 			user: user.User{
 				Email:       "AnotherEmail@example.com",
 				DisplayName: "Can't set your own ID!",
+				CreatedAt:   now,
 			},
 			err: user.ErrorInvalidID,
 		},
@@ -116,6 +124,7 @@ func TestNewUser(t *testing.T) {
 			user: user.User{
 				ID:          "ID-noemail",
 				DisplayName: "No Email",
+				CreatedAt:   now,
 			},
 			err: user.ErrorInvalidEmail,
 		},

@@ -13,7 +13,7 @@ import (
 	"github.com/coreos-inc/auth/user"
 )
 
-var makeTestUserRepo func() user.UserRepo
+var makeTestUserRepoFromUsers func(users []user.UserWithRemoteIdentities) user.UserRepo
 
 var (
 	testUsers = []user.UserWithRemoteIdentities{
@@ -48,27 +48,31 @@ var (
 func init() {
 	dsn := os.Getenv("AUTHD_TEST_DSN")
 	if dsn == "" {
-		makeTestUserRepo = makeTestUserRepoMem
+		makeTestUserRepoFromUsers = makeTestUserRepoMem
 	} else {
-		makeTestUserRepo = makeTestUserRepoDB(dsn)
+		makeTestUserRepoFromUsers = makeTestUserRepoDB(dsn)
 	}
 }
 
-func makeTestUserRepoMem() user.UserRepo {
-	return user.NewUserRepoFromUsers(testUsers)
+func makeTestUserRepoMem(users []user.UserWithRemoteIdentities) user.UserRepo {
+	return user.NewUserRepoFromUsers(users)
 }
 
-func makeTestUserRepoDB(dsn string) func() user.UserRepo {
-	return func() user.UserRepo {
+func makeTestUserRepoDB(dsn string) func([]user.UserWithRemoteIdentities) user.UserRepo {
+	return func(users []user.UserWithRemoteIdentities) user.UserRepo {
 		c := initDB(dsn)
 
-		repo, err := db.NewUserRepoFromUsers(c, testUsers)
+		repo, err := db.NewUserRepoFromUsers(c, users)
 		if err != nil {
 			panic(fmt.Sprintf("Unable to add users: %v", err))
 		}
 		return repo
 	}
 
+}
+
+func makeTestUserRepo() user.UserRepo {
+	return makeTestUserRepoFromUsers(testUsers)
 }
 
 func TestNewUser(t *testing.T) {
@@ -523,5 +527,76 @@ func TestGetAdminCount(t *testing.T) {
 			t.Errorf("case %d: want=%d, got=%d", i, tt.want, got)
 		}
 	}
+}
 
+func TestList(t *testing.T) {
+	repoUsers := []user.UserWithRemoteIdentities{}
+	for i := 0; i < 10; i++ {
+		repoUsers = append(repoUsers, user.UserWithRemoteIdentities{
+			User: user.User{
+				ID:    fmt.Sprintf("%d", i),
+				Email: fmt.Sprintf("%d@example.com", i),
+			},
+		})
+
+	}
+	tests := []struct {
+		filter      user.UserFilter
+		maxResults  int
+		expectedIDs [][]string
+	}{
+		{
+			maxResults:  5,
+			expectedIDs: [][]string{{"0", "1", "2", "3", "4"}, {"5", "6", "7", "8", "9"}},
+		},
+		{
+			maxResults:  3,
+			expectedIDs: [][]string{{"0", "1", "2"}, {"3", "4", "5"}, {"6", "7", "8"}, {"9"}},
+		},
+		{
+			maxResults:  9,
+			expectedIDs: [][]string{{"0", "1", "2", "3", "4", "5", "6", "7", "8"}, {"9"}},
+		},
+		{
+			maxResults:  10,
+			expectedIDs: [][]string{{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"}},
+		},
+	}
+
+	for i, tt := range tests {
+		repo := makeTestUserRepoFromUsers(repoUsers)
+		var tok string
+		gotIDs := [][]string{}
+		done := false
+		for !done {
+			var users []user.User
+			var err error
+			users, tok, err = repo.List(nil, tt.filter, tt.maxResults, tok)
+			if err != nil {
+				t.Errorf("case %d: unexpected err: %v", i, err)
+				done = true
+				continue
+			}
+			ids := []string{}
+			for _, user := range users {
+				ids = append(ids, user.ID)
+			}
+			gotIDs = append(gotIDs, ids)
+			if tok == "" {
+				done = true
+			}
+		}
+		if diff := pretty.Compare(tt.expectedIDs, gotIDs); diff != "" {
+			t.Errorf("case %d: Compare(want, got) = %v", i,
+				diff)
+		}
+	}
+}
+
+func TestListErrorNotFound(t *testing.T) {
+	repo := makeTestUserRepoFromUsers(nil)
+	_, _, err := repo.List(nil, user.UserFilter{}, 10, "")
+	if err != user.ErrorNotFound {
+		t.Errorf("want=%q, got=%q", user.ErrorNotFound, err)
+	}
 }

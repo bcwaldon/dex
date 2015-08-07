@@ -43,6 +43,10 @@ func (m *Manager) Get(id string) (User, error) {
 	return m.userRepo.Get(nil, id)
 }
 
+func (m *Manager) List(filter UserFilter, maxResults int, nextPageToken string) ([]User, string, error) {
+	return m.userRepo.List(nil, filter, maxResults, nextPageToken)
+}
+
 // CreateUser creates a new user with the given hashedPassword; the connID should be the ID of the local connector.
 // The userID of the created user is returned as the first argument.
 func (m *Manager) CreateUser(user User, hashedPassword Password, connID string) (string, error) {

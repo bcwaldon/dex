@@ -111,3 +111,29 @@ func TestValidEmail(t *testing.T) {
 		}
 	}
 }
+
+func TestEncodeDecodeNextPageToken(t *testing.T) {
+	tests := []nextPageToken{
+		{},
+		{MaxResults: 100},
+		{Offset: 200},
+		{MaxResults: 20, Offset: 30},
+	}
+
+	for i, tt := range tests {
+		enc, err := EncodeNextPageToken(tt.Filter, tt.MaxResults, tt.Offset)
+		if err != nil {
+			t.Errorf("case %d: unexpected err encoding: %q", i, err)
+		}
+
+		dec := nextPageToken{}
+		dec.Filter, dec.MaxResults, dec.Offset, err = DecodeNextPageToken(enc)
+		if err != nil {
+			t.Errorf("case %d: unexpected err decoding: %q", i, err)
+		}
+
+		if diff := pretty.Compare(tt, dec); diff != "" {
+			t.Errorf("case %d: Compare(want, got): %v", i, diff)
+		}
+	}
+}

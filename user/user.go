@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+
 	"net/mail"
 	"os"
+	"sort"
 
 	"code.google.com/p/go-uuid/uuid"
 
@@ -39,6 +41,10 @@ type User struct {
 	Admin bool
 }
 
+type UserFilter struct {
+	// TODO(bobbyrullo): actually put stuff in here.
+}
+
 // AddToClaims adds basic information about the user to the given Claims.
 // http://openid.net/specs/openid-connect-core-1_0.html#StandardClaims
 func (u *User) AddToClaims(claims jose.Claims) {
@@ -58,6 +64,12 @@ func (u *User) AddToClaims(claims jose.Claims) {
 //    users. (This constraint may be relaxed in the future)
 type UserRepo interface {
 	Get(tx repo.Transaction, id string) (User, error)
+
+	// List returns a list of users meeting the given conditions.
+	// A nextPageToken is returned when there are further results to be had,
+	// with the expectation that it will be passed into a subsequent List
+	// call. When nextPageToken is non-empty filter and maxResults are ignored.
+	List(tx repo.Transaction, filter UserFilter, maxResults int, nextPageToken string) ([]User, string, error)
 
 	Create(repo.Transaction, User) error
 
@@ -134,6 +146,48 @@ func (r *memUserRepo) Get(_ repo.Transaction, id string) (User, error) {
 		return User{}, ErrorNotFound
 	}
 	return user, nil
+}
+
+type usersByEmail []User
+
+func (s usersByEmail) Len() int           { return len(s) }
+func (s usersByEmail) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s usersByEmail) Less(i, j int) bool { return s[i].Email < s[j].Email }
+
+func (r *memUserRepo) List(tx repo.Transaction, filter UserFilter, maxResults int, nextPageToken string) ([]User, string, error) {
+	var offset int
+	var err error
+	if nextPageToken != "" {
+		filter, maxResults, offset, err = DecodeNextPageToken(nextPageToken)
+	}
+	if err != nil {
+		return nil, "", err
+	}
+
+	users := []User{}
+	for _, usr := range r.usersByID {
+		users = append(users, usr)
+	}
+
+	sort.Sort(usersByEmail(users))
+
+	high := offset + maxResults
+
+	var tok string
+	if high >= len(users) {
+		high = len(users)
+	} else {
+		tok, err = EncodeNextPageToken(filter, maxResults, high)
+	}
+
+	if err != nil {
+		return nil, "", err
+	}
+
+	if len(users[offset:high]) == 0 {
+		return nil, "", ErrorNotFound
+	}
+	return users[offset:high], tok, nil
 }
 
 func (r *memUserRepo) GetByEmail(tx repo.Transaction, email string) (User, error) {

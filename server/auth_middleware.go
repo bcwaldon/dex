@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/coreos-inc/auth/pkg/log"
+	"github.com/coreos/go-oidc/jose"
 	"github.com/coreos/go-oidc/key"
 	"github.com/coreos/go-oidc/oidc"
 )
@@ -34,9 +35,16 @@ func (c *clientTokenMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	jwt, err := oidc.ParseTokenFromRequest(r)
+	rawToken, err := oidc.ExtractBearerToken(r)
 	if err != nil {
-		log.Errorf("Failed to parse JWT from request: %v", err)
+		log.Errorf("Failed to extract token from request: %v", err)
+		respondError()
+		return
+	}
+
+	jwt, err := jose.ParseJWT(rawToken)
+	if err != nil {
+		log.Errorf("Failed to parse JWT from token: %v", err)
 		respondError()
 		return
 	}
@@ -85,7 +93,12 @@ func (c *clientTokenMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request
 
 // getClientIDFromAuthorizedRequest will extract the clientID from the bearer token.
 func getClientIDFromAuthorizedRequest(r *http.Request) (string, error) {
-	jwt, err := oidc.ParseTokenFromRequest(r)
+	rawToken, err := oidc.ExtractBearerToken(r)
+	if err != nil {
+		return "", err
+	}
+
+	jwt, err := jose.ParseJWT(rawToken)
 	if err != nil {
 		return "", err
 	}

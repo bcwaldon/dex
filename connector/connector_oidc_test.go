@@ -88,7 +88,11 @@ func TestLoginURL(t *testing.T) {
 		cfg := oidc.ClientConfig{
 			Credentials: oidc.ClientCredentials{ID: tt.cid, Secret: "fake-client-secret"},
 			RedirectURL: tt.redir,
-			Scope:       tt.scope,
+			ProviderConfig: oidc.ProviderConfig{
+				AuthEndpoint:  "http://example.com/authorize",
+				TokenEndpoint: "http://example.com/token",
+			},
+			Scope: tt.scope,
 		}
 		cl, err := oidc.NewClient(cfg)
 		if err != nil {

@@ -1,33 +1,13 @@
 package integration
 
 import (
-	"fmt"
-	"io/ioutil"
 	"net/http"
-	"net/http/httptest"
 	"reflect"
 	"testing"
 
 	schema "github.com/coreos-inc/auth/schema/workerschema"
 	"github.com/coreos/go-oidc/oidc"
 )
-
-type tokenHandlerTransport struct {
-	Handler http.Handler
-	Token   string
-}
-
-func (t *tokenHandlerTransport) RoundTrip(r *http.Request) (*http.Response, error) {
-	r.Header.Set("Authorization", fmt.Sprintf("Bearer %s", t.Token))
-	w := httptest.NewRecorder()
-	t.Handler.ServeHTTP(w, r)
-	resp := http.Response{
-		StatusCode: w.Code,
-		Header:     w.Header(),
-		Body:       ioutil.NopCloser(w.Body),
-	}
-	return &resp, nil
-}
 
 func TestClientCreate(t *testing.T) {
 	ci := oidc.ClientIdentity{

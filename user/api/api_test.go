@@ -3,8 +3,10 @@ package api
 import (
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/coreos/go-oidc/oidc"
+	"github.com/jonboulle/clockwork"
 	"github.com/kylelemons/godebug/pretty"
 
 	"github.com/coreos-inc/auth/client"
@@ -19,6 +21,10 @@ type testEmailer struct {
 	lastClientID    string
 	lastRedirectURL url.URL
 }
+
+var (
+	clock = clockwork.NewFakeClock()
+)
 
 // SendResetPasswordEmail returns resetPasswordURL when it can't email, mimicking the behavior of the real UserEmailer.
 func (t *testEmailer) SendResetPasswordEmail(email string, redirectURL url.URL, clientID string) (*url.URL, error) {
@@ -66,19 +72,22 @@ func makeTestFixtures() (*UsersAPI, *testEmailer) {
 	ur := user.NewUserRepoFromUsers([]user.UserWithRemoteIdentities{
 		{
 			User: user.User{
-				ID:    "ID-1",
-				Email: "id1@example.com",
-				Admin: true,
+				ID:        "ID-1",
+				Email:     "id1@example.com",
+				Admin:     true,
+				CreatedAt: clock.Now(),
 			},
 		}, {
 			User: user.User{
-				ID:    "ID-2",
-				Email: "id2@example.com",
+				ID:        "ID-2",
+				Email:     "id2@example.com",
+				CreatedAt: clock.Now(),
 			},
 		}, {
 			User: user.User{
-				ID:    "ID-3",
-				Email: "id3@example.com",
+				ID:        "ID-3",
+				Email:     "id3@example.com",
+				CreatedAt: clock.Now(),
 			},
 		},
 	})
@@ -93,7 +102,7 @@ func makeTestFixtures() (*UsersAPI, *testEmailer) {
 		},
 	})
 	mgr := user.NewManager(ur, pwr, repo.InMemTransactionFactory, user.ManagerOptions{})
-
+	mgr.Clock = clock
 	ci := oidc.ClientIdentity{
 		Credentials: oidc.ClientCredentials{
 			ID:     "XXX",
@@ -247,6 +256,7 @@ func TestCreateUser(t *testing.T) {
 					DisplayName:   "New User",
 					EmailVerified: true,
 					Admin:         false,
+					CreatedAt:     clock.Now().Format(time.RFC3339),
 				},
 			},
 		},
@@ -267,6 +277,7 @@ func TestCreateUser(t *testing.T) {
 					DisplayName:   "New User",
 					EmailVerified: true,
 					Admin:         false,
+					CreatedAt:     clock.Now().Format(time.RFC3339),
 				},
 				ResetPasswordLink: resetPasswordURL.String(),
 			},
@@ -301,7 +312,7 @@ func TestCreateUser(t *testing.T) {
 		api, emailer := makeTestFixtures()
 		emailer.cantEmail = tt.cantEmail
 
-		page, err := api.CreateUser(tt.creds, tt.usr, tt.redirURL)
+		response, err := api.CreateUser(tt.creds, tt.usr, tt.redirURL)
 		if tt.wantErr != nil {
 			if err != tt.wantErr {
 				t.Errorf("case %d: want=%q, got=%q", i, tt.wantErr, err)
@@ -312,13 +323,13 @@ func TestCreateUser(t *testing.T) {
 			t.Errorf("case %d: want nil err, got: %q ", i, err)
 		}
 
-		newID := page.User.Id
+		newID := response.User.Id
 		if newID == "" {
 			t.Errorf("case %d: expected non-empty newID", i)
 		}
 
 		tt.wantResponse.User.Id = newID
-		if diff := pretty.Compare(tt.wantResponse, page); diff != "" {
+		if diff := pretty.Compare(tt.wantResponse, response); diff != "" {
 			t.Errorf("case %d: Compare(want, got) = %v", i,
 				diff)
 		}

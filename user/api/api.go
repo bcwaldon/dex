@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/coreos-inc/auth/client"
 	"github.com/coreos-inc/auth/pkg/log"
@@ -135,7 +136,13 @@ func (u *UsersAPI) CreateUser(creds Creds, usr schema.User, redirURL url.URL) (s
 	if err != nil {
 		return schema.UserCreateResponse{}, mapError(err)
 	}
-	usr.Id = id
+
+	userUser, err := u.manager.Get(id)
+	if err != nil {
+		return schema.UserCreateResponse{}, mapError(err)
+	}
+
+	usr = userToSchemaUser(userUser)
 
 	metadata, err := u.clientIdentityRepo.Metadata(creds.ClientID)
 	if err != nil {
@@ -200,6 +207,7 @@ func userToSchemaUser(usr user.User) schema.User {
 		EmailVerified: usr.EmailVerified,
 		DisplayName:   usr.DisplayName,
 		Admin:         usr.Admin,
+		CreatedAt:     usr.CreatedAt.UTC().Format(time.RFC3339),
 	}
 }
 

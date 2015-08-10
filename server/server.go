@@ -23,6 +23,7 @@ import (
 	"github.com/coreos-inc/auth/refresh"
 	"github.com/coreos-inc/auth/session"
 	"github.com/coreos-inc/auth/user"
+	usersapi "github.com/coreos-inc/auth/user/api"
 	useremail "github.com/coreos-inc/auth/user/email"
 )
 
@@ -71,6 +72,8 @@ type Server struct {
 	PasswordInfoRepo               user.PasswordInfoRepo
 	RefreshTokenRepo               refresh.RefreshTokenRepo
 	UserEmailer                    *useremail.UserEmailer
+
+	localConnectorID string
 }
 
 func (s *Server) Run() chan struct{} {
@@ -152,6 +155,7 @@ func (s *Server) AddConnector(cfg connector.ConnectorConfig) error {
 	// cleaner manner.
 	localConn, ok := idpc.(*connector.LocalConnector)
 	if ok {
+		s.localConnectorID = connectorID
 		if s.UserRepo == nil {
 			return errors.New("UserRepo cannot be nil")
 		}
@@ -239,7 +243,8 @@ func (s *Server) HTTPHandler() http.Handler {
 	clientPath, clientHandler := registerClientResource(apiBasePath, s.ClientIdentityRepo)
 	mux.Handle(path.Join(apiBasePath, clientPath), s.NewClientTokenAuthHandler(clientHandler))
 
-	mux.Handle(path.Join(apiBasePath, UsersSubTree)+"/", NewUserMgmtServer(nil, s.JWTVerifierFactory(), s.UserManager, s.ClientIdentityRepo).HTTPHandler())
+	usersAPI := usersapi.NewUsersAPI(s.UserManager, s.ClientIdentityRepo, s.UserEmailer, s.localConnectorID)
+	mux.Handle(path.Join(apiBasePath, UsersSubTree)+"/", NewUserMgmtServer(usersAPI, s.JWTVerifierFactory(), s.UserManager, s.ClientIdentityRepo).HTTPHandler())
 
 	return http.Handler(mux)
 }

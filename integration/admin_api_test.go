@@ -9,13 +9,12 @@ import (
 	"google.golang.org/api/googleapi"
 
 	"github.com/coreos-inc/auth/admin"
-	"github.com/coreos-inc/auth/repo"
 	"github.com/coreos-inc/auth/schema/adminschema"
 	"github.com/coreos-inc/auth/server"
 	"github.com/coreos-inc/auth/user"
 )
 
-type testFixtures struct {
+type adminAPITestFixtures struct {
 	ur       user.UserRepo
 	pwr      user.PasswordInfoRepo
 	adAPI    *admin.AdminAPI
@@ -25,29 +24,46 @@ type testFixtures struct {
 	adClient *adminschema.Service
 }
 
-func (t *testFixtures) close() {
+func (t *adminAPITestFixtures) close() {
 	t.hSrv.Close()
 }
 
-func makeTestFixtures() *testFixtures {
-	f := &testFixtures{}
-
-	f.ur = user.NewUserRepoFromUsers([]user.UserWithRemoteIdentities{
+var (
+	adminUsers = []user.UserWithRemoteIdentities{
 		{
 			User: user.User{
 				ID:    "ID-1",
 				Email: "Email-1@example.com",
 			},
 		},
-	})
-	f.pwr = user.NewPasswordInfoRepoFromPasswordInfos([]user.PasswordInfo{
+		{
+			User: user.User{
+				ID:    "ID-2",
+				Email: "Email-2@example.com",
+			},
+		},
+		{
+			User: user.User{
+				ID:    "ID-3",
+				Email: "Email-3@example.com",
+			},
+		},
+	}
+
+	adminPasswords = []user.PasswordInfo{
 		{
 			UserID:   "ID-1",
 			Password: []byte("hi."),
 		},
-	})
+	}
+)
 
-	um := user.NewManager(f.ur, f.pwr, repo.InMemTransactionFactory, user.ManagerOptions{})
+func makeAdminAPITestFixtures() *adminAPITestFixtures {
+	f := &adminAPITestFixtures{}
+
+	ur, pwr, um := makeUserObjects(adminUsers, adminPasswords)
+	f.ur = ur
+	f.pwr = pwr
 	f.adAPI = admin.NewAdminAPI(um, f.ur, f.pwr, "local")
 	f.adSrv = server.NewAdminServer(f.adAPI, nil)
 	f.hSrv = httptest.NewServer(f.adSrv.HTTPHandler())
@@ -75,7 +91,7 @@ func TestGetAdmin(t *testing.T) {
 
 	for i, tt := range tests {
 		func() {
-			f := makeTestFixtures()
+			f := makeAdminAPITestFixtures()
 			defer f.close()
 			admn, err := f.adClient.Admin.Get(tt.id).Do()
 			if tt.errCode != -1 {
@@ -139,7 +155,7 @@ func TestCreateAdmin(t *testing.T) {
 	}
 	for i, tt := range tests {
 		func() {
-			f := makeTestFixtures()
+			f := makeAdminAPITestFixtures()
 			defer f.close()
 
 			admn, err := f.adClient.Admin.Create(tt.admn).Do()
@@ -219,7 +235,7 @@ func TestGetState(t *testing.T) {
 
 	for i, tt := range tests {
 		func() {
-			f := makeTestFixtures()
+			f := makeAdminAPITestFixtures()
 			defer f.close()
 
 			for _, usr := range tt.addUsers {

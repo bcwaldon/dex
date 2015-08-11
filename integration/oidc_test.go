@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos-inc/auth/client"
 	"github.com/coreos-inc/auth/connector"
 	phttp "github.com/coreos-inc/auth/pkg/http"
 	"github.com/coreos-inc/auth/server"
@@ -34,7 +35,7 @@ func mockServer(cis []oidc.ClientIdentity) (*server.Server, error) {
 	srv := &server.Server{
 		IssuerURL:          url.URL{Scheme: "http", Host: "server.example.com"},
 		KeyManager:         km,
-		ClientIdentityRepo: server.NewClientIdentityRepo(cis),
+		ClientIdentityRepo: client.NewClientIdentityRepo(cis),
 		SessionManager:     sm,
 	}
 
@@ -88,7 +89,7 @@ func TestHTTPExchangeToken(t *testing.T) {
 		},
 	}
 
-	cir := server.NewClientIdentityRepo([]oidc.ClientIdentity{ci})
+	cir := client.NewClientIdentityRepo([]oidc.ClientIdentity{ci})
 
 	issuerURL := url.URL{Scheme: "http", Host: "server.example.com"}
 	sm := session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo())

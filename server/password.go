@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/coreos-inc/auth/client"
 	"github.com/coreos-inc/auth/pkg/log"
 
 	"github.com/coreos-inc/auth/email"
@@ -27,7 +28,7 @@ type SendResetPasswordEmailHandler struct {
 	tpl         *template.Template
 	emailer     *email.TemplatizedEmailer
 	sm          *session.SessionManager
-	cr          ClientIdentityRepo
+	cr          client.ClientIdentityRepo
 	ur          user.UserRepo
 	pwi         user.PasswordInfoRepo
 	issuerURL   url.URL

@@ -12,6 +12,7 @@ import (
 
 	"github.com/jonboulle/clockwork"
 
+	"github.com/coreos-inc/auth/client"
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/email"
 	"github.com/coreos-inc/auth/pkg/log"
@@ -48,7 +49,7 @@ type Server struct {
 	KeyManager                     key.PrivateKeyManager
 	KeySetRepo                     key.PrivateKeySetRepo
 	SessionManager                 *session.SessionManager
-	ClientIdentityRepo             ClientIdentityRepo
+	ClientIdentityRepo             client.ClientIdentityRepo
 	ConnectorConfigRepo            connector.ConnectorConfigRepo
 	Templates                      *template.Template
 	LoginTemplate                  *template.Template

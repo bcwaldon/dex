@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/coreos-inc/auth/client"
 	schema "github.com/coreos-inc/auth/schema/workerschema"
 	"github.com/coreos/go-oidc/oidc"
 )
@@ -23,7 +24,7 @@ func makeBody(s string) io.ReadCloser {
 func TestCreateInvalidRequest(t *testing.T) {
 	u := &url.URL{Scheme: "http", Host: "example.com", Path: "clients"}
 	h := http.Header{"Content-Type": []string{"application/json"}}
-	repo := NewClientIdentityRepo(nil)
+	repo := client.NewClientIdentityRepo(nil)
 	res := &clientResource{repo: repo}
 	tests := []struct {
 		req      *http.Request
@@ -114,7 +115,7 @@ func TestCreateInvalidRequest(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
-	repo := NewClientIdentityRepo(nil)
+	repo := client.NewClientIdentityRepo(nil)
 	res := &clientResource{repo: repo}
 	tests := [][]string{
 		[]string{"http://example.com"},
@@ -229,7 +230,7 @@ func TestList(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		repo := NewClientIdentityRepo(tt.cs)
+		repo := client.NewClientIdentityRepo(tt.cs)
 		res := &clientResource{repo: repo}
 
 		r, err := http.NewRequest("GET", "http://example.com/clients", nil)

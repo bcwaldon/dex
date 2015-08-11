@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/coreos-inc/auth/client"
 	"github.com/coreos-inc/auth/pkg/log"
 	"github.com/coreos/go-oidc/jose"
 	"github.com/coreos/go-oidc/key"
@@ -13,7 +14,7 @@ import (
 
 type clientTokenMiddleware struct {
 	issuerURL string
-	ciRepo    ClientIdentityRepo
+	ciRepo    client.ClientIdentityRepo
 	keysFunc  func() ([]key.PublicKey, error)
 	next      http.Handler
 }

@@ -8,13 +8,14 @@ import (
 	"time"
 
 	"github.com/coopernurse/gorp"
+	"github.com/coreos/go-oidc/key"
+	"github.com/coreos/go-oidc/oidc"
 	"github.com/kylelemons/godebug/pretty"
 
+	"github.com/coreos-inc/auth/client"
 	"github.com/coreos-inc/auth/db"
 	"github.com/coreos-inc/auth/refresh"
 	"github.com/coreos-inc/auth/session"
-	"github.com/coreos/go-oidc/key"
-	"github.com/coreos/go-oidc/oidc"
 )
 
 var (
@@ -170,8 +171,8 @@ func TestDBClientIdentityRepoMetadataNoExist(t *testing.T) {
 	r := db.NewClientIdentityRepo(connect(t))
 
 	got, err := r.Metadata("noexist")
-	if err != nil {
-		t.Fatalf(err.Error())
+	if err != client.ErrorNotFound {
+		t.Errorf("want==%q, got==%q", client.ErrorNotFound, err)
 	}
 	if got != nil {
 		t.Fatalf("Retrieved incorrect ClientMetadata: want=nil got=%#v", got)

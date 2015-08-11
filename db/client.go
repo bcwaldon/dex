@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -8,12 +9,13 @@ import (
 	"net/url"
 
 	"github.com/coopernurse/gorp"
+	"github.com/coreos/go-oidc/oidc"
 	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/coreos-inc/auth/client"
 	pcrypto "github.com/coreos-inc/auth/pkg/crypto"
 	"github.com/coreos-inc/auth/pkg/log"
-	"github.com/coreos/go-oidc/oidc"
 )
 
 const (
@@ -152,7 +154,10 @@ type clientIdentityRepo struct {
 
 func (r *clientIdentityRepo) Metadata(clientID string) (*oidc.ClientMetadata, error) {
 	m, err := r.dbMap.Get(clientIdentityModel{}, clientID)
-	if m == nil || err != nil {
+	if err == sql.ErrNoRows || m == nil {
+		return nil, client.ErrorNotFound
+	}
+	if err != nil {
 		return nil, err
 	}
 

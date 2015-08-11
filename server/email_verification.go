@@ -66,16 +66,17 @@ func handleVerifyEmailResendFunc(
 		}
 
 		cm, err := clientIdentityRepo.Metadata(clientID)
+		if err == client.ErrorNotFound {
+			log.Errorf("No such client: %v", err)
+			writeAPIError(w, http.StatusBadRequest,
+				newAPIError(errorInvalidRequest, "invalid client_id"))
+			return
+
+		}
 		if err != nil {
 			log.Errorf("Error getting ClientMetadata: %v", err)
 			writeAPIError(w, http.StatusInternalServerError,
 				newAPIError(errorServerError, "could not send email at this time"))
-			return
-		}
-		if cm == nil {
-			log.Errorf("No such client: %v", err)
-			writeAPIError(w, http.StatusBadRequest,
-				newAPIError(errorInvalidRequest, "invalid client_id"))
 			return
 		}
 

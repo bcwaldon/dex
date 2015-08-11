@@ -17,6 +17,7 @@ var (
 	ErrorInvalidRedirectURL    = errors.New("not a valid redirect url for the given client")
 	ErrorCantChooseRedirectURL = errors.New("must provide a redirect url; client has many")
 	ErrorNoValidRedirectURLs   = errors.New("no valid redirect URLs for this client.")
+	ErrorNotFound              = errors.New("no data found")
 )
 
 type ClientIdentityRepo interface {
@@ -89,7 +90,7 @@ func (cr *memClientIdentityRepo) New(id string, meta oidc.ClientMetadata) (*oidc
 func (cr *memClientIdentityRepo) Metadata(clientID string) (*oidc.ClientMetadata, error) {
 	ci, ok := cr.idents[clientID]
 	if !ok {
-		return nil, nil
+		return nil, ErrorNotFound
 	}
 	return &ci.Metadata, nil
 }

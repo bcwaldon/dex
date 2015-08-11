@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos-inc/auth/client"
 	"github.com/coreos/go-oidc/jose"
 	"github.com/coreos/go-oidc/key"
 	"github.com/coreos/go-oidc/oidc"
@@ -27,7 +28,7 @@ func TestClientToken(t *testing.T) {
 			ID: validClientID,
 		},
 	}
-	repo := NewClientIdentityRepo([]oidc.ClientIdentity{ci})
+	repo := client.NewClientIdentityRepo([]oidc.ClientIdentity{ci})
 
 	privKey, err := key.GeneratePrivateKey()
 	if err != nil {
@@ -52,7 +53,7 @@ func TestClientToken(t *testing.T) {
 
 	tests := []struct {
 		keys     []key.PublicKey
-		repo     ClientIdentityRepo
+		repo     client.ClientIdentityRepo
 		header   string
 		wantCode int
 	}{
@@ -101,7 +102,7 @@ func TestClientToken(t *testing.T) {
 		// empty repo
 		{
 			keys:     []key.PublicKey{pubKey},
-			repo:     NewClientIdentityRepo(nil),
+			repo:     client.NewClientIdentityRepo(nil),
 			header:   fmt.Sprintf("BEARER %s", validJWT),
 			wantCode: http.StatusUnauthorized,
 		},

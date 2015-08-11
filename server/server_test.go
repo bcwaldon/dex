@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos-inc/auth/client"
 	"github.com/coreos-inc/auth/session"
 	"github.com/coreos-inc/auth/user"
 	"github.com/coreos/go-oidc/jose"
@@ -185,7 +186,7 @@ func TestServerLogin(t *testing.T) {
 			},
 		},
 	}
-	ciRepo := NewClientIdentityRepo([]oidc.ClientIdentity{ci})
+	ciRepo := client.NewClientIdentityRepo([]oidc.ClientIdentity{ci})
 
 	km := &StaticKeyManager{
 		signer: &StaticSigner{sig: []byte("beer"), err: nil},
@@ -229,7 +230,7 @@ func TestServerLogin(t *testing.T) {
 }
 
 func TestServerLoginUnrecognizedSessionKey(t *testing.T) {
-	ciRepo := NewClientIdentityRepo([]oidc.ClientIdentity{
+	ciRepo := client.NewClientIdentityRepo([]oidc.ClientIdentity{
 		oidc.ClientIdentity{
 			Credentials: oidc.ClientCredentials{
 				ID: "XXX", Secret: "secrete",
@@ -265,7 +266,7 @@ func TestServerCodeToken(t *testing.T) {
 			Secret: "secrete",
 		},
 	}
-	ciRepo := NewClientIdentityRepo([]oidc.ClientIdentity{ci})
+	ciRepo := client.NewClientIdentityRepo([]oidc.ClientIdentity{ci})
 	km := &StaticKeyManager{
 		signer: &StaticSigner{sig: []byte("beer"), err: nil},
 	}
@@ -319,7 +320,7 @@ func TestServerTokenUnrecognizedKey(t *testing.T) {
 			Secret: "secrete",
 		},
 	}
-	ciRepo := NewClientIdentityRepo([]oidc.ClientIdentity{ci})
+	ciRepo := client.NewClientIdentityRepo([]oidc.ClientIdentity{ci})
 	km := &StaticKeyManager{
 		signer: &StaticSigner{sig: []byte("beer"), err: nil},
 	}
@@ -415,7 +416,7 @@ func TestServerTokenFail(t *testing.T) {
 		km := &StaticKeyManager{
 			signer: tt.signer,
 		}
-		ciRepo := NewClientIdentityRepo([]oidc.ClientIdentity{
+		ciRepo := client.NewClientIdentityRepo([]oidc.ClientIdentity{
 			oidc.ClientIdentity{Credentials: ccFixture},
 		})
 

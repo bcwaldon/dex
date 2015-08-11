@@ -2,17 +2,26 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"html/template"
 	"net/http"
 	"net/url"
+	"reflect"
 	"time"
 
+	"github.com/coreos-inc/auth/client"
 	"github.com/coreos-inc/auth/email"
 	"github.com/coreos-inc/auth/pkg/log"
 	"github.com/coreos-inc/auth/user"
 	"github.com/coreos/go-oidc/jose"
 	"github.com/coreos/go-oidc/key"
 	"github.com/coreos/go-oidc/oidc"
+)
+
+var (
+	ErrorInvalidRedirectURL    = errors.New("not a valid redirect url for the given client")
+	ErrorCantChooseRedirectURL = errors.New("must provide a redirect url; client has many")
+	ErrorNoValidRedirectURLs   = errors.New("no valid redirect URLs for this client.")
 )
 
 // handleVerifyEmailResendFunc will resend an email-verification email given a valid JWT for the user and a redirect URL.
@@ -29,7 +38,7 @@ func handleVerifyEmailResendFunc(
 	emailer *email.TemplatizedEmailer,
 	emailFromAddress string,
 	userRepo user.UserRepo,
-	clientIdentityRepo ClientIdentityRepo) http.HandlerFunc {
+	clientIdentityRepo client.ClientIdentityRepo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		decoder := json.NewDecoder(r.Body)
 		var params struct {
@@ -293,4 +302,29 @@ func sendEmailVerification(usr user.User,
 	}
 
 	return nil
+}
+
+// ValidRedirectURL returns the passed in URL if it is present in the redirectURLs list, and returns an error otherwise.
+// If nil is passed in as the rURL and there is only one URL in redirectURLs,
+// that URL will be returned. If nil is passed but theres >1 URL in the slice,
+// then an error is returned.
+func ValidRedirectURL(rURL *url.URL, redirectURLs []url.URL) (url.URL, error) {
+	if len(redirectURLs) == 0 {
+		return url.URL{}, ErrorNoValidRedirectURLs
+	}
+
+	if rURL == nil {
+		if len(redirectURLs) > 1 {
+			return url.URL{}, ErrorCantChooseRedirectURL
+		}
+
+		return redirectURLs[0], nil
+	}
+
+	for _, ru := range redirectURLs {
+		if reflect.DeepEqual(ru, *rURL) {
+			return ru, nil
+		}
+	}
+	return url.URL{}, ErrorInvalidRedirectURL
 }

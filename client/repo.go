@@ -1,4 +1,4 @@
-package server
+package client
 
 import (
 	"encoding/base64"
@@ -7,7 +7,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/url"
-	"reflect"
 	"sort"
 
 	pcrypto "github.com/coreos-inc/auth/pkg/crypto"
@@ -119,7 +118,7 @@ func (s sortableClientIdentities) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
 
-func newClientIdentityRepoFromReader(r io.Reader) (ClientIdentityRepo, error) {
+func NewClientIdentityRepoFromReader(r io.Reader) (ClientIdentityRepo, error) {
 	b, err := ioutil.ReadAll(r)
 	if err != nil {
 		return nil, err
@@ -168,29 +167,4 @@ func (ci *clientIdentity) UnmarshalJSON(data []byte) error {
 	}
 
 	return nil
-}
-
-// ValidRedirectURL returns the passed in URL if it is present in the redirectURLs list, and returns an error otherwise.
-// If nil is passed in as the rURL and there is only one URL in redirectURLs,
-// that URL will be returned. If nil is passed but theres >1 URL in the slice,
-// then an error is returned.
-func ValidRedirectURL(rURL *url.URL, redirectURLs []url.URL) (url.URL, error) {
-	if len(redirectURLs) == 0 {
-		return url.URL{}, ErrorNoValidRedirectURLs
-	}
-
-	if rURL == nil {
-		if len(redirectURLs) > 1 {
-			return url.URL{}, ErrorCantChooseRedirectURL
-		}
-
-		return redirectURLs[0], nil
-	}
-
-	for _, ru := range redirectURLs {
-		if reflect.DeepEqual(ru, *rURL) {
-			return ru, nil
-		}
-	}
-	return url.URL{}, ErrorInvalidRedirectURL
 }

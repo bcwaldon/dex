@@ -10,6 +10,7 @@ import (
 	texttemplate "text/template"
 	"time"
 
+	"github.com/coreos-inc/auth/client"
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/db"
 	"github.com/coreos-inc/auth/email"
@@ -57,7 +58,7 @@ func (cfg *SingleServerConfig) Server() (*Server, error) {
 		return nil, fmt.Errorf("unable to read clients from file %s: %v", cfg.ClientsFile, err)
 	}
 	defer cf.Close()
-	ciRepo, err := newClientIdentityRepoFromReader(cf)
+	ciRepo, err := client.NewClientIdentityRepoFromReader(cf)
 	if err != nil {
 		return nil, fmt.Errorf("unable to read client identities from file %s: %v", cfg.ClientsFile, err)
 	}

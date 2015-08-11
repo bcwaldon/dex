@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"path"
 
+	"github.com/coreos-inc/auth/client"
 	phttp "github.com/coreos-inc/auth/pkg/http"
 	"github.com/coreos-inc/auth/pkg/log"
 	schema "github.com/coreos-inc/auth/schema/workerschema"
@@ -13,10 +14,10 @@ import (
 )
 
 type clientResource struct {
-	repo ClientIdentityRepo
+	repo client.ClientIdentityRepo
 }
 
-func registerClientResource(prefix string, repo ClientIdentityRepo) (string, http.Handler) {
+func registerClientResource(prefix string, repo client.ClientIdentityRepo) (string, http.Handler) {
 	mux := http.NewServeMux()
 	c := &clientResource{
 		repo: repo,

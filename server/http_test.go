@@ -15,6 +15,7 @@ import (
 
 	"github.com/jonboulle/clockwork"
 
+	"github.com/coreos-inc/auth/client"
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/session"
 	"github.com/coreos/go-oidc/jose"
@@ -75,7 +76,7 @@ func TestHandleAuthFuncResponsesSingleRedirectURL(t *testing.T) {
 	srv := &Server{
 		IssuerURL:      url.URL{Scheme: "http", Host: "server.example.com"},
 		SessionManager: session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo()),
-		ClientIdentityRepo: NewClientIdentityRepo([]oidc.ClientIdentity{
+		ClientIdentityRepo: client.NewClientIdentityRepo([]oidc.ClientIdentity{
 			oidc.ClientIdentity{
 				Credentials: oidc.ClientCredentials{
 					ID:     "XXX",
@@ -182,7 +183,7 @@ func TestHandleAuthFuncResponsesMultipleRedirectURLs(t *testing.T) {
 	srv := &Server{
 		IssuerURL:      url.URL{Scheme: "http", Host: "server.example.com"},
 		SessionManager: session.NewSessionManager(session.NewSessionRepo(), session.NewSessionKeyRepo()),
-		ClientIdentityRepo: NewClientIdentityRepo([]oidc.ClientIdentity{
+		ClientIdentityRepo: client.NewClientIdentityRepo([]oidc.ClientIdentity{
 			oidc.ClientIdentity{
 				Credentials: oidc.ClientCredentials{
 					ID:     "XXX",

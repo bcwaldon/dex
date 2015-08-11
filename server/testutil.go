@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/coreos-inc/auth/client"
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/email"
 	"github.com/coreos-inc/auth/session"
@@ -58,7 +59,7 @@ type testFixtures struct {
 	sessionManager     *session.SessionManager
 	emailer            *email.TemplatizedEmailer
 	redirectURL        url.URL
-	clientIdentityRepo ClientIdentityRepo
+	clientIdentityRepo client.ClientIdentityRepo
 }
 
 func sequentialGenerateCodeFunc() session.GenerateCodeFunc {
@@ -104,7 +105,7 @@ func makeTestFixtures() (*testFixtures, error) {
 		return nil, err
 	}
 
-	clientIdentityRepo := NewClientIdentityRepo([]oidc.ClientIdentity{
+	clientIdentityRepo := client.NewClientIdentityRepo([]oidc.ClientIdentity{
 		oidc.ClientIdentity{
 			Credentials: oidc.ClientCredentials{
 				ID:     "XXX",

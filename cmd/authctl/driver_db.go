@@ -1,9 +1,9 @@
 package main
 
 import (
+	"github.com/coreos-inc/auth/client"
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/db"
-	"github.com/coreos-inc/auth/server"
 	"github.com/coreos/go-oidc/oidc"
 )
 
@@ -22,7 +22,7 @@ func newDBDriver(dsn string) (driver, error) {
 }
 
 type dbDriver struct {
-	ciRepo  server.ClientIdentityRepo
+	ciRepo  client.ClientIdentityRepo
 	cfgRepo *db.ConnectorConfigRepo
 }
 

@@ -263,6 +263,8 @@ func TestHandleAuthFuncResponsesMultipleRedirectURLs(t *testing.T) {
 		hdlr.ServeHTTP(w, req)
 		if tt.wantCode != w.Code {
 			t.Errorf("case %d: HTTP code mismatch: want=%d got=%d", i, tt.wantCode, w.Code)
+			t.Errorf("case %d: BODY: %v", i, w.Body.String())
+			t.Errorf("case %d: LOCO: %v", i, w.HeaderMap.Get("Location"))
 			continue
 		}
 

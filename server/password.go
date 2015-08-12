@@ -5,11 +5,9 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/coreos-inc/auth/client"
-	"github.com/coreos-inc/auth/pkg/log"
-
 	"github.com/coreos/go-oidc/key"
 
+	"github.com/coreos-inc/auth/client"
 	"github.com/coreos-inc/auth/pkg/log"
 	"github.com/coreos-inc/auth/session"
 	"github.com/coreos-inc/auth/user"

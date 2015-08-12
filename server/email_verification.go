@@ -2,28 +2,19 @@ package server
 
 import (
 	"encoding/json"
-	"errors"
 	"html/template"
 	"net/http"
 	"net/url"
 	"time"
 
-	"github.com/coreos-inc/auth/client"
-	"github.com/coreos-inc/auth/pkg/log"
-	"github.com/coreos-inc/auth/user"
 	"github.com/coreos/go-oidc/jose"
 	"github.com/coreos/go-oidc/key"
 	"github.com/coreos/go-oidc/oidc"
 
+	"github.com/coreos-inc/auth/client"
 	"github.com/coreos-inc/auth/pkg/log"
 	"github.com/coreos-inc/auth/user"
 	useremail "github.com/coreos-inc/auth/user/email"
-)
-
-var (
-	ErrorInvalidRedirectURL    = errors.New("not a valid redirect url for the given client")
-	ErrorCantChooseRedirectURL = errors.New("must provide a redirect url; client has many")
-	ErrorNoValidRedirectURLs   = errors.New("no valid redirect URLs for this client.")
 )
 
 // handleVerifyEmailResendFunc will resend an email-verification email given a valid JWT for the user and a redirect URL.
@@ -166,15 +157,15 @@ func handleVerifyEmailResendFunc(
 			return
 		}
 
-		*redirectURL, err = ValidRedirectURL(redirectURL, cm.RedirectURLs)
+		*redirectURL, err = client.ValidRedirectURL(redirectURL, cm.RedirectURLs)
 		if err != nil {
 			switch err {
-			case (ErrorInvalidRedirectURL):
+			case (client.ErrorInvalidRedirectURL):
 				log.Errorf("Request provided unregistered redirect URL: %s", redirectURLStr)
 				writeAPIError(w, http.StatusBadRequest,
 					newAPIError(errorInvalidRequest, "invalid redirect_uri"))
 				return
-			case (ErrorNoValidRedirectURLs):
+			case (client.ErrorNoValidRedirectURLs):
 				log.Errorf("There are no registered URLs for the requested client: %s", redirectURL)
 				writeAPIError(w, http.StatusBadRequest,
 					newAPIError(errorInvalidRequest, "invalid redirect_uri"))

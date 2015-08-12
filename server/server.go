@@ -49,6 +49,8 @@ type OIDCServer interface {
 	KillSession(string) error
 }
 
+type JWTVerifierFactory func(clientID string) oidc.JWTVerifier
+
 type Server struct {
 	IssuerURL                      url.URL
 	KeyManager                     key.PrivateKeyManager
@@ -237,7 +239,7 @@ func (s *Server) HTTPHandler() http.Handler {
 	clientPath, clientHandler := registerClientResource(apiBasePath, s.ClientIdentityRepo)
 	mux.Handle(path.Join(apiBasePath, clientPath), s.NewClientTokenAuthHandler(clientHandler))
 
-	mux.Handle(path.Join(apiBasePath, UsersSubTree)+"/", NewUserMgmtServer(nil).HTTPHandler())
+	mux.Handle(path.Join(apiBasePath, UsersSubTree)+"/", NewUserMgmtServer(nil, s.JWTVerifierFactory(), s.UserManager, s.ClientIdentityRepo).HTTPHandler())
 
 	return http.Handler(mux)
 }
@@ -483,6 +485,23 @@ func (s *Server) RefreshToken(creds oidc.ClientCredentials, token string) (*jose
 	log.Infof("Token refreshed sent: clientID=%s", creds.ID)
 
 	return jwt, nil
+}
+
+func (s *Server) JWTVerifierFactory() JWTVerifierFactory {
+	noop := func() error { return nil }
+
+	keyFunc := func() []key.PublicKey {
+		keys, err := s.KeyManager.PublicKeys()
+		if err != nil {
+			log.Errorf("error getting public keys from manager: %v", err)
+			return []key.PublicKey{}
+		}
+		return keys
+	}
+	return func(clientID string) oidc.JWTVerifier {
+
+		return oidc.NewJWTVerifier(s.IssuerURL.String(), clientID, noop, keyFunc)
+	}
 }
 
 type sortableIDPCs []connector.Connector

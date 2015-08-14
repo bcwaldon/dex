@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/coopernurse/gorp"
 	"github.com/lib/pq"
@@ -416,6 +417,7 @@ type userModel struct {
 	EmailVerified bool   `db:"email_verified"`
 	DisplayName   string `db:"display_name"`
 	Admin         bool   `db:"admin"`
+	CreatedAt     int64  `db:"created_at"`
 }
 
 func (u *userModel) user() (user.User, error) {
@@ -425,6 +427,10 @@ func (u *userModel) user() (user.User, error) {
 		Email:         u.Email,
 		EmailVerified: u.EmailVerified,
 		Admin:         u.Admin,
+	}
+
+	if u.CreatedAt != 0 {
+		usr.CreatedAt = time.Unix(u.CreatedAt, 0).UTC()
 	}
 
 	return usr, nil
@@ -437,6 +443,10 @@ func newUserModel(u *user.User) (*userModel, error) {
 		Email:         u.Email,
 		EmailVerified: u.EmailVerified,
 		Admin:         u.Admin,
+	}
+
+	if !u.CreatedAt.IsZero() {
+		um.CreatedAt = u.CreatedAt.Unix()
 	}
 
 	return &um, nil

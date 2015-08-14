@@ -4,6 +4,8 @@ import (
 	"errors"
 	"net/url"
 
+	"github.com/jonboulle/clockwork"
+
 	"github.com/coreos-inc/auth/pkg/log"
 	"github.com/coreos-inc/auth/repo"
 )
@@ -18,6 +20,8 @@ var (
 // Manager performs user-related "business-logic" functions on user and related objects.
 // This is in contrast to the Repos which perform little more than CRUD operations.
 type Manager struct {
+	Clock clockwork.Clock
+
 	userRepo        UserRepo
 	pwRepo          PasswordInfoRepo
 	begin           repo.TransactionFactory
@@ -32,6 +36,8 @@ type ManagerOptions struct {
 
 func NewManager(userRepo UserRepo, pwRepo PasswordInfoRepo, txnFactory repo.TransactionFactory, options ManagerOptions) *Manager {
 	return &Manager{
+		Clock: clockwork.NewRealClock(),
+
 		userRepo:        userRepo,
 		pwRepo:          pwRepo,
 		begin:           txnFactory,
@@ -62,6 +68,7 @@ func (m *Manager) CreateUser(user User, hashedPassword Password, connID string) 
 	}
 
 	user.ID = insertedUser.ID
+	user.CreatedAt = insertedUser.CreatedAt
 	err = m.userRepo.Update(tx, user)
 	if err != nil {
 		rollback(tx)
@@ -292,13 +299,13 @@ func (m *Manager) insertNewUser(tx repo.Transaction, email string, emailVerified
 		ID:            userID,
 		Email:         email,
 		EmailVerified: emailVerified,
+		CreatedAt:     m.Clock.Now(),
 	}
 
 	err = m.userRepo.Create(tx, user)
 	if err != nil {
 		return User{}, err
 	}
-
 	return user, nil
 }
 

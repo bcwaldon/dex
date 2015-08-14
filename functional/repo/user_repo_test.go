@@ -32,8 +32,9 @@ var (
 		},
 		{
 			User: user.User{
-				ID:    "ID-2",
-				Email: "Email-2@example.com",
+				ID:        "ID-2",
+				Email:     "Email-2@example.com",
+				CreatedAt: time.Now(),
 			},
 			RemoteIdentities: []user.RemoteIdentity{
 				{

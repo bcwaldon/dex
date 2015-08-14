@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"time"
 
 	"net/mail"
 	"os"
@@ -39,6 +40,8 @@ type User struct {
 	EmailVerified bool
 
 	Admin bool
+
+	CreatedAt time.Time
 }
 
 type UserFilter struct {

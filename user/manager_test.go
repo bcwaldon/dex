@@ -6,19 +6,22 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc/jose"
+	"github.com/jonboulle/clockwork"
 	"github.com/kylelemons/godebug/pretty"
 
 	"github.com/coreos-inc/auth/repo"
 )
 
 type testFixtures struct {
-	ur  UserRepo
-	pwr PasswordInfoRepo
-	mgr *Manager
+	ur    UserRepo
+	pwr   PasswordInfoRepo
+	mgr   *Manager
+	clock clockwork.Clock
 }
 
 func makeTestFixtures() *testFixtures {
 	f := &testFixtures{}
+	f.clock = clockwork.NewFakeClock()
 
 	f.ur = NewUserRepoFromUsers([]UserWithRemoteIdentities{
 		{
@@ -57,6 +60,7 @@ func makeTestFixtures() *testFixtures {
 		},
 	})
 	f.mgr = NewManager(f.ur, f.pwr, repo.InMemTransactionFactory, ManagerOptions{})
+	f.mgr.Clock = f.clock
 	return f
 }
 
@@ -404,6 +408,7 @@ func TestCreateUser(t *testing.T) {
 		}
 
 		tt.usr.ID = id
+		tt.usr.CreatedAt = f.clock.Now()
 		if diff := pretty.Compare(tt.usr, gotUsr); diff != "" {
 			t.Errorf("case %d: Compare(want, got) = %v", i, diff)
 		}
@@ -427,6 +432,5 @@ func TestCreateUser(t *testing.T) {
 		if diff := pretty.Compare(gotUsr, ridUser); diff != "" {
 			t.Errorf("case %d: Compare(want, got) = %v", i, diff)
 		}
-
 	}
 }

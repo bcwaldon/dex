@@ -158,6 +158,7 @@ func (cfg *MultiServerConfig) Server() (*Server, error) {
 	userRepo := db.NewUserRepo(dbc)
 	pwiRepo := db.NewPasswordInfoRepo(dbc)
 	userManager := user.NewManager(userRepo, pwiRepo, db.TransactionFactory(dbc), user.ManagerOptions{})
+	refreshTokenRepo := db.NewRefreshTokenRepo(dbc)
 
 	sm := session.NewSessionManager(sRepo, skRepo)
 
@@ -181,6 +182,7 @@ func (cfg *MultiServerConfig) Server() (*Server, error) {
 		UserRepo:            userRepo,
 		UserManager:         userManager,
 		PasswordInfoRepo:    pwiRepo,
+		RefreshTokenRepo:    refreshTokenRepo,
 		EmailFromAddress:    cfg.EmailFromAddress,
 	}
 	err = setTemplates(&srv, tpl)

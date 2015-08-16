@@ -398,6 +398,7 @@ func handleTokenFunc(srv OIDCServer) http.HandlerFunc {
 		creds := oidc.ClientCredentials{ID: user, Secret: password}
 
 		var jwt *jose.JWT
+		var refreshToken string
 		grantType := r.PostForm.Get("grant_type")
 
 		switch grantType {
@@ -408,8 +409,7 @@ func handleTokenFunc(srv OIDCServer) http.HandlerFunc {
 				writeTokenError(w, oauth2.NewError(oauth2.ErrorInvalidRequest), state)
 				return
 			}
-
-			jwt, err = srv.CodeToken(creds, code)
+			jwt, refreshToken, err = srv.CodeToken(creds, code)
 			if err != nil {
 				log.Errorf("couldn't exchange code for token: %v", err)
 				writeTokenError(w, err, state)
@@ -422,6 +422,17 @@ func handleTokenFunc(srv OIDCServer) http.HandlerFunc {
 				writeTokenError(w, err, state)
 				return
 			}
+		case oauth2.GrantTypeRefreshToken:
+			token := r.PostForm.Get("refresh_token")
+			if token == "" {
+				writeTokenError(w, oauth2.NewError(oauth2.ErrorInvalidRequest), state)
+				return
+			}
+			jwt, err = srv.RefreshToken(creds, token)
+			if err != nil {
+				writeTokenError(w, err, state)
+				return
+			}
 		default:
 			log.Errorf("unsupported grant: %v", grantType)
 			writeTokenError(w, oauth2.NewError(oauth2.ErrorUnsupportedGrantType), state)
@@ -429,9 +440,10 @@ func handleTokenFunc(srv OIDCServer) http.HandlerFunc {
 		}
 
 		t := oAuth2Token{
-			AccessToken: jwt.Encode(),
-			IDToken:     jwt.Encode(),
-			TokenType:   "bearer",
+			AccessToken:  jwt.Encode(),
+			IDToken:      jwt.Encode(),
+			TokenType:    "bearer",
+			RefreshToken: refreshToken,
 		}
 
 		b, err := json.Marshal(t)
@@ -454,9 +466,10 @@ func makeHealthHandler(checks []health.Checkable) http.Handler {
 }
 
 type oAuth2Token struct {
-	AccessToken string `json:"access_token"`
-	IDToken     string `json:"id_token"`
-	TokenType   string `json:"token_type"`
+	AccessToken  string `json:"access_token"`
+	IDToken      string `json:"id_token"`
+	TokenType    string `json:"token_type"`
+	RefreshToken string `json:"refresh_token,omitempty"`
 }
 
 func createLastSeenCookie() *http.Cookie {

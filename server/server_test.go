@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/coreos-inc/auth/client"
+	"github.com/coreos-inc/auth/refresh/refreshtest"
 	"github.com/coreos-inc/auth/session"
 	"github.com/coreos-inc/auth/user"
 	"github.com/coreos/go-oidc/jose"
@@ -277,12 +278,18 @@ func TestServerCodeToken(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
+	refreshTokenRepo, err := refreshtest.NewTestRefreshTokenRepo()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
 	srv := &Server{
 		IssuerURL:          url.URL{Scheme: "http", Host: "server.example.com"},
 		KeyManager:         km,
 		SessionManager:     sm,
 		ClientIdentityRepo: ciRepo,
 		UserRepo:           userRepo,
+		RefreshTokenRepo:   refreshTokenRepo,
 	}
 
 	sessionID, err := sm.NewSession("bogus_idpc", ci.Credentials.ID, "bogus", url.URL{}, "", false)
@@ -304,12 +311,15 @@ func TestServerCodeToken(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	jwt, err := srv.CodeToken(ci.Credentials, key)
+	jwt, token, err := srv.CodeToken(ci.Credentials, key)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 	if jwt == nil {
 		t.Fatalf("Expected non-nil jwt")
+	}
+	if token == "" {
+		t.Fatalf("Expected non-empty refresh token")
 	}
 }
 
@@ -343,12 +353,15 @@ func TestServerTokenUnrecognizedKey(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	jwt, err := srv.CodeToken(ci.Credentials, "foo")
+	jwt, token, err := srv.CodeToken(ci.Credentials, "foo")
 	if err == nil {
 		t.Fatalf("Expected non-nil error")
 	}
 	if jwt != nil {
 		t.Fatalf("Expected nil jwt")
+	}
+	if token != "" {
+		t.Fatalf("Expected empty refresh token")
 	}
 }
 
@@ -430,12 +443,18 @@ func TestServerTokenFail(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
+		refreshTokenRepo, err := refreshtest.NewTestRefreshTokenRepo()
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
 		srv := &Server{
 			IssuerURL:          issuerURL,
 			KeyManager:         km,
 			SessionManager:     sm,
 			ClientIdentityRepo: ciRepo,
 			UserRepo:           userRepo,
+			RefreshTokenRepo:   refreshTokenRepo,
 		}
 
 		_, err = sm.NewSessionKey(sessionID)
@@ -443,12 +462,14 @@ func TestServerTokenFail(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		jwt, err := srv.CodeToken(tt.argCC, tt.argKey)
+		jwt, token, err := srv.CodeToken(tt.argCC, tt.argKey)
 		if tt.err == "" {
 			if err != nil {
 				t.Errorf("case %d: got non-nil error: %v", i, err)
 			} else if jwt == nil {
 				t.Errorf("case %d: got nil JWT", i)
+			} else if token == "" {
+				t.Errorf("case %d: got empty refresh token", i)
 			}
 
 		} else {
@@ -456,7 +477,211 @@ func TestServerTokenFail(t *testing.T) {
 				t.Errorf("case %d: want err %q, got %q", i, tt.err, err.Error())
 			} else if jwt != nil {
 				t.Errorf("case %d: got non-nil JWT", i)
+			} else if token != "" {
+				t.Errorf("case %d: got non-empty refresh token", i)
 			}
 		}
+	}
+}
+
+func TestServerRefreshToken(t *testing.T) {
+	issuerURL := url.URL{Scheme: "http", Host: "server.example.com"}
+
+	credXXX := oidc.ClientCredentials{
+		ID:     "XXX",
+		Secret: "secret",
+	}
+	credYYY := oidc.ClientCredentials{
+		ID:     "YYY",
+		Secret: "secret",
+	}
+
+	signerFixture := &StaticSigner{sig: []byte("beer"), err: nil}
+
+	tests := []struct {
+		token    string
+		clientID string // The client that associates with the token.
+		creds    oidc.ClientCredentials
+		signer   jose.Signer
+		err      string
+	}{
+		// Everything is good.
+		{
+			"0/refresh-1",
+			"XXX",
+			credXXX,
+			signerFixture,
+			"",
+		},
+		// Invalid refresh token(malformatted).
+		{
+			"invalid-token",
+			"XXX",
+			credXXX,
+			signerFixture,
+			oauth2.ErrorInvalidRequest,
+		},
+		// Invalid refresh token.
+		{
+			"0/refresh-1",
+			"XXX",
+			credXXX,
+			signerFixture,
+			oauth2.ErrorInvalidRequest,
+		},
+		// Invalid client(client is not associated with the token).
+		{
+			"0/refresh-1",
+			"XXX",
+			credYYY,
+			signerFixture,
+			oauth2.ErrorInvalidClient,
+		},
+		// Invalid client(no client ID).
+		{
+			"0/refresh-1",
+			"XXX",
+			oidc.ClientCredentials{ID: "", Secret: "aaa"},
+			signerFixture,
+			oauth2.ErrorInvalidClient,
+		},
+		// Invalid client(no such client).
+		{
+			"0/refresh-1",
+			"XXX",
+			oidc.ClientCredentials{ID: "AAA", Secret: "aaa"},
+			signerFixture,
+			oauth2.ErrorInvalidClient,
+		},
+		// Invalid client(no secrets).
+		{
+			"0/refresh-1",
+			"XXX",
+			oidc.ClientCredentials{ID: "XXX"},
+			signerFixture,
+			oauth2.ErrorInvalidClient,
+		},
+		// Invalid client(invalid secret).
+		{
+			"0/refresh-1",
+			"XXX",
+			oidc.ClientCredentials{ID: "XXX", Secret: "bad-secret"},
+			signerFixture,
+			oauth2.ErrorInvalidClient,
+		},
+		// Signing operation fails.
+		{
+			"0/refresh-1",
+			"XXX",
+			credXXX,
+			&StaticSigner{sig: nil, err: errors.New("fail")},
+			oauth2.ErrorServerError,
+		},
+	}
+
+	for i, tt := range tests {
+		km := &StaticKeyManager{
+			signer: tt.signer,
+		}
+
+		ciRepo := client.NewClientIdentityRepo([]oidc.ClientIdentity{
+			oidc.ClientIdentity{Credentials: credXXX},
+			oidc.ClientIdentity{Credentials: credYYY},
+		})
+
+		userRepo, err := makeNewUserRepo()
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		refreshTokenRepo, err := refreshtest.NewTestRefreshTokenRepo()
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		srv := &Server{
+			IssuerURL:          issuerURL,
+			KeyManager:         km,
+			ClientIdentityRepo: ciRepo,
+			UserRepo:           userRepo,
+			RefreshTokenRepo:   refreshTokenRepo,
+		}
+
+		if _, err := refreshTokenRepo.Create("testid-1", tt.clientID); err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		jwt, err := srv.RefreshToken(tt.creds, tt.token)
+		if err != nil {
+			if err.Error() != tt.err {
+				t.Errorf("Case %d: expect: %v, got: %v", i, tt.err, err)
+			}
+		}
+
+		if jwt != nil {
+			if string(jwt.Signature) != "beer" {
+				t.Errorf("Case %d: expect signature: beer, got signature: %v", i, jwt.Signature)
+			}
+			claims, err := jwt.Claims()
+			if err != nil {
+				t.Errorf("Case %d: unexpected error: %v", i, err)
+			}
+			if claims["iss"] != issuerURL.String() || claims["sub"] != "testid-1" || claims["aud"] != "XXX" {
+				t.Errorf("Case %d: invalid claims: %v", i, claims)
+			}
+		}
+	}
+
+	// Test that we should return error when user cannot be found after
+	// verifying the token.
+	km := &StaticKeyManager{
+		signer: signerFixture,
+	}
+
+	ciRepo := client.NewClientIdentityRepo([]oidc.ClientIdentity{
+		oidc.ClientIdentity{Credentials: credXXX},
+		oidc.ClientIdentity{Credentials: credYYY},
+	})
+
+	userRepo, err := makeNewUserRepo()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	// Create a user that will be removed later.
+	if err := userRepo.Create(nil, user.User{
+		ID:    "testid-2",
+		Email: "test-2@example.com",
+	}); err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	refreshTokenRepo, err := refreshtest.NewTestRefreshTokenRepo()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	srv := &Server{
+		IssuerURL:          issuerURL,
+		KeyManager:         km,
+		ClientIdentityRepo: ciRepo,
+		UserRepo:           userRepo,
+		RefreshTokenRepo:   refreshTokenRepo,
+	}
+
+	if _, err := refreshTokenRepo.Create("testid-2", credXXX.ID); err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	// Recreate the user repo to remove the user we created.
+	userRepo, err = makeNewUserRepo()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	srv.UserRepo = userRepo
+
+	_, err = srv.RefreshToken(credXXX, "0/refresh-1")
+	if err == nil || err.Error() != oauth2.ErrorServerError {
+		t.Errorf("Expect: %v, got: %v", oauth2.ErrorServerError, err)
 	}
 }

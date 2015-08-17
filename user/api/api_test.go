@@ -22,10 +22,6 @@ type testEmailer struct {
 	lastRedirectURL url.URL
 }
 
-var (
-	clock = clockwork.NewFakeClock()
-)
-
 // SendResetPasswordEmail returns resetPasswordURL when it can't email, mimicking the behavior of the real UserEmailer.
 func (t *testEmailer) SendResetPasswordEmail(email string, redirectURL url.URL, clientID string) (*url.URL, error) {
 	t.lastEmail = email

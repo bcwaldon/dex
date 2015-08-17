@@ -9,8 +9,12 @@ import (
 )
 
 const (
-	sessionKeyValidityWindow     = 10 * time.Minute //RFC6749
-	defaultSessionValidityWindow = 12 * time.Hour
+	sessionKeyValidityWindow = 10 * time.Minute //RFC6749
+
+	// The default token expiration time.
+	// This is exported, so it can be used to set the expiration
+	// time in refresh token flow.
+	DefaultSessionValidityWindow = 12 * time.Hour
 )
 
 type SessionState string

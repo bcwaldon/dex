@@ -30,7 +30,7 @@ func NewSessionManager(sRepo SessionRepo, skRepo SessionKeyRepo) *SessionManager
 	return &SessionManager{
 		GenerateCode:   DefaultGenerateCode,
 		Clock:          clockwork.NewRealClock(),
-		ValidityWindow: defaultSessionValidityWindow,
+		ValidityWindow: DefaultSessionValidityWindow,
 		sessions:       sRepo,
 		keys:           skRepo,
 	}

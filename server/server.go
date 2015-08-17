@@ -16,6 +16,7 @@ import (
 	"github.com/coreos-inc/auth/connector"
 	"github.com/coreos-inc/auth/email"
 	"github.com/coreos-inc/auth/pkg/log"
+	"github.com/coreos-inc/auth/refresh"
 	"github.com/coreos-inc/auth/session"
 	"github.com/coreos-inc/auth/user"
 	"github.com/coreos/go-oidc/jose"
@@ -39,8 +40,12 @@ type OIDCServer interface {
 	ClientMetadata(string) (*oidc.ClientMetadata, error)
 	NewSession(connectorID, clientID, clientState string, redirectURL url.URL, nonce string, register bool) (string, error)
 	Login(oidc.Identity, string) (string, error)
-	CodeToken(creds oidc.ClientCredentials, sessionKey string) (*jose.JWT, error)
+	// CodeToken exchanges a code for an ID token and a refresh token string on success.
+	CodeToken(creds oidc.ClientCredentials, sessionKey string) (*jose.JWT, string, error)
 	ClientCredsToken(creds oidc.ClientCredentials) (*jose.JWT, error)
+	// RefreshToken takes a previously generated refresh token and returns a new ID token
+	// if the token is valid.
+	RefreshToken(creds oidc.ClientCredentials, token string) (*jose.JWT, error)
 	KillSession(string) error
 }
 
@@ -62,6 +67,7 @@ type Server struct {
 	UserRepo                       user.UserRepo
 	UserManager                    *user.Manager
 	PasswordInfoRepo               user.PasswordInfoRepo
+	RefreshTokenRepo               refresh.RefreshTokenRepo
 	Emailer                        *email.TemplatizedEmailer
 	EmailFromAddress               string
 }
@@ -372,7 +378,69 @@ func (s *Server) ClientCredsToken(creds oidc.ClientCredentials) (*jose.JWT, erro
 	return jwt, nil
 }
 
-func (s *Server) CodeToken(creds oidc.ClientCredentials, sessionKey string) (*jose.JWT, error) {
+func (s *Server) CodeToken(creds oidc.ClientCredentials, sessionKey string) (*jose.JWT, string, error) {
+	ok, err := s.ClientIdentityRepo.Authenticate(creds)
+	if err != nil {
+		log.Errorf("Failed fetching client %s from repo: %v", creds.ID, err)
+		return nil, "", oauth2.NewError(oauth2.ErrorServerError)
+	} else if !ok {
+		log.Errorf("Failed to Authenticate client %s", creds.ID)
+		return nil, "", oauth2.NewError(oauth2.ErrorInvalidClient)
+	}
+
+	sessionID, err := s.SessionManager.ExchangeKey(sessionKey)
+	if err != nil {
+		return nil, "", oauth2.NewError(oauth2.ErrorInvalidGrant)
+	}
+
+	ses, err := s.SessionManager.Kill(sessionID)
+	if err != nil {
+		return nil, "", oauth2.NewError(oauth2.ErrorInvalidRequest)
+	}
+
+	if ses.ClientID != creds.ID {
+		return nil, "", oauth2.NewError(oauth2.ErrorInvalidGrant)
+	}
+
+	signer, err := s.KeyManager.Signer()
+	if err != nil {
+		log.Errorf("Failed to generate ID token: %v", err)
+		return nil, "", oauth2.NewError(oauth2.ErrorServerError)
+	}
+
+	user, err := s.UserRepo.Get(nil, ses.UserID)
+	if err != nil {
+		log.Errorf("Failed to fetch user %q from repo: %v: ", ses.UserID, err)
+		return nil, "", oauth2.NewError(oauth2.ErrorServerError)
+	}
+
+	claims := ses.Claims(s.IssuerURL.String())
+	user.AddToClaims(claims)
+
+	jwt, err := jose.NewSignedJWT(claims, signer)
+	if err != nil {
+		log.Errorf("Failed to generate ID token: %v", err)
+		return nil, "", oauth2.NewError(oauth2.ErrorServerError)
+	}
+
+	log.Infof("Session %s token sent: clientID=%s", sessionID, creds.ID)
+
+	// Generate refresh token.
+	//
+	// TODO(yifan): Return refresh token only when 'access_type == offline',
+	// or 'scope' == 'offline_access'.
+	refreshToken, err := s.RefreshTokenRepo.Create(ses.UserID, creds.ID)
+	switch err {
+	case nil:
+		break
+	default:
+		log.Errorf("Failed to generate refresh token: %v", err)
+		return nil, "", oauth2.NewError(oauth2.ErrorServerError)
+	}
+	return jwt, refreshToken, nil
+}
+
+func (s *Server) RefreshToken(creds oidc.ClientCredentials, token string) (*jose.JWT, error) {
 	ok, err := s.ClientIdentityRepo.Authenticate(creds)
 	if err != nil {
 		log.Errorf("Failed fetching client %s from repo: %v", creds.ID, err)
@@ -382,33 +450,36 @@ func (s *Server) CodeToken(creds oidc.ClientCredentials, sessionKey string) (*jo
 		return nil, oauth2.NewError(oauth2.ErrorInvalidClient)
 	}
 
-	sessionID, err := s.SessionManager.ExchangeKey(sessionKey)
-	if err != nil {
-		return nil, oauth2.NewError(oauth2.ErrorInvalidGrant)
-	}
-
-	ses, err := s.SessionManager.Kill(sessionID)
-	if err != nil {
+	userID, err := s.RefreshTokenRepo.Verify(creds.ID, token)
+	switch err {
+	case nil:
+		break
+	case refresh.ErrorInvalidToken:
 		return nil, oauth2.NewError(oauth2.ErrorInvalidRequest)
+	case refresh.ErrorInvalidClientID:
+		return nil, oauth2.NewError(oauth2.ErrorInvalidClient)
+	default:
+		return nil, oauth2.NewError(oauth2.ErrorServerError)
 	}
 
-	if ses.ClientID != creds.ID {
-		return nil, oauth2.NewError(oauth2.ErrorInvalidGrant)
+	user, err := s.UserRepo.Get(nil, userID)
+	if err != nil {
+		// The error can be user.ErrorNotFound, but we are not deleting
+		// user at this moment, so this shouldn't happen.
+		log.Errorf("Failed to fetch user %q from repo: %v: ", userID, err)
+		return nil, oauth2.NewError(oauth2.ErrorServerError)
 	}
 
 	signer, err := s.KeyManager.Signer()
 	if err != nil {
-		log.Errorf("Failed to generate ID token: %v", err)
+		log.Errorf("Failed to refresh ID token: %v", err)
 		return nil, oauth2.NewError(oauth2.ErrorServerError)
 	}
 
-	user, err := s.UserRepo.Get(nil, ses.UserID)
-	if err != nil {
-		log.Errorf("Failed to fetch user %q from repo: %v: ", ses.UserID, err)
-		return nil, oauth2.NewError(oauth2.ErrorServerError)
-	}
+	now := time.Now()
+	expireAt := now.Add(session.DefaultSessionValidityWindow)
 
-	claims := ses.Claims(s.IssuerURL.String())
+	claims := oidc.NewClaims(s.IssuerURL.String(), user.ID, creds.ID, now, expireAt)
 	user.AddToClaims(claims)
 
 	jwt, err := jose.NewSignedJWT(claims, signer)
@@ -417,7 +488,7 @@ func (s *Server) CodeToken(creds oidc.ClientCredentials, sessionKey string) (*jo
 		return nil, oauth2.NewError(oauth2.ErrorServerError)
 	}
 
-	log.Infof("Session %s token sent: clientID=%s", sessionID, creds.ID)
+	log.Infof("Token refreshed sent: clientID=%s", creds.ID)
 
 	return jwt, nil
 }

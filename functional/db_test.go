@@ -11,6 +11,7 @@ import (
 	"github.com/kylelemons/godebug/pretty"
 
 	"github.com/coreos-inc/auth/db"
+	"github.com/coreos-inc/auth/refresh"
 	"github.com/coreos-inc/auth/session"
 	"github.com/coreos/go-oidc/key"
 	"github.com/coreos/go-oidc/oidc"
@@ -293,5 +294,120 @@ func TestDBClientIdentityAll(t *testing.T) {
 	count = len(got)
 	if count != 2 {
 		t.Fatalf("Retrieved incorrect number of ClientIdentities: want=2 got=%d", count)
+	}
+}
+
+func TestDBRefreshRepoCreate(t *testing.T) {
+	r := db.NewRefreshTokenRepo(connect(t))
+
+	tests := []struct {
+		userID   string
+		clientID string
+		err      error
+	}{
+		{
+			"",
+			"client-foo",
+			refresh.ErrorInvalidUserID,
+		},
+		{
+			"user-foo",
+			"",
+			refresh.ErrorInvalidClientID,
+		},
+		{
+			"user-foo",
+			"client-foo",
+			nil,
+		},
+	}
+
+	for i, tt := range tests {
+		_, err := r.Create(tt.userID, tt.clientID)
+		if err != tt.err {
+			t.Errorf("Case #%d: expected: %v, got: %v", i, tt.err, err)
+		}
+	}
+}
+
+func TestDBRefreshRepoVerify(t *testing.T) {
+	r := db.NewRefreshTokenRepo(connect(t))
+
+	token, err := r.Create("user-foo", "client-foo")
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	tests := []struct {
+		token    string
+		creds    oidc.ClientCredentials
+		err      error
+		expected string
+	}{
+		{
+			"invalid-token-foo",
+			oidc.ClientCredentials{ID: "client-foo", Secret: "secret-foo"},
+			refresh.ErrorInvalidToken,
+			"",
+		},
+		{
+			token,
+			oidc.ClientCredentials{ID: "invalid-client", Secret: "secret-foo"},
+			refresh.ErrorInvalidClientID,
+			"",
+		},
+		{
+			token,
+			oidc.ClientCredentials{ID: "client-foo", Secret: "secret-foo"},
+			nil,
+			"user-foo",
+		},
+	}
+
+	for i, tt := range tests {
+		result, err := r.Verify(tt.creds.ID, tt.token)
+		if err != tt.err {
+			t.Errorf("Case #%d: expected: %v, got: %v", i, tt.err, err)
+		}
+		if result != tt.expected {
+			t.Errorf("Case #%d: expected: %v, got: %v", i, tt.expected, result)
+		}
+	}
+}
+
+func TestDBRefreshRepoRevoke(t *testing.T) {
+	r := db.NewRefreshTokenRepo(connect(t))
+
+	token, err := r.Create("user-foo", "client-foo")
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	tests := []struct {
+		token  string
+		userID string
+		err    error
+	}{
+		{
+			"invalid-token-foo",
+			"user-foo",
+			refresh.ErrorInvalidToken,
+		},
+		{
+			token,
+			"invalid-user",
+			refresh.ErrorInvalidUserID,
+		},
+		{
+			token,
+			"user-foo",
+			nil,
+		},
+	}
+
+	for i, tt := range tests {
+		if err := r.Revoke(tt.userID, tt.token); err != tt.err {
+			t.Errorf("Case #%d: expected: %v, got: %v", i, tt.err, err)
+		}
 	}
 }

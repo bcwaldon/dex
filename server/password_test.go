@@ -11,13 +11,13 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/coreos/go-oidc/jose"
+	"github.com/coreos/go-oidc/key"
 	"github.com/kylelemons/godebug/pretty"
 
 	"github.com/coreos-inc/auth/email"
 	"github.com/coreos-inc/auth/pkg/html"
 	"github.com/coreos-inc/auth/user"
-	"github.com/coreos/go-oidc/jose"
-	"github.com/coreos/go-oidc/key"
 )
 
 func TestSendResetPasswordEmailHandler(t *testing.T) {
@@ -239,7 +239,7 @@ func TestSendResetPasswordEmailHandler(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-
+		t.Logf("CASE: %d", i)
 		f, err := makeTestFixtures()
 		if err != nil {
 			t.Fatalf("case %d: could not make test fixtures: %v", i, err)
@@ -254,16 +254,12 @@ func TestSendResetPasswordEmailHandler(t *testing.T) {
 			sent: make(chan struct{}),
 		}
 		templatizer := email.NewTemplatizedEmailerFromTemplates(textTemplates, htmlTemplates, emailer)
+		f.srv.UserEmailer.SetEmailer(templatizer)
 		hdlr := SendResetPasswordEmailHandler{
-			tpl:         f.srv.SendResetPasswordEmailTemplate,
-			emailer:     templatizer,
-			sm:          f.sessionManager,
-			cr:          f.clientIdentityRepo,
-			ur:          f.userRepo,
-			pwi:         f.srv.PasswordInfoRepo,
-			issuerURL:   f.srv.IssuerURL,
-			fromAddress: "noreply@example.com",
-			signerFunc:  f.srv.KeyManager.Signer,
+			tpl:     f.srv.SendResetPasswordEmailTemplate,
+			emailer: f.srv.UserEmailer,
+			sm:      f.sessionManager,
+			cr:      f.clientIdentityRepo,
 		}
 
 		w := httptest.NewRecorder()

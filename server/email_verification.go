@@ -2,26 +2,19 @@ package server
 
 import (
 	"encoding/json"
-	"errors"
 	"html/template"
 	"net/http"
 	"net/url"
-	"reflect"
 	"time"
 
-	"github.com/coreos-inc/auth/client"
-	"github.com/coreos-inc/auth/email"
-	"github.com/coreos-inc/auth/pkg/log"
-	"github.com/coreos-inc/auth/user"
 	"github.com/coreos/go-oidc/jose"
 	"github.com/coreos/go-oidc/key"
 	"github.com/coreos/go-oidc/oidc"
-)
 
-var (
-	ErrorInvalidRedirectURL    = errors.New("not a valid redirect url for the given client")
-	ErrorCantChooseRedirectURL = errors.New("must provide a redirect url; client has many")
-	ErrorNoValidRedirectURLs   = errors.New("no valid redirect URLs for this client.")
+	"github.com/coreos-inc/auth/client"
+	"github.com/coreos-inc/auth/pkg/log"
+	"github.com/coreos-inc/auth/user"
+	useremail "github.com/coreos-inc/auth/user/email"
 )
 
 // handleVerifyEmailResendFunc will resend an email-verification email given a valid JWT for the user and a redirect URL.
@@ -31,12 +24,8 @@ var (
 // be in the "redirect_uri" param. Note that this re
 func handleVerifyEmailResendFunc(
 	issuerURL url.URL,
-	verifyURL url.URL,
-	expiryTime time.Duration,
 	srvKeysFunc func() ([]key.PublicKey, error),
-	signerFunc func() (jose.Signer, error),
-	emailer *email.TemplatizedEmailer,
-	emailFromAddress string,
+	emailer *useremail.UserEmailer,
 	userRepo user.UserRepo,
 	clientIdentityRepo client.ClientIdentityRepo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -68,16 +57,17 @@ func handleVerifyEmailResendFunc(
 		}
 
 		cm, err := clientIdentityRepo.Metadata(clientID)
+		if err == client.ErrorNotFound {
+			log.Errorf("No such client: %v", err)
+			writeAPIError(w, http.StatusBadRequest,
+				newAPIError(errorInvalidRequest, "invalid client_id"))
+			return
+
+		}
 		if err != nil {
 			log.Errorf("Error getting ClientMetadata: %v", err)
 			writeAPIError(w, http.StatusInternalServerError,
 				newAPIError(errorServerError, "could not send email at this time"))
-			return
-		}
-		if cm == nil {
-			log.Errorf("No such client: %v", err)
-			writeAPIError(w, http.StatusBadRequest,
-				newAPIError(errorInvalidRequest, "invalid client_id"))
 			return
 		}
 
@@ -167,15 +157,15 @@ func handleVerifyEmailResendFunc(
 			return
 		}
 
-		*redirectURL, err = ValidRedirectURL(redirectURL, cm.RedirectURLs)
+		*redirectURL, err = client.ValidRedirectURL(redirectURL, cm.RedirectURLs)
 		if err != nil {
 			switch err {
-			case (ErrorInvalidRedirectURL):
+			case (client.ErrorInvalidRedirectURL):
 				log.Errorf("Request provided unregistered redirect URL: %s", redirectURLStr)
 				writeAPIError(w, http.StatusBadRequest,
 					newAPIError(errorInvalidRequest, "invalid redirect_uri"))
 				return
-			case (ErrorNoValidRedirectURLs):
+			case (client.ErrorNoValidRedirectURLs):
 				log.Errorf("There are no registered URLs for the requested client: %s", redirectURL)
 				writeAPIError(w, http.StatusBadRequest,
 					newAPIError(errorInvalidRequest, "invalid redirect_uri"))
@@ -183,24 +173,7 @@ func handleVerifyEmailResendFunc(
 			}
 		}
 
-		signer, err := signerFunc()
-		if err != nil {
-			log.Errorf("Could not create a signer: %v", err)
-			writeAPIError(w, http.StatusInternalServerError,
-				newAPIError(errorServerError, "could not send email at this time"))
-			return
-		}
-
-		err = sendEmailVerification(usr,
-			clientID,
-			verifyURL,
-			*redirectURL,
-			expiryTime,
-			emailFromAddress,
-			emailer,
-			issuerURL,
-			signer)
-
+		_, err = emailer.SendEmailVerification(usr.ID, clientID, *redirectURL)
 		if err != nil {
 			log.Errorf("Failed to send email verification email: %v", err)
 			writeAPIError(w, http.StatusInternalServerError,
@@ -270,61 +243,4 @@ func handleEmailVerifyFunc(verifiedTpl *template.Template, issuer url.URL, keysF
 		})
 		http.Redirect(w, r, cbURL.String(), http.StatusSeeOther)
 	}
-}
-
-func sendEmailVerification(usr user.User,
-	clientID string,
-	verifyURL url.URL,
-	redirectURL url.URL,
-	expires time.Duration,
-	from string,
-	emailer *email.TemplatizedEmailer,
-	issuerURL url.URL,
-	signer jose.Signer) error {
-	ev := user.NewEmailVerification(usr, clientID, issuerURL, redirectURL, expires)
-
-	token, err := ev.Token(signer)
-	if err != nil {
-		return err
-	}
-
-	q := verifyURL.Query()
-	q.Set("token", token)
-	verifyURL.RawQuery = q.Encode()
-
-	err = emailer.SendMail(from, "Please verify your email address.", "verify-email",
-		map[string]interface{}{
-			"email": usr.Email,
-			"link":  verifyURL.String(),
-		}, usr.Email)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// ValidRedirectURL returns the passed in URL if it is present in the redirectURLs list, and returns an error otherwise.
-// If nil is passed in as the rURL and there is only one URL in redirectURLs,
-// that URL will be returned. If nil is passed but theres >1 URL in the slice,
-// then an error is returned.
-func ValidRedirectURL(rURL *url.URL, redirectURLs []url.URL) (url.URL, error) {
-	if len(redirectURLs) == 0 {
-		return url.URL{}, ErrorNoValidRedirectURLs
-	}
-
-	if rURL == nil {
-		if len(redirectURLs) > 1 {
-			return url.URL{}, ErrorCantChooseRedirectURL
-		}
-
-		return redirectURLs[0], nil
-	}
-
-	for _, ru := range redirectURLs {
-		if reflect.DeepEqual(ru, *rURL) {
-			return ru, nil
-		}
-	}
-	return url.URL{}, ErrorInvalidRedirectURL
 }

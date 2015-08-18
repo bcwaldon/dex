@@ -14,7 +14,7 @@ COVER=${COVER:-"-cover"}
 
 source ./build
 
-TESTABLE="connector db integration pkg/crypto pkg/flag pkg/http pkg/net pkg/time pkg/html functional/repo server session user"
+TESTABLE="connector db integration pkg/crypto pkg/flag pkg/http pkg/net pkg/time pkg/html functional/repo server session user/api"
 FORMATTABLE="$TESTABLE cmd/authctl cmd/authd-worker cmd/authd-overlord examples/app functional pkg/log"
 
 # user has not provided PKG override

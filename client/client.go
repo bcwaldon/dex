@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/url"
+	"reflect"
 	"sort"
 
 	pcrypto "github.com/coreos-inc/auth/pkg/crypto"
@@ -17,6 +18,7 @@ var (
 	ErrorInvalidRedirectURL    = errors.New("not a valid redirect url for the given client")
 	ErrorCantChooseRedirectURL = errors.New("must provide a redirect url; client has many")
 	ErrorNoValidRedirectURLs   = errors.New("no valid redirect URLs for this client.")
+	ErrorNotFound              = errors.New("no data found")
 )
 
 type ClientIdentityRepo interface {
@@ -38,11 +40,16 @@ type ClientIdentityRepo interface {
 	// An unused ID must be provided. A corresponding secret will be returned
 	// in a ClientCredentials struct along with the provided ID.
 	New(id string, meta oidc.ClientMetadata) (*oidc.ClientCredentials, error)
+
+	SetAuthdAdmin(clientID string, isAdmin bool) error
+
+	IsAuthdAdmin(clientID string) (bool, error)
 }
 
 func NewClientIdentityRepo(cs []oidc.ClientIdentity) ClientIdentityRepo {
 	cr := memClientIdentityRepo{
 		idents: make(map[string]oidc.ClientIdentity, len(cs)),
+		admins: make(map[string]bool),
 	}
 
 	for _, c := range cs {
@@ -55,6 +62,7 @@ func NewClientIdentityRepo(cs []oidc.ClientIdentity) ClientIdentityRepo {
 
 type memClientIdentityRepo struct {
 	idents map[string]oidc.ClientIdentity
+	admins map[string]bool
 }
 
 func (cr *memClientIdentityRepo) New(id string, meta oidc.ClientMetadata) (*oidc.ClientCredentials, error) {
@@ -83,7 +91,7 @@ func (cr *memClientIdentityRepo) New(id string, meta oidc.ClientMetadata) (*oidc
 func (cr *memClientIdentityRepo) Metadata(clientID string) (*oidc.ClientMetadata, error) {
 	ci, ok := cr.idents[clientID]
 	if !ok {
-		return nil, nil
+		return nil, ErrorNotFound
 	}
 	return &ci.Metadata, nil
 }
@@ -102,6 +110,15 @@ func (cr *memClientIdentityRepo) All() ([]oidc.ClientIdentity, error) {
 	}
 	sort.Sort(cs)
 	return cs, nil
+}
+
+func (cr *memClientIdentityRepo) SetAuthdAdmin(clientID string, isAdmin bool) error {
+	cr.admins[clientID] = isAdmin
+	return nil
+}
+
+func (cr *memClientIdentityRepo) IsAuthdAdmin(clientID string) (bool, error) {
+	return cr.admins[clientID], nil
 }
 
 type sortableClientIdentities []oidc.ClientIdentity
@@ -167,4 +184,29 @@ func (ci *clientIdentity) UnmarshalJSON(data []byte) error {
 	}
 
 	return nil
+}
+
+// ValidRedirectURL returns the passed in URL if it is present in the redirectURLs list, and returns an error otherwise.
+// If nil is passed in as the rURL and there is only one URL in redirectURLs,
+// that URL will be returned. If nil is passed but theres >1 URL in the slice,
+// then an error is returned.
+func ValidRedirectURL(rURL *url.URL, redirectURLs []url.URL) (url.URL, error) {
+	if len(redirectURLs) == 0 {
+		return url.URL{}, ErrorNoValidRedirectURLs
+	}
+
+	if rURL == nil {
+		if len(redirectURLs) > 1 {
+			return url.URL{}, ErrorCantChooseRedirectURL
+		}
+
+		return redirectURLs[0], nil
+	}
+
+	for _, ru := range redirectURLs {
+		if reflect.DeepEqual(ru, *rURL) {
+			return ru, nil
+		}
+	}
+	return url.URL{}, ErrorInvalidRedirectURL
 }

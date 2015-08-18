@@ -65,7 +65,7 @@ func TestCreatePasswordInfo(t *testing.T) {
 			pw: user.PasswordInfo{
 				UserID:          "ID-3",
 				Password:        user.Password("1234"),
-				PasswordExpires: time.Now().Round(time.Second),
+				PasswordExpires: time.Now().Round(time.Second).UTC(),
 			},
 			err: nil,
 		},
@@ -73,14 +73,14 @@ func TestCreatePasswordInfo(t *testing.T) {
 			pw: user.PasswordInfo{
 				UserID:          "ID-1",
 				Password:        user.Password("1234"),
-				PasswordExpires: time.Now().Round(time.Second),
+				PasswordExpires: time.Now().Round(time.Second).UTC(),
 			},
 			err: user.ErrorDuplicateID,
 		},
 		{
 			pw: user.PasswordInfo{
 				Password:        user.Password("1234"),
-				PasswordExpires: time.Now().Round(time.Second),
+				PasswordExpires: time.Now().Round(time.Second).UTC(),
 			},
 			err: user.ErrorInvalidID,
 		},
@@ -120,7 +120,7 @@ func TestUpdatePasswordInfo(t *testing.T) {
 			pw: user.PasswordInfo{
 				UserID:          "ID-1",
 				Password:        user.Password("new_pass"),
-				PasswordExpires: time.Now().Round(time.Second),
+				PasswordExpires: time.Now().Round(time.Second).UTC(),
 			},
 			err: nil,
 		},
@@ -128,14 +128,14 @@ func TestUpdatePasswordInfo(t *testing.T) {
 			pw: user.PasswordInfo{
 				UserID:          "ID-2",
 				Password:        user.Password("new_pass"),
-				PasswordExpires: time.Now().Round(time.Second),
+				PasswordExpires: time.Now().Round(time.Second).UTC(),
 			},
 			err: user.ErrorNotFound,
 		},
 		{
 			pw: user.PasswordInfo{
 				UserID:          "ID-1",
-				PasswordExpires: time.Now().Round(time.Second),
+				PasswordExpires: time.Now().Round(time.Second).UTC(),
 			},
 			err: user.ErrorInvalidPassword,
 		},

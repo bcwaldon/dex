@@ -112,18 +112,18 @@ func TestSessionRepoCreateGet(t *testing.T) {
 		session.Session{
 			ID:          "123",
 			ClientState: "blargh",
-			ExpiresAt:   time.Unix(123, 0),
+			ExpiresAt:   time.Unix(123, 0).UTC(),
 		},
 		session.Session{
 			ID:          "456",
 			ClientState: "argh",
-			ExpiresAt:   time.Unix(456, 0),
+			ExpiresAt:   time.Unix(456, 0).UTC(),
 			Register:    true,
 		},
 		session.Session{
 			ID:          "789",
 			ClientState: "blargh",
-			ExpiresAt:   time.Unix(789, 0),
+			ExpiresAt:   time.Unix(789, 0).UTC(),
 			Nonce:       "oncenay",
 		},
 	}
@@ -154,12 +154,12 @@ func TestSessionRepoCreateUpdate(t *testing.T) {
 			initial: session.Session{
 				ID:          "123",
 				ClientState: "blargh",
-				ExpiresAt:   time.Unix(123, 0),
+				ExpiresAt:   time.Unix(123, 0).UTC(),
 			},
 			update: session.Session{
 				ID:          "123",
 				ClientState: "boom",
-				ExpiresAt:   time.Unix(123, 0),
+				ExpiresAt:   time.Unix(123, 0).UTC(),
 				Register:    true,
 			},
 		},

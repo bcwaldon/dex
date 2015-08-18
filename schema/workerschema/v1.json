@@ -82,6 +82,84 @@
           "type": "string"
         }
       }
+    },
+    "User": {
+      "id": "User",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "emailVerified": {
+          "type": "boolean"
+        },
+        "admin": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "UserResponse": {
+      "id": "UserResponse",
+      "type": "object",
+      "properties": {
+        "user": {
+            "$ref": "User"
+        }
+      }
+    },
+    "UsersResponse": {
+      "id": "UsersResponse",
+      "type": "object",
+      "properties": {
+        "users": {
+          "type": "array",
+          "items": {
+            "$ref": "User"
+          }
+        },
+        "nextPageToken": {
+          "type": "string"
+        }
+      }
+    },
+    "UserCreateRequest": {
+      "id": "UserCreateRequest",
+      "type": "object",
+      "properties": {
+        "user": {
+          "$ref": "User"
+        },
+        "redirectURL": {
+          "type": "string",
+          "format": "url"
+        }
+      }
+    },
+    "UserCreateResponse": {
+      "id": "UserCreateResponse",
+      "type": "object",
+      "properties": {
+        "user": {
+          "type": "object",
+          "$ref": "User"
+        },
+        "resetPasswordLink": {
+          "type": "string"
+        },
+        "emailSent": {
+          "type": "boolean"
+        }
+      }
     }
   },
   "resources": {
@@ -112,6 +190,60 @@
           },
           "response": {
             "$ref": "ClientWithSecret"
+          }
+        }
+      }
+    },
+    "Users": {
+      "methods": {
+        "List": {
+          "id": "authd.User.List",
+          "description": "Retrieve a page of User objects.",
+          "httpMethod": "GET",
+          "path": "users",
+          "parameters": {
+            "nextPageToken": {
+              "type": "string",
+              "location": "query"
+            },
+            "maxResults": {
+              "type": "integer",
+              "location": "query"
+            }
+          },
+          "response": {
+            "$ref": "UsersResponse"
+          }
+        },
+        "Get": {
+          "id": "authd.User.Get",
+          "description": "Get a single use object.",
+          "httpMethod": "GET",
+          "path": "users/{id}",
+          "parameters": {
+            "id": {
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          },
+          "parameterOrder": [
+            "id"
+          ],
+          "response": {
+            "$ref": "UserResponse"
+          }
+        },
+        "Create": {
+          "id": "authd.User.Create",
+          "description": "Create a new User.",
+          "httpMethod": "POST",
+          "path": "users",
+          "request": {
+            "$ref": "UserCreateRequest"
+          },
+          "response": {
+            "$ref": "UserCreateResponse"
           }
         }
       }

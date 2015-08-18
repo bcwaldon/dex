@@ -5,35 +5,30 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/coreos/go-oidc/key"
+
 	"github.com/coreos-inc/auth/client"
 	"github.com/coreos-inc/auth/pkg/log"
-
-	"github.com/coreos-inc/auth/email"
 	"github.com/coreos-inc/auth/session"
 	"github.com/coreos-inc/auth/user"
-	"github.com/coreos/go-oidc/jose"
-	"github.com/coreos/go-oidc/key"
+	useremail "github.com/coreos-inc/auth/user/email"
 )
 
 type sendResetPasswordEmailData struct {
-	Error       bool
-	Message     string
-	EmailSent   bool
-	Email       string
-	ClientID    string
-	RedirectURL string
+	Error             bool
+	Message           string
+	EmailSent         bool
+	Email             string
+	ClientID          string
+	RedirectURL       string
+	RedirectURLParsed url.URL
 }
 
 type SendResetPasswordEmailHandler struct {
-	tpl         *template.Template
-	emailer     *email.TemplatizedEmailer
-	sm          *session.SessionManager
-	cr          client.ClientIdentityRepo
-	ur          user.UserRepo
-	pwi         user.PasswordInfoRepo
-	issuerURL   url.URL
-	fromAddress string
-	signerFunc  func() (jose.Signer, error)
+	tpl     *template.Template
+	emailer *useremail.UserEmailer
+	sm      *session.SessionManager
+	cr      client.ClientIdentityRepo
 }
 
 func (h *SendResetPasswordEmailHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -80,10 +75,14 @@ func (h *SendResetPasswordEmailHandler) fillData(r *http.Request, data *sendRese
 	clientID := r.FormValue("client_id")
 	redirectURL := r.FormValue("redirect_uri")
 
-	if redirectURL != "" && clientID != "" && h.validateRedirectURL(clientID, redirectURL) {
-		data.ClientID = clientID
-		data.RedirectURL = redirectURL
+	if redirectURL != "" && clientID != "" {
+		if parsed, ok := h.validateRedirectURL(clientID, redirectURL); ok {
+			data.ClientID = clientID
+			data.RedirectURL = redirectURL
+			data.RedirectURLParsed = parsed
+		}
 	}
+
 }
 
 func (h *SendResetPasswordEmailHandler) handlePOST(w http.ResponseWriter, r *http.Request) {
@@ -100,29 +99,29 @@ func (h *SendResetPasswordEmailHandler) handlePOST(w http.ResponseWriter, r *htt
 
 	// We spawn this in new goroutine because we don't want anyone using timing
 	// attacks to guess if an email address exists or not.
-	go h.sendResetPasswordEmail(data.Email, data.RedirectURL, data.ClientID)
+	go h.emailer.SendResetPasswordEmail(data.Email, data.RedirectURLParsed, data.ClientID)
 }
 
-func (h *SendResetPasswordEmailHandler) validateRedirectURL(clientID string, redirectURL string) bool {
+func (h *SendResetPasswordEmailHandler) validateRedirectURL(clientID string, redirectURL string) (url.URL, bool) {
 	parsed, err := url.Parse(redirectURL)
 	if err != nil {
 		log.Errorf("Error parsing redirectURL: %v", err)
-		return false
+		return url.URL{}, false
 	}
 
 	cm, err := h.cr.Metadata(clientID)
 	if err != nil || cm == nil {
 		log.Errorf("Error getting ClientMetadata: %v", err)
-		return false
+		return url.URL{}, false
 	}
 
-	_, err = ValidRedirectURL(parsed, cm.RedirectURLs)
+	validURL, err := client.ValidRedirectURL(parsed, cm.RedirectURLs)
 	if err != nil {
 		log.Errorf("Invalid redirectURL for clientID: redirectURL:%q, clientID:%q", redirectURL, clientID)
-		return false
+		return url.URL{}, false
 	}
 
-	return true
+	return validURL, true
 }
 
 func (h *SendResetPasswordEmailHandler) errPage(w http.ResponseWriter, msg string, status int, data *sendResetPasswordEmailData) {
@@ -151,67 +150,6 @@ func (h *SendResetPasswordEmailHandler) exchangeKeyForClientAndRedirect(key stri
 	}
 
 	return ses.ClientID, ses.RedirectURL, nil
-}
-
-func (h *SendResetPasswordEmailHandler) sendResetPasswordEmail(email, redirectURL, clientID string) error {
-	usr, err := h.ur.GetByEmail(nil, email)
-	if err == user.ErrorNotFound {
-		log.Errorf("No Such user for email: %q", email)
-		return err
-	}
-	if err != nil {
-		log.Errorf("Error getting user: %q", err)
-		return err
-	}
-
-	pwi, err := h.pwi.Get(nil, usr.ID)
-	if err == user.ErrorNotFound {
-		// TODO(bobbyrullo): In this case, maybe send a different email explaining that
-		// they don't have a local password.
-		log.Errorf("No Password for userID: %q", usr.ID)
-		return err
-	}
-	if err != nil {
-		log.Errorf("Error getting password: %q", err)
-		return err
-	}
-
-	parsedRedir, err := url.Parse(redirectURL)
-	if err != nil {
-		log.Errorf("Error parsing redirect URL: %q", err)
-		return err
-	}
-
-	signer, err := h.signerFunc()
-	if err != nil {
-		log.Errorf("error getting signer: %v", err)
-		return err
-	}
-
-	passwordReset := user.NewPasswordReset(usr, pwi.Password, h.issuerURL,
-		clientID, *parsedRedir, h.sm.ValidityWindow)
-	token, err := passwordReset.Token(signer)
-	if err != nil {
-		log.Errorf("error getting tokenizing PasswordReset: %v", err)
-		return err
-	}
-
-	resetURL := h.issuerURL
-	resetURL.Path = httpPathResetPassword
-	q := resetURL.Query()
-	q.Set("token", token)
-	resetURL.RawQuery = q.Encode()
-
-	err = h.emailer.SendMail(h.fromAddress, "Reset your password.", "password-reset",
-		map[string]interface{}{
-			"email": usr.Email,
-			"link":  resetURL.String(),
-		}, usr.Email)
-
-	if err != nil {
-		log.Errorf("error sending email: %q", err)
-	}
-	return nil
 }
 
 type resetPasswordTemplateData struct {

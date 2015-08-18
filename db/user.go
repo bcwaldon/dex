@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/coopernurse/gorp"
 	"github.com/lib/pq"
@@ -255,6 +256,64 @@ func (r *userRepo) GetAdminCount(tx repo.Transaction) (int, error) {
 	return int(i), err
 }
 
+func (r *userRepo) List(tx repo.Transaction, filter user.UserFilter, maxResults int, nextPageToken string) ([]user.User, string, error) {
+	var offset int
+	var err error
+	if nextPageToken != "" {
+		filter, maxResults, offset, err = user.DecodeNextPageToken(nextPageToken)
+	}
+	if err != nil {
+		return nil, "", err
+	}
+	ex := r.executor(tx)
+
+	qt := pq.QuoteIdentifier(userTableName)
+
+	// Ask for one more than needed so we know if there's more results, and
+	// hence, whether a nextPageToken is necessary.
+	ums, err := ex.Select(&userModel{},
+		fmt.Sprintf("SELECT * FROM %s ORDER BY email LIMIT $1 OFFSET $2 ", qt), maxResults+1, offset)
+	if err != nil {
+		return nil, "", err
+	}
+	if len(ums) == 0 {
+		return nil, "", user.ErrorNotFound
+	}
+
+	var more bool
+	var numUsers int
+	if len(ums) <= maxResults {
+		numUsers = len(ums)
+	} else {
+		numUsers = maxResults
+		more = true
+	}
+
+	users := make([]user.User, numUsers)
+	for i := 0; i < numUsers; i++ {
+		um, ok := ums[i].(*userModel)
+		if !ok {
+			return nil, "", errors.New("unrecognized model")
+		}
+		usr, err := um.user()
+		if err != nil {
+			return nil, "", err
+		}
+		users[i] = usr
+	}
+
+	var tok string
+	if more {
+		tok, err = user.EncodeNextPageToken(filter, maxResults, offset+maxResults)
+		if err != nil {
+			return nil, "", err
+		}
+	}
+
+	return users, tok, nil
+
+}
+
 func (r *userRepo) executor(tx repo.Transaction) gorp.SqlExecutor {
 	if tx == nil {
 		return r.dbMap
@@ -358,6 +417,7 @@ type userModel struct {
 	EmailVerified bool   `db:"email_verified"`
 	DisplayName   string `db:"display_name"`
 	Admin         bool   `db:"admin"`
+	CreatedAt     int64  `db:"created_at"`
 }
 
 func (u *userModel) user() (user.User, error) {
@@ -367,6 +427,10 @@ func (u *userModel) user() (user.User, error) {
 		Email:         u.Email,
 		EmailVerified: u.EmailVerified,
 		Admin:         u.Admin,
+	}
+
+	if u.CreatedAt != 0 {
+		usr.CreatedAt = time.Unix(u.CreatedAt, 0).UTC()
 	}
 
 	return usr, nil
@@ -379,6 +443,10 @@ func newUserModel(u *user.User) (*userModel, error) {
 		Email:         u.Email,
 		EmailVerified: u.EmailVerified,
 		Admin:         u.Admin,
+	}
+
+	if !u.CreatedAt.IsZero() {
+		um.CreatedAt = u.CreatedAt.Unix()
 	}
 
 	return &um, nil

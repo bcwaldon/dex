@@ -9,16 +9,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jonboulle/clockwork"
-
-	"github.com/coreos-inc/auth/connector"
-	phttp "github.com/coreos-inc/auth/pkg/http"
-	"github.com/coreos-inc/auth/pkg/log"
 	"github.com/coreos/go-oidc/jose"
 	"github.com/coreos/go-oidc/key"
 	"github.com/coreos/go-oidc/oauth2"
 	"github.com/coreos/go-oidc/oidc"
 	"github.com/coreos/pkg/health"
+	"github.com/jonboulle/clockwork"
+
+	"github.com/coreos-inc/auth/client"
+	"github.com/coreos-inc/auth/connector"
+	phttp "github.com/coreos-inc/auth/pkg/http"
+	"github.com/coreos-inc/auth/pkg/log"
 )
 
 const (
@@ -305,18 +306,18 @@ func handleAuthFunc(srv OIDCServer, idpcs []connector.Connector, tpl *template.T
 			return
 		}
 
-		redirectURL, err := ValidRedirectURL(acr.RedirectURL, cm.RedirectURLs)
+		redirectURL, err := client.ValidRedirectURL(acr.RedirectURL, cm.RedirectURLs)
 		if err != nil {
 			switch err {
-			case (ErrorCantChooseRedirectURL):
+			case (client.ErrorCantChooseRedirectURL):
 				log.Errorf("Request must provide redirect URL as client %q has registered many", acr.ClientID)
 				writeAuthError(w, oauth2.NewError(oauth2.ErrorInvalidRequest), acr.State)
 				return
-			case (ErrorInvalidRedirectURL):
+			case (client.ErrorInvalidRedirectURL):
 				log.Errorf("Request provided unregistered redirect URL: %s", acr.RedirectURL)
 				writeAuthError(w, oauth2.NewError(oauth2.ErrorInvalidRequest), acr.State)
 				return
-			case (ErrorNoValidRedirectURLs):
+			case (client.ErrorNoValidRedirectURLs):
 				log.Errorf("There are no registered URLs for the requested client: %s", acr.RedirectURL)
 				writeAuthError(w, oauth2.NewError(oauth2.ErrorInvalidRequest), acr.State)
 				return

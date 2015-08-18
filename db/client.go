@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -8,12 +9,13 @@ import (
 	"net/url"
 
 	"github.com/coopernurse/gorp"
+	"github.com/coreos/go-oidc/oidc"
 	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/coreos-inc/auth/client"
 	pcrypto "github.com/coreos-inc/auth/pkg/crypto"
 	"github.com/coreos-inc/auth/pkg/log"
-	"github.com/coreos/go-oidc/oidc"
 )
 
 const (
@@ -61,9 +63,10 @@ func newClientIdentityModel(id string, secret []byte, meta *oidc.ClientMetadata)
 }
 
 type clientIdentityModel struct {
-	ID       string `db:"id"`
-	Secret   []byte `db:"secret"`
-	Metadata string `db:"metadata"`
+	ID         string `db:"id"`
+	Secret     []byte `db:"secret"`
+	Metadata   string `db:"metadata"`
+	AuthdAdmin bool   `db:"authdAdmin"`
 }
 
 func newClientMetadataJSON(cm *oidc.ClientMetadata) *clientMetadataJSON {
@@ -121,8 +124,28 @@ func (m *clientIdentityModel) ClientIdentity() (*oidc.ClientIdentity, error) {
 	return &ci, nil
 }
 
-func NewClientIdentityRepo(dbm *gorp.DbMap) *clientIdentityRepo {
+func NewClientIdentityRepo(dbm *gorp.DbMap) client.ClientIdentityRepo {
 	return &clientIdentityRepo{dbMap: dbm}
+}
+
+func NewClientIdentityRepoFromClients(dbm *gorp.DbMap, clients []oidc.ClientIdentity) (client.ClientIdentityRepo, error) {
+	repo := NewClientIdentityRepo(dbm).(*clientIdentityRepo)
+	for _, c := range clients {
+		dec, err := base64.URLEncoding.DecodeString(c.Credentials.Secret)
+		if err != nil {
+			return nil, err
+		}
+
+		cm, err := newClientIdentityModel(c.Credentials.ID, dec, &c.Metadata)
+		if err != nil {
+			return nil, err
+		}
+		err = repo.dbMap.Insert(cm)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return repo, nil
 }
 
 type clientIdentityRepo struct {
@@ -131,7 +154,10 @@ type clientIdentityRepo struct {
 
 func (r *clientIdentityRepo) Metadata(clientID string) (*oidc.ClientMetadata, error) {
 	m, err := r.dbMap.Get(clientIdentityModel{}, clientID)
-	if m == nil || err != nil {
+	if err == sql.ErrNoRows || m == nil {
+		return nil, client.ErrorNotFound
+	}
+	if err != nil {
 		return nil, err
 	}
 
@@ -146,6 +172,54 @@ func (r *clientIdentityRepo) Metadata(clientID string) (*oidc.ClientMetadata, er
 	}
 
 	return &ci.Metadata, nil
+}
+
+func (r *clientIdentityRepo) IsAuthdAdmin(clientID string) (bool, error) {
+	m, err := r.dbMap.Get(clientIdentityModel{}, clientID)
+	if m == nil || err != nil {
+		return false, err
+	}
+
+	cim, ok := m.(*clientIdentityModel)
+	if !ok {
+		return false, errors.New("unrecognized model")
+	}
+
+	return cim.AuthdAdmin, nil
+}
+
+func (r *clientIdentityRepo) SetAuthdAdmin(clientID string, isAdmin bool) error {
+	tx, err := r.dbMap.Begin()
+	if err != nil {
+		return err
+	}
+
+	m, err := r.dbMap.Get(clientIdentityModel{}, clientID)
+	if m == nil || err != nil {
+		rollback(tx)
+		return err
+	}
+
+	cim, ok := m.(*clientIdentityModel)
+	if !ok {
+		rollback(tx)
+		return errors.New("unrecognized model")
+	}
+
+	cim.AuthdAdmin = isAdmin
+	_, err = r.dbMap.Update(cim)
+	if err != nil {
+		rollback(tx)
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		rollback(tx)
+		return err
+	}
+
+	return nil
 }
 
 func (r *clientIdentityRepo) Authenticate(creds oidc.ClientCredentials) (bool, error) {

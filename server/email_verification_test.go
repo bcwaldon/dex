@@ -25,9 +25,6 @@ func TestHandleVerifyEmailResend(t *testing.T) {
 	}
 
 	signer := privKey.Signer()
-	signerFunc := func() (jose.Signer, error) {
-		return signer, nil
-	}
 
 	pubKey := *key.NewPublicKey(privKey.JWK())
 	keysFunc := func() ([]key.PublicKey, error) {
@@ -42,8 +39,6 @@ func TestHandleVerifyEmailResend(t *testing.T) {
 		}
 		return jwt.Encode()
 	}
-
-	verifyURL := url.URL{Scheme: "http", Host: "example.com", Path: "/verify"}
 
 	tests := []struct {
 		bearerJWT         string
@@ -132,12 +127,8 @@ func TestHandleVerifyEmailResend(t *testing.T) {
 
 		hdlr := handleVerifyEmailResendFunc(
 			testIssuerURL,
-			verifyURL,
-			time.Hour*1,
 			keysFunc,
-			signerFunc,
-			f.emailer,
-			"bob@example.com",
+			f.srv.UserEmailer,
 			f.userRepo,
 			f.clientIdentityRepo)
 
@@ -167,6 +158,5 @@ func TestHandleVerifyEmailResend(t *testing.T) {
 			t.Errorf("case %d: wantCode=%v, got=%v", i, tt.wantCode, w.Code)
 			t.Logf("case %d: response body was: %v", i, w.Body.String())
 		}
-
 	}
 }

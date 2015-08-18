@@ -6,19 +6,22 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc/jose"
+	"github.com/jonboulle/clockwork"
 	"github.com/kylelemons/godebug/pretty"
 
 	"github.com/coreos-inc/auth/repo"
 )
 
 type testFixtures struct {
-	ur  UserRepo
-	pwr PasswordInfoRepo
-	mgr *Manager
+	ur    UserRepo
+	pwr   PasswordInfoRepo
+	mgr   *Manager
+	clock clockwork.Clock
 }
 
 func makeTestFixtures() *testFixtures {
 	f := &testFixtures{}
+	f.clock = clockwork.NewFakeClock()
 
 	f.ur = NewUserRepoFromUsers([]UserWithRemoteIdentities{
 		{
@@ -57,6 +60,7 @@ func makeTestFixtures() *testFixtures {
 		},
 	})
 	f.mgr = NewManager(f.ur, f.pwr, repo.InMemTransactionFactory, ManagerOptions{})
+	f.mgr.Clock = f.clock
 	return f
 }
 
@@ -345,6 +349,88 @@ func TestChangePassword(t *testing.T) {
 		if cbString != tt.pwrClaims[ClaimPasswordResetCallback] {
 			t.Errorf("case %d: want=%q, got=%q", i, cb.String(),
 				tt.pwrClaims[ClaimPasswordResetCallback])
+		}
+	}
+}
+
+func TestCreateUser(t *testing.T) {
+	tests := []struct {
+		usr      User
+		hashedPW Password
+
+		wantErr bool
+	}{
+		{
+			usr: User{
+				DisplayName: "Bob Exampleson",
+				Email:       "bob@example.com",
+			},
+			hashedPW: Password("I am a hash"),
+		},
+		{
+			usr: User{
+				DisplayName: "Al Adminson",
+				Email:       "al@example.com",
+				Admin:       true,
+			},
+			hashedPW: Password("I am a hash"),
+		},
+		{
+			usr: User{
+				DisplayName: "Ed Emailless",
+			},
+			hashedPW: Password("I am a hash"),
+			wantErr:  true,
+		},
+	}
+
+	for i, tt := range tests {
+		f := makeTestFixtures()
+		id, err := f.mgr.CreateUser(tt.usr, tt.hashedPW, "local")
+		if tt.wantErr {
+			if err == nil {
+				t.Errorf("case %d: want non-nil err", i)
+			}
+			continue
+		}
+		if id == "" {
+			t.Errorf("case %d: want non-empty id", i)
+		}
+
+		if err != nil {
+			t.Errorf("case %d: unexpected err: %v", i, err)
+			continue
+		}
+
+		gotUsr, err := f.ur.Get(nil, id)
+		if err != nil {
+			t.Errorf("case %d: unexpected err: %v", i, err)
+		}
+
+		tt.usr.ID = id
+		tt.usr.CreatedAt = f.clock.Now()
+		if diff := pretty.Compare(tt.usr, gotUsr); diff != "" {
+			t.Errorf("case %d: Compare(want, got) = %v", i, diff)
+		}
+
+		pwi, err := f.pwr.Get(nil, id)
+		if err != nil {
+			t.Errorf("case %d: unexpected err: %v", i, err)
+		}
+
+		if string(pwi.Password) != string(tt.hashedPW) {
+			t.Errorf("case %d: want=%q, got=%q", i, tt.hashedPW, pwi.Password)
+		}
+
+		ridUser, err := f.ur.GetByRemoteIdentity(nil, RemoteIdentity{
+			ID:          id,
+			ConnectorID: "local",
+		})
+		if err != nil {
+			t.Errorf("case %d: err != nil: %q", i, err)
+		}
+		if diff := pretty.Compare(gotUsr, ridUser); diff != "" {
+			t.Errorf("case %d: Compare(want, got) = %v", i, diff)
 		}
 	}
 }

@@ -81,18 +81,20 @@ func main() {
 		log.Fatalf("Unable to listen using scheme %s", lu.Scheme)
 	}
 
-	var scfg server.ServerConfig
+	scfg := server.ServerConfig{
+		IssuerURL:         *issuer,
+		TemplateDir:       *templates,
+		EmailTemplateDirs: emailTemplateDirs,
+		EmailFromAddress:  *emailFrom,
+		EmailerConfigFile: *emailConfig,
+	}
+
 	if *noDB {
 		log.Warning("Running in-process without external database or key rotation")
-		scfg = &server.SingleServerConfig{
-			IssuerURL:         *issuer,
-			TemplateDir:       *templates,
-			EmailTemplateDirs: emailTemplateDirs,
-			ClientsFile:       *clients,
-			ConnectorsFile:    *connectors,
-			UsersFile:         *users,
-			EmailFromAddress:  *emailFrom,
-			EmailerConfigFile: *emailConfig,
+		scfg.StateConfig = &server.SingleServerConfig{
+			ClientsFile:    *clients,
+			ConnectorsFile: *connectors,
+			UsersFile:      *users,
 		}
 	} else {
 		if *dbMaxIdleConns == 0 {
@@ -106,14 +108,9 @@ func main() {
 			MaxIdleConnections: *dbMaxIdleConns,
 			MaxOpenConnections: *dbMaxOpenConns,
 		}
-		scfg = &server.MultiServerConfig{
-			IssuerURL:         *issuer,
-			TemplateDir:       *templates,
-			KeySecret:         *keySecret,
-			DatabaseConfig:    dbCfg,
-			EmailTemplateDirs: emailTemplateDirs,
-			EmailFromAddress:  *emailFrom,
-			EmailerConfigFile: *emailConfig,
+		scfg.StateConfig = &server.MultiServerConfig{
+			KeySecret:      *keySecret,
+			DatabaseConfig: dbCfg,
 		}
 	}
 

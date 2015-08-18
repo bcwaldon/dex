@@ -4,6 +4,8 @@ import (
 	"errors"
 	"net/url"
 
+	"github.com/jonboulle/clockwork"
+
 	"github.com/coreos-inc/auth/pkg/log"
 	"github.com/coreos-inc/auth/repo"
 )
@@ -18,6 +20,8 @@ var (
 // Manager performs user-related "business-logic" functions on user and related objects.
 // This is in contrast to the Repos which perform little more than CRUD operations.
 type Manager struct {
+	Clock clockwork.Clock
+
 	userRepo        UserRepo
 	pwRepo          PasswordInfoRepo
 	begin           repo.TransactionFactory
@@ -32,6 +36,8 @@ type ManagerOptions struct {
 
 func NewManager(userRepo UserRepo, pwRepo PasswordInfoRepo, txnFactory repo.TransactionFactory, options ManagerOptions) *Manager {
 	return &Manager{
+		Clock: clockwork.NewRealClock(),
+
 		userRepo:        userRepo,
 		pwRepo:          pwRepo,
 		begin:           txnFactory,
@@ -39,21 +45,30 @@ func NewManager(userRepo UserRepo, pwRepo PasswordInfoRepo, txnFactory repo.Tran
 	}
 }
 
-// CreateAdminUser creates a new admin user with the specified email address and hashedPassword.
-// The primary use of this method is the overlord admin api.
-func (m *Manager) CreateAdminUser(email string, hashedPassword Password, connID string) (string, error) {
+func (m *Manager) Get(id string) (User, error) {
+	return m.userRepo.Get(nil, id)
+}
+
+func (m *Manager) List(filter UserFilter, maxResults int, nextPageToken string) ([]User, string, error) {
+	return m.userRepo.List(nil, filter, maxResults, nextPageToken)
+}
+
+// CreateUser creates a new user with the given hashedPassword; the connID should be the ID of the local connector.
+// The userID of the created user is returned as the first argument.
+func (m *Manager) CreateUser(user User, hashedPassword Password, connID string) (string, error) {
 	tx, err := m.begin()
 	if err != nil {
 		return "", err
 	}
 
-	user, err := m.insertNewUser(tx, email, true)
+	insertedUser, err := m.insertNewUser(tx, user.Email, user.EmailVerified)
 	if err != nil {
 		rollback(tx)
 		return "", err
 	}
 
-	user.Admin = true
+	user.ID = insertedUser.ID
+	user.CreatedAt = insertedUser.CreatedAt
 	err = m.userRepo.Update(tx, user)
 	if err != nil {
 		rollback(tx)
@@ -85,7 +100,6 @@ func (m *Manager) CreateAdminUser(email string, hashedPassword Password, connID 
 		return "", err
 	}
 	return user.ID, nil
-
 }
 
 // RegisterWithRemoteIdentity creates new user and attaches the given remote identity.
@@ -188,13 +202,13 @@ func (m *Manager) VerifyEmail(ev EmailVerification) (*url.URL, error) {
 		return nil, err
 	}
 
-	user, err := m.userRepo.Get(tx, ev.userID())
+	user, err := m.userRepo.Get(tx, ev.UserID())
 	if err != nil {
 		rollback(tx)
 		return nil, err
 	}
 
-	if user.Email != ev.email() {
+	if user.Email != ev.Email() {
 		rollback(tx)
 		return nil, ErrorEVEmailDoesntMatch
 	}
@@ -217,7 +231,7 @@ func (m *Manager) VerifyEmail(ev EmailVerification) (*url.URL, error) {
 		rollback(tx)
 		return nil, err
 	}
-	return ev.callback(), nil
+	return ev.Callback(), nil
 }
 
 func (m *Manager) ChangePassword(pwr PasswordReset, plaintext string) (*url.URL, error) {
@@ -285,13 +299,13 @@ func (m *Manager) insertNewUser(tx repo.Transaction, email string, emailVerified
 		ID:            userID,
 		Email:         email,
 		EmailVerified: emailVerified,
+		CreatedAt:     m.Clock.Now(),
 	}
 
 	err = m.userRepo.Create(tx, user)
 	if err != nil {
 		return User{}, err
 	}
-
 	return user, nil
 }
 
